@@ -1,7 +1,7 @@
 {
     "projects": [{
-        "name": "sample",
-        "path": "./sources/contract.tact",
+        "name": "DEX",
+        "path": "./sources/contracts/ammPool.tact",
         "output": "./sources/output",
         "mode": "full",
         "options": {
@@ -10,7 +10,7 @@
             "ipfsAbiGetter": false,
             "interfacesGetter": false,
             "experimental": {
-                "inline": false
+                "inline": true
             }
         }
     }]

@@ -1,8 +1,9 @@
 import "./ammPool.tact";
+import "./vaults/jettonVault.tact";
 
 message(0xe7a3475f) PartHasBeenDeposited {
-    depositor: Address,
-    amount: Int as uint256,
+    depositor: Address;
+    amount: Int as uint256;
 }
 
 contract LiquidityDepositContract(
@@ -10,7 +11,7 @@ contract LiquidityDepositContract(
     rightVault: Address,
     leftSide: Int as uint256,
     rightSide: Int as uint256,
-    status: Int as uint2; // Should be deployed with 0.
+    status: Int as uint256, // Should be deployed with 0.
     // 0 - not started
     // 1 - left side is filled
     // 2 - right side is filled
@@ -19,7 +20,7 @@ contract LiquidityDepositContract(
     receive(msg: PartHasBeenDeposited) {
         let sender = sender();
         require(sender == self.leftVault || sender == self.rightVault, "Sender must be a vault");
-        if(sender == leftVault) {
+        if(sender == self.leftVault) {
             // TODO maybe here we should check that it is not already filled and revert on errors.
             require(msg.amount == self.leftSide, "Amount must be equal to leftSide");
             self.status |= 1;

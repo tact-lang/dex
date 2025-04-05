@@ -24,7 +24,7 @@ contract AmmPool(
     rightSide: Int as uint256, // Should be deployed with 0
 ) {
     receive(msg: LiquidityDeposit) {
-        let liquidityDepositContractInit = initOf LiquidityDepositContract(self.leftVault, self.rightVault, msg.leftAmount, msg.rightAmount);
+        let liquidityDepositContractInit = initOf LiquidityDepositContract(self.leftVault, self.rightVault, msg.leftAmount, msg.rightAmount, 0);
         
         require(liquidityDepositContractInit.hasSameBasechainAddress(sender()), "Liquidity provisor should be liquidity contract");
         require(msg.leftAmount > 0, "You can't add 0 tokens on one side");
@@ -68,10 +68,10 @@ contract AmmPool(
         // TODO: Mint LP tokens
     }
 
-    const PoolFee: Int as uint256 = 3; // 0.3%
+    const PoolFee: Int = 3; // 0.3%
     receive(msg: SwapIn) {
         let sender = sender();
-        require(sender == leftVault || sender == rightVault, "Sender must be a vault");
+        require(sender == self.leftVault || sender == self.rightVault, "Sender must be a vault");
         let inVault = emptyAddress();
         let outVault = emptyAddress();
         let inBalance = 0;
@@ -83,8 +83,8 @@ contract AmmPool(
             inBalance = self.leftSide;
             outBalance = self.rightSide;
         } else {
-            inVault = rightVault;
-            outVault = leftVault;
+            inVault = self.rightVault;
+            outVault = self.leftVault;
             inBalance = self.rightSide;
             outBalance = self.leftSide;
             vaultOrderSwap = true;
@@ -102,7 +102,7 @@ contract AmmPool(
             body: SwapOut{
                 inVault: inVault,
                 amount: amountToPay,
-                receiver: msg.recepient,
+                receiver: msg.swapOutReceiver,
             }.toCell(),
         });
 

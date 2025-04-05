@@ -1,7 +1,6 @@
 import "../ammPool.tact";
 import "../securityUtils/calculateJettonWallet.tact";
-import "./vanityContract.tact";
-import "./assets.tact";
+import "../math.tact";
 
 message(0x96ff98f3) InitJettonVault {
     jettonMasterCode: Cell;
@@ -41,7 +40,7 @@ contract JettonVault(
     receive(msg: JettonNotifyWithSwapRequest) {
         if(!self.inited) {
             if(msg.init != null) {
-                let myJettonWallet = calculateJettonWallet(myAddress(), msg.init.jettonMasterData, msg.init.jettonMasterCode, self.jettonMaster);
+                let myJettonWallet = calculateJettonWallet(myAddress(), msg.init!!.jettonMasterData, msg.init!!.jettonMasterCode, self.jettonMaster);
                 if(myJettonWallet == msg.sender) {
                     self.inited = true;
                     self.jettonWallet = myJettonWallet;
@@ -71,7 +70,7 @@ contract JettonVault(
         require(poolInit.hasSameBasechainAddress(sender()), "Sender must be pool");
 
         message(MessageParameters{
-            to: self.jettonWallet,
+            to: self.jettonWallet!!,
             value: 0,
             mode: SendRemainingValue,
             body: JettonTransfer{
@@ -80,7 +79,7 @@ contract JettonVault(
                 destination: msg.receiver,
                 forwardTonAmount: 1,
                 forwardPayload: emptySlice(),
-            },
+            }.toCell(),
         })
     }
 }
