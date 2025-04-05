@@ -1,6 +1,6 @@
 import "@stdlib/ownable";
 
-contract SampleTactContract(
+contract TON_Vault(
     owner: Address,
     counter: Int as uint32,
 ) with Ownable {
