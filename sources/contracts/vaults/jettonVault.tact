@@ -3,9 +3,9 @@ import "../securityUtils/calculateJettonWallet.tact";
 import "../math.tact";
 import "../liquidityDeposit";
 
-message(0x96ff98f3) InitJettonVault {
-    jettonMasterCode: Cell;
-    jettonMasterData: Cell;
+struct JettonMasterState {
+    jettonMasterCode: Cell?;
+    jettonMasterData: Cell?;
 }
 
 const SwapRequestOpcode: Int = 0xbfa68001;
@@ -24,7 +24,7 @@ message(0x7362d09c) JettonNotifyWithActionRequest {
     amount: Int as coins;
     sender: Address;
     eitherBit: Bool; // Should be 0, so other fields are stored inline
-    init: InitJettonVault?; // 2 refs max
+    init: JettonMasterState; // 2 refs max
     actionOpcode: Int as uint32;
     actionPayload: Cell; // Obligatory ref
 }
@@ -47,15 +47,29 @@ contract JettonVault(
 ) {
     receive(msg: JettonNotifyWithActionRequest) {
         if (!self.inited) {
-            if (msg.init != null) {
-                let myJettonWallet = calculateJettonWallet(myAddress(), msg.init!!.jettonMasterData, msg.init!!.jettonMasterCode, self.jettonMaster);
-                if (myJettonWallet == msg.sender &&
+            // Theoretically, data can be null, but I think it's not possible, so we won't accept such jettons
+            if (msg.init.jettonMasterCode != null && msg.init.jettonMasterData != null) {
+                let myJettonWallet = calculateJettonWallet(myAddress(), msg.init.jettonMasterData, msg.init.jettonMasterCode, self.jettonMaster);
+                
+                dump(myJettonWallet);
+                dump(sender());
+                dump("Calculated jetton wallet");
+                
+
+                dump(contractAddress(StateInit {
+                    code: msg.init.jettonMasterCode!!,
+                    data: msg.init.jettonMasterData!!,
+                }));
+                dump(self.jettonMaster);
+
+                if (myJettonWallet == sender() &&
                     contractAddress(StateInit {
-                        code: msg.init!!.jettonMasterCode,
-                        data: msg.init!!.jettonMasterData,
+                        code: msg.init.jettonMasterCode!!,
+                        data: msg.init.jettonMasterData!!,
                     }) == self.jettonMaster) {
                     self.inited = true;
                     self.jettonWallet = myJettonWallet;
+                    dump("Inited");
                 }
             }
         }
@@ -70,6 +84,7 @@ contract JettonVault(
         }
     }
 
+    receive() {}
 
     receive(msg: PayoutFromPool) {
         require(self.inited, "Jetton vault not inited");
@@ -89,6 +104,10 @@ contract JettonVault(
                 forwardPayload: emptySlice(),
             }.toCell(),
         });
+    }
+
+    get fun inited(): Bool {
+        return self.inited;
     }
 }
 

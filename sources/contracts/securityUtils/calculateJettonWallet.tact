@@ -1,5 +1,4 @@
-asm fun calculateJettonWallet(owner: Address, jettonData: Cell, jettonCode: Cell, jettonMaster: Address): Address {
-    DUMPSTK
+asm fun calculateJettonWallet(owner: Address, jettonData: Cell?, jettonCode: Cell?, jettonMaster: Address): Address {
     c7 PUSHCTR
     0 INDEX // Unpack singleton from c7
     // https://docs.ton.org/v3/documentation/tvm/tvm-initialization#control-register-c7
@@ -11,7 +10,7 @@ asm fun calculateJettonWallet(owner: Address, jettonData: Cell, jettonCode: Cell
     10 SETINDEX
     1 TUPLE // Make it singleton back
     // owner md mc c7
-    ROT
+    ROTREV
     CTOS            // owner_addr c7 md mc"
     2 PUSHINT       // owner_addr c7 md mc args"
     103289 PUSHINT  // owner_addr c7 md mc args get_jwa_method_id"
