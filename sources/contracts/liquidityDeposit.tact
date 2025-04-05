@@ -11,7 +11,9 @@ contract LiquidityDepositContract(
     rightVault: Address,
     leftSide: Int as uint256,
     rightSide: Int as uint256,
-    status: Int as uint256, // Should be deployed with 0.
+    depositor: Address,       // This and the next field are kind of salt, so several similar contracts can exist
+    contractId: Int as uint64,
+    status: Int as uint3, // Should be deployed with 0.
     // 0 - not started
     // 1 - left side is filled
     // 2 - right side is filled
@@ -23,10 +25,12 @@ contract LiquidityDepositContract(
         if(sender == self.leftVault) {
             // TODO maybe here we should check that it is not already filled and revert on errors.
             require(msg.amount == self.leftSide, "Amount must be equal to leftSide");
+            require(msg.depositor == self.depositor, "Depositor must be the same");
             self.status |= 1;
         } else {
             // TODO maybe here we should check that it is not already filled and revert on errors.
             require(msg.amount == self.rightSide, "Amount must be equal to rightSide");
+            require(msg.depositor == self.depositor, "Depositor must be the same");
             self.status |= 2;
         }
         // Both sides are filled, we can deposit now.
@@ -34,12 +38,13 @@ contract LiquidityDepositContract(
             let poolAddress = contractAddress(initOf AmmPool(self.leftVault, self.rightVault, 0, 0));
             message(MessageParameters{
                 value: 0,
-                mode: SendRemainingValue,
+                mode: SendRemainingBalance + SendDestroyIfZero, // We don't need to keep this contract alive
                 to: poolAddress,
                 body: LiquidityDeposit{
                     leftAmount: self.leftSide,
                     rightAmount: self.rightSide,
-                    depositor: msg.depositor,
+                    depositor: self.depositor,
+                    contractId: self.contractId,
                 }.toCell(),
             });
         }

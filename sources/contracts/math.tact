@@ -9,4 +9,3 @@ inline fun sortAddresses(a: Address, b: Address): SortedAddresses {
     }
     return SortedAddresses{lower: b, higher: a};
 }
-

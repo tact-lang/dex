@@ -5,7 +5,7 @@ message(0xac2f5a38) SwapIn {
     swapOutReceiver: Address;
 }
 
-message(0x74f7a60) SwapOut {
+message(0x74f7a60) PayoutFromPool {
     inVault: Address; // For proofing purposes
     amount: Int as uint256;
     receiver: Address;
@@ -15,6 +15,7 @@ message(0x6752aa52) LiquidityDeposit {
     leftAmount: Int as uint256;
     rightAmount: Int as uint256;
     depositor: Address;
+    contractId: Int as uint64;
 }
 
 contract AmmPool(
@@ -24,7 +25,14 @@ contract AmmPool(
     rightSide: Int as uint256, // Should be deployed with 0
 ) {
     receive(msg: LiquidityDeposit) {
-        let liquidityDepositContractInit = initOf LiquidityDepositContract(self.leftVault, self.rightVault, msg.leftAmount, msg.rightAmount, 0);
+        let liquidityDepositContractInit = initOf LiquidityDepositContract(self.leftVault, 
+            self.rightVault, 
+            msg.leftAmount, 
+            msg.rightAmount, 
+            msg.depositor,
+            msg.contractId,
+            0
+        );
         
         require(liquidityDepositContractInit.hasSameBasechainAddress(sender()), "Liquidity provisor should be liquidity contract");
         require(msg.leftAmount > 0, "You can't add 0 tokens on one side");
@@ -44,7 +52,7 @@ contract AmmPool(
                 value: 0,
                 mode: SendRemainingValue,
                 to: self.rightVault,
-                body: SwapOut{
+                body: PayoutFromPool{
                     inVault: self.leftVault,
                     amount: msg.rightAmount - expectedRightAmount,
                     receiver: msg.depositor,
@@ -57,7 +65,7 @@ contract AmmPool(
                 value: 0,
                 mode: SendRemainingValue,
                 to: self.leftVault,
-                body: SwapOut{
+                body: PayoutFromPool{
                     inVault: self.rightVault,
                     amount: msg.leftAmount - expectedLeftAmount,
                     receiver: msg.depositor,
@@ -99,7 +107,7 @@ contract AmmPool(
             value: 0,
             mode: SendRemainingValue,
             to: outVault,
-            body: SwapOut{
+            body: PayoutFromPool{
                 inVault: inVault,
                 amount: amountToPay,
                 receiver: msg.swapOutReceiver,

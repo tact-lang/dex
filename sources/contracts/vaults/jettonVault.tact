@@ -1,24 +1,32 @@
 import "../ammPool.tact";
 import "../securityUtils/calculateJettonWallet.tact";
 import "../math.tact";
+import "../liquidityDeposit";
 
 message(0x96ff98f3) InitJettonVault {
     jettonMasterCode: Cell;
     jettonMasterData: Cell;
 }
 
-message(0xbfa68001) SwapRequest {
+const SwapRequestOpcode: Int = 0xbfa68001;
+message(SwapRequestOpcode) SwapRequest {
     destinationVault: Address;
 }
 
+const VaultDepositOpcode: Int = 0x64c08bfc;
+message(VaultDepositOpcode) VaultDeposit {
+    liquidityDepositContract: Address;
+}
+
 // TEP-74 JettonNotify
-message(0x7362d09c) JettonNotifyWithSwapRequest {
+message(0x7362d09c) JettonNotifyWithActionRequest {
     queryId: Int as uint64;
     amount: Int as coins;
     sender: Address;
-    eitherBit: Bool;
-    init: InitJettonVault?;
-    forwardPayload: SwapRequest;
+    eitherBit: Bool; // Should be 0, so other fields are stored inline
+    init: InitJettonVault?; // 2 refs max
+    actionOpcode: Int as uint32;
+    actionPayload: Cell; // Obligatory ref
 }
 
 message(0xf8a7ea5) JettonTransfer {
@@ -37,11 +45,15 @@ contract JettonVault(
     inited: Bool, // Should be deployed with false
     jettonWallet: Address?, // Should be deployed with null
 ) {
-    receive(msg: JettonNotifyWithSwapRequest) {
-        if(!self.inited) {
-            if(msg.init != null) {
+    receive(msg: JettonNotifyWithActionRequest) {
+        if (!self.inited) {
+            if (msg.init != null) {
                 let myJettonWallet = calculateJettonWallet(myAddress(), msg.init!!.jettonMasterData, msg.init!!.jettonMasterCode, self.jettonMaster);
-                if(myJettonWallet == msg.sender) {
+                if (myJettonWallet == msg.sender &&
+                    contractAddress(StateInit {
+                        code: msg.init!!.jettonMasterCode,
+                        data: msg.init!!.jettonMasterData,
+                    }) == self.jettonMaster) {
                     self.inited = true;
                     self.jettonWallet = myJettonWallet;
                 }
@@ -49,37 +61,61 @@ contract JettonVault(
         }
         require(self.inited, "Jetton vault not inited");
         require(sender() == self.jettonWallet, "Jetton vault not inited");
-        let otherVault = msg.forwardPayload.destinationVault;
-        let sortedAddresses = sortAddresses(myAddress(), otherVault);
 
-        let poolAddress = contractAddress(initOf AmmPool(sortedAddresses.lower, sortedAddresses.higher, 0, 0));
-        message(MessageParameters{
-            value: 0,
-            mode: SendRemainingValue,
-            to: poolAddress,
-            body: SwapIn{
-                swapOutReceiver: msg.sender,
-                amount: msg.amount,
-            }.toCell(),
-        })
+        if(msg.actionOpcode == SwapRequestOpcode) {
+            handleSwapRequest(msg, SwapRequest.fromCell(msg.actionPayload));
+        }
+        else if(msg.actionOpcode == VaultDepositOpcode) {
+            handleVaultDeposit(msg, VaultDeposit.fromCell(msg.actionPayload));
+        }
     }
-    receive(msg: SwapOut) {
+
+
+    receive(msg: PayoutFromPool) {
         require(self.inited, "Jetton vault not inited");
         let sortedAddresses = sortAddresses(myAddress(), msg.inVault);
         let poolInit = initOf AmmPool(sortedAddresses.lower, sortedAddresses.higher, 0, 0);
         require(poolInit.hasSameBasechainAddress(sender()), "Sender must be pool");
 
-        message(MessageParameters{
+        message(MessageParameters {
             to: self.jettonWallet!!,
             value: 0,
             mode: SendRemainingValue,
-            body: JettonTransfer{
+            body: JettonTransfer {
                 queryId: 0,
                 amount: 0,
                 destination: msg.receiver,
                 forwardTonAmount: 1,
                 forwardPayload: emptySlice(),
             }.toCell(),
-        })
+        });
     }
+}
+
+inline fun handleSwapRequest(msg: JettonNotifyWithActionRequest, action: SwapRequest) {
+    let otherVault = action.destinationVault;
+    let sortedAddresses = sortAddresses(myAddress(), otherVault);
+
+    let poolAddress = contractAddress(initOf AmmPool(sortedAddresses.lower, sortedAddresses.higher, 0, 0));
+    message(MessageParameters {
+        value: 0,
+        mode: SendRemainingValue,
+        to: poolAddress,
+        body: SwapIn {
+            swapOutReceiver: msg.sender,
+            amount: msg.amount,
+        }.toCell(),
+    });
+}
+
+inline fun handleVaultDeposit(msg: JettonNotifyWithActionRequest, action: VaultDeposit) {
+    message(MessageParameters {
+        to: action.liquidityDepositContract,
+        value: 0,
+        mode: SendRemainingValue,
+        body: PartHasBeenDeposited{
+            depositor: msg.sender,
+            amount: msg.amount,
+        }.toCell(),
+    });
 }
