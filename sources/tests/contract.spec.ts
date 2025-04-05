@@ -17,6 +17,11 @@ function createJettonVaultMessage(opcode: bigint, payload: Cell, proofCode: Cell
         .endCell();
 }
 
+type ContractCodeData = {
+    code: Cell | undefined;
+    data: Cell | undefined;
+}
+
 describe("contract", () => {
     let blockchain: Blockchain;
     let deployer: SandboxContract<TreasuryContract>;
@@ -26,8 +31,9 @@ describe("contract", () => {
     let userWalletB: (address: Address) => Promise<SandboxContract<JettonWallet>>;
 
     let tokenA: SandboxContract<JettonMinter>;
+    let tokenACodeData: ContractCodeData;
     let tokenB: SandboxContract<JettonMinter>;
-
+    let tokenBCodeData: ContractCodeData;
     let vaultForA: SandboxContract<JettonVault>;
     let vaultForB: SandboxContract<JettonVault>;
     
@@ -39,8 +45,15 @@ describe("contract", () => {
 
         // Two different jettonMaster addresses, as jettonContent is different
         tokenA = blockchain.openContract(await JettonMinter.fromInit(0n, deployer.address, beginCell().storeInt(0x01, 6).endCell()));
+        tokenACodeData = {
+            code: await tokenA.init?.code,
+            data: await tokenA.init?.data,
+        }
         tokenB = blockchain.openContract(await JettonMinter.fromInit(0n, deployer.address, beginCell().storeInt(0x02, 6).endCell()));
-        
+        tokenBCodeData = {
+            code: await tokenB.init?.code,
+            data: await tokenB.init?.data,
+        }
         userWalletA = async (address: Address) => {
             return blockchain.openContract(
                 new JettonWallet(await tokenA.getGetWalletAddress(address)),
@@ -82,13 +95,7 @@ describe("contract", () => {
             deploy: true,
         });
 
-        const tokenAState = (await blockchain.getContract(tokenA.address)).accountState;
-        if(tokenAState?.type !== "active") {
-            throw new Error("Token A is not active");
-        }
-
         const deployerWallet = await userWalletA(deployer.address);
-        console.log(tokenA.address.toString({urlSafe: true, bounceable: true, testOnly: false}));
         const transferRes = await deployerWallet.sendTransfer(
             deployer.getSender(),
             toNano(1),
@@ -100,14 +107,10 @@ describe("contract", () => {
             createJettonVaultMessage(
                 VaultDepositOpcode, 
                 beginCell().storeAddress(mockDepositLiquidityContract).endCell(), 
-                tokenAState.state.code!!,
-                tokenAState.state.data!!
+                tokenACodeData.code!!,
+                tokenACodeData.data!!
             )
         )
-
-        for(const tx of transferRes.transactions) {
-            console.log(tx.debugLogs);
-        }
 
         expect(transferRes.transactions).toHaveTransaction({
             success: true,

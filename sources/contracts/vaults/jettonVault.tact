@@ -9,12 +9,12 @@ struct JettonMasterState {
 }
 
 const SwapRequestOpcode: Int = 0xbfa68001;
-message(SwapRequestOpcode) SwapRequest {
+struct SwapRequest {
     destinationVault: Address;
 }
 
 const VaultDepositOpcode: Int = 0x64c08bfc;
-message(VaultDepositOpcode) VaultDeposit {
+struct VaultDeposit {
     liquidityDepositContract: Address;
 }
 
@@ -50,17 +50,6 @@ contract JettonVault(
             // Theoretically, data can be null, but I think it's not possible, so we won't accept such jettons
             if (msg.init.jettonMasterCode != null && msg.init.jettonMasterData != null) {
                 let myJettonWallet = calculateJettonWallet(myAddress(), msg.init.jettonMasterData, msg.init.jettonMasterCode, self.jettonMaster);
-                
-                dump(myJettonWallet);
-                dump(sender());
-                dump("Calculated jetton wallet");
-                
-
-                dump(contractAddress(StateInit {
-                    code: msg.init.jettonMasterCode!!,
-                    data: msg.init.jettonMasterData!!,
-                }));
-                dump(self.jettonMaster);
 
                 if (myJettonWallet == sender() &&
                     contractAddress(StateInit {
@@ -69,7 +58,6 @@ contract JettonVault(
                     }) == self.jettonMaster) {
                     self.inited = true;
                     self.jettonWallet = myJettonWallet;
-                    dump("Inited");
                 }
             }
         }
