@@ -5,6 +5,8 @@ import { ExtendedJettonMinter as JettonMinter } from "../wrappers/ExtendedJetton
 import { randomAddress } from "@ton/test-utils";
 import { ExtendedJettonWallet as JettonWallet } from "../wrappers/ExtendedJettonWallet";
 import { JettonVault, VaultDepositOpcode } from "../output/DEX_JettonVault";
+import { AmmPool } from "../output/DEX_AmmPool";
+import { LiquidityDepositContract } from "../output/DEX_LiquidityDepositContract";
 
 
 function createJettonVaultMessage(opcode: bigint, payload: Cell, proofCode: Cell | undefined, proofData: Cell | undefined) {
@@ -22,6 +24,7 @@ type ContractCodeData = {
     data: Cell | undefined;
 }
 
+
 describe("contract", () => {
     let blockchain: Blockchain;
     let deployer: SandboxContract<TreasuryContract>;
@@ -29,6 +32,16 @@ describe("contract", () => {
 
     let userWalletA: (address: Address) => Promise<SandboxContract<JettonWallet>>;
     let userWalletB: (address: Address) => Promise<SandboxContract<JettonWallet>>;
+    let jettonVault: (address: Address) => Promise<SandboxContract<JettonVault>>;
+    let ammPool: (vaultLeft: Address, vaultRight: Address) => Promise<SandboxContract<AmmPool>>;
+    const depositorIds = new Map<string, bigint>();
+    let liquidityDepositContract: (
+        depositor: Address,
+        vaultLeft: Address,
+        vaultRight: Address,
+        amountLeft: bigint,
+        amountRight: bigint
+    ) => Promise<SandboxContract<LiquidityDepositContract>>;
 
     let tokenA: SandboxContract<JettonMinter>;
     let tokenACodeData: ContractCodeData;
@@ -68,6 +81,43 @@ describe("contract", () => {
 
         vaultForA = blockchain.openContract(await JettonVault.fromInit(tokenA.address, false, null));
         vaultForB = blockchain.openContract(await JettonVault.fromInit(tokenB.address, false, null));
+
+        jettonVault = async (address: Address) => {
+            return blockchain.openContract(await JettonVault.fromInit(address, false, null));
+        }
+
+        ammPool = async (vaultLeft: Address, vaultRight: Address) => {
+            let leftHash = BigInt('0x' + vaultLeft.hash.toString('hex'));
+            let rightHash = BigInt('0x' + vaultRight.hash.toString('hex'));
+            if(leftHash < rightHash) {
+                return blockchain.openContract(await AmmPool.fromInit(vaultLeft, vaultRight, 0n, 0n));
+            } else {
+                return blockchain.openContract(await AmmPool.fromInit(vaultRight, vaultLeft, 0n, 0n));
+            }
+        }
+
+        liquidityDepositContract = (async (
+            depositor: Address,
+            vaultLeft: Address,
+            vaultRight: Address,
+            amountLeft: bigint,
+                amountRight: bigint
+        ): Promise<SandboxContract<LiquidityDepositContract>> => {
+            const depositorKey = depositor.toRawString();
+            let contractId = depositorIds.get(depositorKey) || 0n;
+            depositorIds.set(depositorKey, contractId + 1n);
+            return blockchain.openContract(
+                await LiquidityDepositContract.fromInit(
+                    vaultLeft,
+                    vaultRight,
+                    amountLeft,
+                    amountRight,
+                    depositor,
+                    contractId,
+                    0n
+                )
+            );
+        });
 
         const mintRes = await tokenA.sendMint(deployer.getSender(), deployer.address, 1000000000n, 0n, toNano(1));
         expect(mintRes.transactions).toHaveTransaction({
@@ -122,5 +172,54 @@ describe("contract", () => {
 
         const inited = await vaultForA.getInited();
         expect(inited).toBe(true);
+    });
+
+    test("Liquidity deposit should work correctly", async () => {
+        const vaultA = await jettonVault(tokenA.address);
+        const vaultB = await jettonVault(tokenB.address);
+        const ammPoolForAandB = await ammPool(vaultA.address, vaultB.address);
+
+        const deployAmmPool = await ammPoolForAandB.send(deployer.getSender(),
+            {value: toNano(0.1), bounce: false},
+            null
+        );
+        expect(deployAmmPool.transactions).toHaveTransaction({
+            success: true,
+            deploy: true,
+        });
+        
+        const LPDepositContract = await liquidityDepositContract(deployer.address, vaultA.address, vaultB.address, 1000000000n, 1000000000n);
+        const LPDepositRes = await LPDepositContract.send(deployer.getSender(),
+            {value: toNano(0.1), bounce: false},
+            null
+        );
+        expect(LPDepositRes.transactions).toHaveTransaction({
+            success: true,
+            deploy: true,
+        });
+
+        const walletA = await userWalletA(deployer.address);
+        const walletB = await userWalletB(deployer.address);
+
+        const transferTokenAToA = await walletA.sendTransfer(
+            deployer.getSender(),
+            toNano(1),
+            100n,
+            vaultForA.address,
+            deployer.address,
+            null,
+            toNano(0.5),
+            createJettonVaultMessage(
+                VaultDepositOpcode, 
+                beginCell().storeAddress(LPDepositContract.address).endCell(), 
+                tokenACodeData.code!!,
+                tokenACodeData.data!!
+            )
+        )
+        expect(transferTokenAToA.transactions).toHaveTransaction({
+            from: vaultForA.address,
+            to: LPDepositContract.address,
+            success: true,
+        });
     });
 });

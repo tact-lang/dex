@@ -49,4 +49,6 @@ contract LiquidityDepositContract(
             });
         }
     }
+
+    receive() {}
 }

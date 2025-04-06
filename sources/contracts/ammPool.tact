@@ -24,6 +24,8 @@ contract AmmPool(
     leftSide: Int as uint256, // Should be deployed with 0
     rightSide: Int as uint256, // Should be deployed with 0
 ) {
+    receive() {}
+
     receive(msg: LiquidityDeposit) {
         let liquidityDepositContractInit = initOf LiquidityDepositContract(self.leftVault, 
             self.rightVault, 

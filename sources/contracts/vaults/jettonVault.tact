@@ -29,6 +29,7 @@ message(0x7362d09c) JettonNotifyWithActionRequest {
     actionPayload: Cell; // Obligatory ref
 }
 
+// TEP-74 JettonTransfer
 message(0xf8a7ea5) JettonTransfer {
     queryId: Int as uint64;
     amount: Int as coins;
@@ -39,7 +40,7 @@ message(0xf8a7ea5) JettonTransfer {
     forwardPayload: Slice as remaining;
 }
 
-// Первый отправитель пруфает, что это он отправил правильные жетоны через прикладывание стейта жетон минтера
+// First sender proves that it sent the correct jetton via attaching the jetton master init state
 contract JettonVault(
     jettonMaster: Address,
     inited: Bool, // Should be deployed with false
