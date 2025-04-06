@@ -82,6 +82,7 @@ contract AmmPool(
     receive(msg: SwapIn) {
         let sender = sender();
         require(sender == self.leftVault || sender == self.rightVault, "Sender must be a vault");
+
         let inVault = emptyAddress();
         let outVault = emptyAddress();
         let inBalance = 0;
@@ -123,6 +124,14 @@ contract AmmPool(
             self.leftSide = newAmountIn;
             self.rightSide = newAmountOut;
         }
+    }
+    
+    get fun getLeftSide(): Int {
+        return self.leftSide;
+    }
+
+    get fun getRightSide(): Int {
+        return self.rightSide;
     }
 }
 

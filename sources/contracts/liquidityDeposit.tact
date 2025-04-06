@@ -51,4 +51,8 @@ contract LiquidityDepositContract(
     }
 
     receive() {}
+
+    get fun status(): Int {
+        return self.status;
+    }
 }

@@ -87,10 +87,10 @@ contract JettonVault(
             mode: SendRemainingValue,
             body: JettonTransfer {
                 queryId: 0,
-                amount: 0,
+                amount: msg.amount,
                 destination: msg.receiver,
                 forwardTonAmount: 1,
-                forwardPayload: emptySlice(),
+                forwardPayload: sliceWithOneZeroBit(),
             }.toCell(),
         });
     }
@@ -98,6 +98,14 @@ contract JettonVault(
     get fun inited(): Bool {
         return self.inited;
     }
+
+    get fun jettonWallet(): Address? {
+        return self.jettonWallet;
+    }
+}
+
+asm fun sliceWithOneZeroBit(): Slice {
+    b{0} PUSHSLICE
 }
 
 inline fun handleSwapRequest(msg: JettonNotifyWithActionRequest, action: SwapRequest) {
