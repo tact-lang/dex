@@ -30,7 +30,7 @@ message(0x7362d09c) JettonNotifyWithActionRequest {
 }
 
 // TEP-74 JettonTransfer
-message(0xf8a7ea5) JettonTransfer {
+message(0xf8a7ea5) SendViaJettonTransfer {
     queryId: Int as uint64;
     amount: Int as coins;
     destination: Address;
@@ -78,14 +78,14 @@ contract JettonVault(
     receive(msg: PayoutFromPool) {
         require(self.inited, "Jetton vault not inited");
         let sortedAddresses = sortAddresses(myAddress(), msg.inVault);
-        let poolInit = initOf AmmPool(sortedAddresses.lower, sortedAddresses.higher, 0, 0);
+        let poolInit = initOf AmmPool(sortedAddresses.lower, sortedAddresses.higher, 0, 0, 0);
         require(poolInit.hasSameBasechainAddress(sender()), "Sender must be pool");
 
         message(MessageParameters {
             to: self.jettonWallet!!,
             value: 0,
             mode: SendRemainingValue,
-            body: JettonTransfer {
+            body: SendViaJettonTransfer {
                 queryId: 0,
                 amount: msg.amount,
                 destination: msg.receiver,
@@ -112,7 +112,7 @@ inline fun handleSwapRequest(msg: JettonNotifyWithActionRequest, action: SwapReq
     let otherVault = action.destinationVault;
     let sortedAddresses = sortAddresses(myAddress(), otherVault);
 
-    let poolAddress = contractAddress(initOf AmmPool(sortedAddresses.lower, sortedAddresses.higher, 0, 0));
+    let poolAddress = contractAddress(initOf AmmPool(sortedAddresses.lower, sortedAddresses.higher, 0, 0, 0));
     message(MessageParameters {
         value: 0,
         mode: SendRemainingValue,

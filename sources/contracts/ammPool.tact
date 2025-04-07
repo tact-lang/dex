@@ -1,5 +1,7 @@
 import "./liquidityDeposit";
 import "./utils/utils";
+import "./jettons/utils";
+import "./jettons/jetton-wallet";
 
 message(0xac2f5a38) SwapIn {
     amount: Int as uint256;
@@ -20,15 +22,15 @@ message(0x6752aa52) LiquidityDeposit {
 }
 
 // JettonBurnNotification
-message(0x595f07bc) LiquidityWithdraw {
+message(0x7bdd97de) LiquidityWithdrawViaBurnNotification {
     queryId: Int as uint64;
     amount: Int as coins;
+    sender: Address;
     responseDestination: Address?;
-    customPayload: Cell?;
 }
 
 // For LP tokens minting
-message(0x178d4519) JettonTransferInternal {
+message(0x178d4519) MintViaJettonTransferInternal {
     queryId: Int as uint64;
     amount: Int as coins;
     sender: Address;
@@ -48,91 +50,91 @@ contract AmmPool(
     receive() {}
 
     receive(msg: LiquidityDeposit) {
-        let liquidityDepositContractInit = initOf LiquidityDepositContract(self.leftVault, 
-            self.rightVault, 
-            msg.leftAmount, 
-            msg.rightAmount, 
+        let liquidityDepositContractInit = initOf LiquidityDepositContract(
+            self.leftVault,
+            self.rightVault,
+            msg.leftAmount,
+            msg.rightAmount,
             msg.depositor,
             msg.contractId,
-            0
+            0,
         );
-        
+
         require(liquidityDepositContractInit.hasSameBasechainAddress(sender()), "Liquidity provisor should be liquidity contract");
         require(msg.leftAmount > 0, "You can't add 0 tokens on one side");
         
-        // Both sides are 0 in this case.
-        if(self.leftSide == 0) { 
-            self.leftSide = msg.leftAmount;
-            self.rightSide = msg.rightAmount;
-            return;
-        }
-
-        // Liquidity provide contract does not allow to add 0 tokens on one side.
-        // Probably the rate has changed, so we must remove excessed right tokens.
-
         let leftSideReceived = msg.leftAmount;
         let rightSideReceived = msg.rightAmount;
-        if(msg.rightAmount / msg.leftAmount > self.rightSide / self.leftSide) {
-            let expectedRightAmount = muldiv(msg.leftAmount, self.rightSide, self.leftSide);
-            rightSideReceived = expectedRightAmount;
-            message(MessageParameters{
-                value: 0,
-                mode: SendRemainingValue,
-                to: self.rightVault,
-                body: PayoutFromPool{
-                    inVault: self.leftVault,
-                    amount: msg.rightAmount - expectedRightAmount,
-                    receiver: msg.depositor,
-                }.toCell(),
-            });
-        }
-        else {
-            let expectedLeftAmount = muldiv(msg.rightAmount, self.leftSide, self.rightSide);
-            leftSideReceived = expectedLeftAmount;
-            message(MessageParameters{
-                value: 0,
-                mode: SendRemainingValue,
-                to: self.leftVault,
-                body: PayoutFromPool{
-                    inVault: self.rightVault,
-                    amount: msg.leftAmount - expectedLeftAmount,
-                    receiver: msg.depositor,
-                }.toCell(),
-            });
+        // Both sides are 0 in this case.
+        if (self.leftSide == 0) {
+            self.leftSide = msg.leftAmount;
+            self.rightSide = msg.rightAmount;
+        } else {
+            // Liquidity provide contract does not allow to add 0 tokens on one side.
+            // Probably the rate has changed, so we must remove excessed right tokens.
+            if (msg.rightAmount / msg.leftAmount > self.rightSide / self.leftSide) {
+                let expectedRightAmount = muldiv(msg.leftAmount, self.rightSide, self.leftSide);
+                rightSideReceived = expectedRightAmount;
+                message(MessageParameters {
+                    value: 0,
+                    mode: SendRemainingValue,
+                    to: self.rightVault,
+                    body: PayoutFromPool {
+                        inVault: self.leftVault,
+                        amount: msg.rightAmount - expectedRightAmount,
+                        receiver: msg.depositor,
+                    }.toCell(),
+                });
+            } else {
+                let expectedLeftAmount = muldiv(msg.rightAmount, self.leftSide, self.rightSide);
+                leftSideReceived = expectedLeftAmount;
+                message(MessageParameters {
+                    value: 0,
+                    mode: SendRemainingValue,
+                    to: self.leftVault,
+                    body: PayoutFromPool {
+                        inVault: self.rightVault,
+                        amount: msg.leftAmount - expectedLeftAmount,
+                        receiver: msg.depositor,
+                    }.toCell(),
+                });
+            }
         }
 
         //TODO Consider checking overflow
         let liquidityTokensToMint = sqrt(leftSideReceived * rightSideReceived);
-        
+
         self.totalSupply += liquidityTokensToMint;
+
+        // TODO: We should add custom payload to the messages
+        let forwardPayload = beginCell().storeUint(0, 1).storeUint(0, 64).endCell().beginParse();
         checkEitherForwardPayload(forwardPayload);
 
-        self.totalSupply += amount;
+        self.totalSupply += liquidityTokensToMint;
 
         //Mint LP tokens
         deploy(DeployParameters {
-            value: 0, // ignore msg.tonAmount and use SendMode 64 instead
+            value: 0,
             bounce: true,
             mode: SendRemainingValue,
-            init: getJettonWalletInit(to),
-            body: JettonTransferInternal{
+            init: getJettonWalletInit(msg.depositor),
+            body: MintViaJettonTransferInternal {
                 queryId: 0,
-                amount: amount,
+                amount: liquidityTokensToMint,
                 sender: myAddress(),
-                responseDestination: to,
+                responseDestination: msg.depositor,
                 forwardTonAmount: 0, // TODO: We should maximize forwardTonAmount, and attach custom payload to the messages
                 forwardPayload: forwardPayload,
-            }.toCell()
+            }.toCell(),
         });
     }
 
-    receive(msg: LiquidityWithdraw) {
+    receive(msg: LiquidityWithdrawViaBurnNotification) {
         let sender = parseStdAddress(sender().asSlice());
         let wallet = getJettonBasechainWalletByOwner(msg.sender);
 
         // Workchain 0 is basechain
         require(sender.workchain == Basechain && sender.address == wallet.hash!!, "Invalid sender of JettonBurn notification");
-        
 
         let amountOfLeftToPay = muldiv(msg.amount, self.leftSide, self.totalSupply);
         let amountOfRightToPay = muldiv(msg.amount, self.rightSide, self.totalSupply);
@@ -147,18 +149,18 @@ contract AmmPool(
             to: self.leftVault,
             value: halfOfMsgValue,
             mode: SendDefaultMode | SendBounceIfActionFail,
-            body: PayoutFromPool{
+            body: PayoutFromPool {
                 inVault: self.rightVault,
                 amount: amountOfLeftToPay,
                 receiver: msg.sender,
             }.toCell(),
         });
 
-        message(MessageParameters{
+        message(MessageParameters {
             to: self.rightVault,
             value: 0,
             mode: SendRemainingBalance,
-            body: PayoutFromPool{
+            body: PayoutFromPool {
                 inVault: self.leftVault,
                 amount: amountOfRightToPay,
                 receiver: msg.sender,
@@ -169,6 +171,7 @@ contract AmmPool(
     // TODO: Add Discoverable functionality
 
     const PoolFee: Int = 3; // 0.3%
+
     receive(msg: SwapIn) {
         let sender = sender();
         require(sender == self.leftVault || sender == self.rightVault, "Sender must be a vault");
@@ -178,7 +181,7 @@ contract AmmPool(
         let inBalance = 0;
         let outBalance = 0;
         let vaultOrderSwap = false;
-        if(sender == self.leftVault) {
+        if (sender == self.leftVault) {
             inVault = self.leftVault;
             outVault = self.rightVault;
             inBalance = self.leftSide;
@@ -192,24 +195,24 @@ contract AmmPool(
         }
 
         //TODO We should check 0 liquidity case
-        
+
         let amountInWithFee = muldiv(msg.amount, 1000 - self.PoolFee, 1000);
         let newAmountIn = inBalance + amountInWithFee;
         let newAmountOut = muldiv(outBalance, inBalance, newAmountIn);
         let amountToPay = outBalance - newAmountOut;
 
-        message(MessageParameters{
+        message(MessageParameters {
             value: 0,
             mode: SendRemainingValue,
             to: outVault,
-            body: PayoutFromPool{
+            body: PayoutFromPool {
                 inVault: inVault,
                 amount: amountToPay,
                 receiver: msg.swapOutReceiver,
             }.toCell(),
         });
 
-        if(vaultOrderSwap) {
+        if (vaultOrderSwap) {
             self.leftSide = newAmountOut;
             self.rightSide = newAmountIn;
         } else {
@@ -217,7 +220,7 @@ contract AmmPool(
             self.rightSide = newAmountOut;
         }
     }
-    
+
     get fun getLeftSide(): Int {
         return self.leftSide;
     }
@@ -225,5 +228,20 @@ contract AmmPool(
     get fun getRightSide(): Int {
         return self.rightSide;
     }
+
+    get fun get_wallet_address(ownerAddress: Address): Address {
+        return getJettonWalletByOwner(ownerAddress);
+    }
 }
 
+inline fun getJettonWalletInit(address: Address): StateInit {
+    return initOf JettonWallet(0, address, myAddress());
+}
+
+inline fun getJettonWalletByOwner(jettonWalletOwner: Address): Address {
+    return contractAddress(getJettonWalletInit(jettonWalletOwner));
+}
+
+inline fun getJettonBasechainWalletByOwner(jettonWalletOwner: Address): BasechainAddress {
+    return contractBasechainAddress(getJettonWalletInit(jettonWalletOwner));
+}

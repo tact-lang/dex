@@ -5,8 +5,6 @@ inline fun checkEitherForwardPayload(forwardPayload: Slice) {
     }
 }
 
-asm fun emptyAddress(): Address { b{00} PUSHSLICE }
-
 inline fun makeTakeWalletAddressMsg(targetJettonWallet: BasechainAddress, msg: ProvideWalletAddress): Cell {
     return beginCell()
         .storeUint(TakeWalletAddressOpcode, 32)

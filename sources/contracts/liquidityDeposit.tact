@@ -35,7 +35,7 @@ contract LiquidityDepositContract(
         }
         // Both sides are filled, we can deposit now.
         if(self.status == 3) {
-            let poolAddress = contractAddress(initOf AmmPool(self.leftVault, self.rightVault, 0, 0));
+            let poolAddress = contractAddress(initOf AmmPool(self.leftVault, self.rightVault, 0, 0, 0));
             message(MessageParameters{
                 value: 0,
                 mode: SendRemainingBalance + SendDestroyIfZero, // We don't need to keep this contract alive

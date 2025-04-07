@@ -23,6 +23,16 @@ function createJettonVaultSwapRequest(amount: bigint, destinationVault: Address)
     return createJettonVaultMessage(SwapRequestOpcode, beginCell().storeAddress(destinationVault).endCell(), undefined, undefined);
 }
 
+function sortAddresses(address1: Address, address2: Address, leftAmount: bigint, rightAmount: bigint) {
+    const address1Hash = BigInt('0x' + address1.hash.toString('hex'));
+    const address2Hash = BigInt('0x' + address2.hash.toString('hex'));
+    if(address1Hash < address2Hash) {
+        return {lower: address1, higher: address2, leftAmount: leftAmount, rightAmount: rightAmount};
+    } else {
+        return {lower: address2, higher: address1, leftAmount: rightAmount, rightAmount: leftAmount};
+    }
+}
+
 type ContractCodeData = {
     code: Cell | undefined;
     data: Cell | undefined;
@@ -36,6 +46,7 @@ describe("contract", () => {
 
     let userWalletA: (address: Address) => Promise<SandboxContract<JettonWallet>>;
     let userWalletB: (address: Address) => Promise<SandboxContract<JettonWallet>>;
+    let userLPWallet: (owner: Address, pool: Address) => Promise<SandboxContract<JettonWallet>>;
     let jettonVault: (address: Address) => Promise<SandboxContract<JettonVault>>;
     let ammPool: (vaultLeft: Address, vaultRight: Address) => Promise<SandboxContract<AmmPool>>;
     const depositorIds = new Map<string, bigint>();
@@ -94,13 +105,12 @@ describe("contract", () => {
         }
 
         ammPool = async (vaultLeft: Address, vaultRight: Address) => {
-            let leftHash = BigInt('0x' + vaultLeft.hash.toString('hex'));
-            let rightHash = BigInt('0x' + vaultRight.hash.toString('hex'));
-            if(leftHash < rightHash) {
-                return blockchain.openContract(await AmmPool.fromInit(vaultLeft, vaultRight, 0n, 0n));
-            } else {
-                return blockchain.openContract(await AmmPool.fromInit(vaultRight, vaultLeft, 0n, 0n));
-            }
+            let sortedAddresses = sortAddresses(vaultLeft, vaultRight, 0n, 0n);
+            return blockchain.openContract(await AmmPool.fromInit(sortedAddresses.lower, sortedAddresses.higher, 0n, 0n, 0n));
+        }
+
+        userLPWallet = async (owner: Address, pool: Address) => {
+            return blockchain.openContract(await JettonWallet.fromInit(0n, owner, pool));
         }
 
         liquidityDepositContract = (async (
@@ -114,33 +124,18 @@ describe("contract", () => {
             let contractId = depositorIds.get(depositorKey) || 0n;
             depositorIds.set(depositorKey, contractId + 1n);
 
-            const leftHash = BigInt('0x' + vaultLeft.hash.toString('hex'));
-            const rightHash = BigInt('0x' + vaultRight.hash.toString('hex'));
-            if(leftHash < rightHash) {
-                return blockchain.openContract(
-                    await LiquidityDepositContract.fromInit(
-                        vaultLeft,
-                        vaultRight,
-                        amountLeft,
-                        amountRight,
+            let sortedAddresses = sortAddresses(vaultLeft, vaultRight, amountLeft, amountRight);
+            return blockchain.openContract(
+                await LiquidityDepositContract.fromInit(
+                    sortedAddresses.lower,
+                    sortedAddresses.higher,
+                    sortedAddresses.leftAmount,
+                    sortedAddresses.rightAmount,
                     depositor,
                     contractId,
                     0n
-                    )
-                );
-            } else {
-                return blockchain.openContract(
-                    await LiquidityDepositContract.fromInit(
-                        vaultRight,
-                        vaultLeft,
-                        amountRight,
-                        amountLeft,
-                        depositor,
-                        contractId,
-                        0n
-                    )
-                );
-            }
+                )
+            );
         });
 
         const mintRes = await tokenA.sendMint(deployer.getSender(), deployer.address, 1000000000n, 0n, toNano(1));
@@ -260,6 +255,7 @@ describe("contract", () => {
         expect(transferTokenAToA.transactions).toHaveTransaction({
             from: vaultForA.address,
             to: LPDepositContract.address,
+            op: LiquidityDepositContract.opcodes.PartHasBeenDeposited,
             success: true,
         });
         expect(await LPDepositContract.getStatus()).toBeGreaterThan(0n); // It could be 1 = 0b01 or 2 = 0b10
@@ -272,7 +268,7 @@ describe("contract", () => {
             success: true,
             deploy: true,
         });
-        const transferTokenBToB = await walletB.sendTransfer(
+        const addLiquidityAndMintLP = await walletB.sendTransfer(
             deployer.getSender(),
             toNano(1),
             amountBdeposit,
@@ -287,9 +283,10 @@ describe("contract", () => {
                 tokenBCodeData.data!!
             )
         )
-        expect(transferTokenBToB.transactions).toHaveTransaction({
+        expect(addLiquidityAndMintLP.transactions).toHaveTransaction({
             from: vaultForB.address,
             to: LPDepositContract.address,
+            op: LiquidityDepositContract.opcodes.PartHasBeenDeposited,
             success: true,
         });
 
@@ -297,16 +294,30 @@ describe("contract", () => {
         expect(contractState === "uninit" || contractState === undefined).toBe(true);
         // Contract has been destroyed after depositing both parts of liquidity
 
-        expect(transferTokenBToB.transactions).toHaveTransaction({
+        expect(addLiquidityAndMintLP.transactions).toHaveTransaction({
             from: LPDepositContract.address,
             to: ammPoolForAandB.address,
+            op: AmmPool.opcodes.LiquidityDeposit,
+            success: true,
+        });
+        const sortedAddresses = sortAddresses(vaultA.address, vaultB.address, amountAdeposit, amountBdeposit);
+        const leftSide = await ammPoolForAandB.getGetLeftSide();
+        const rightSide = await ammPoolForAandB.getGetRightSide();
+        
+        expect(leftSide).toBe(sortedAddresses.leftAmount);
+        expect(rightSide).toBe(sortedAddresses.rightAmount);
+
+        const LPWallet = await userLPWallet(deployer.address, ammPoolForAandB.address);
+        
+        expect(addLiquidityAndMintLP.transactions).toHaveTransaction({
+            from: ammPoolForAandB.address,
+            to: LPWallet.address,
+            op: AmmPool.opcodes.MintViaJettonTransferInternal,
             success: true,
         });
 
-        const leftSide = await ammPoolForAandB.getGetLeftSide();
-        const rightSide = await ammPoolForAandB.getGetRightSide();
-        expect(leftSide).toBe(amountAdeposit);
-        expect(rightSide).toBe(amountBdeposit);
+        const LPBalance = await LPWallet.getJettonBalance();
+        expect(LPBalance).toBeGreaterThan(0n);
     });
 
     test("Swap should work correctly", async () => {
