@@ -1,6 +1,6 @@
-import "../ammPool.tact";
-import "../securityUtils/calculateJettonWallet.tact";
-import "../math.tact";
+import "../ammPool";
+import "../utils/calculateJettonWallet";
+import "../math";
 import "../liquidityDeposit";
 
 struct JettonMasterState {
