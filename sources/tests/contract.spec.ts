@@ -378,4 +378,51 @@ describe("contract", () => {
         console.log("Amm rate after swap: ", await ammPoolForAandB.getGetLeftSide(), "/", await ammPoolForAandB.getGetRightSide());
 
     });
+
+    test("Liquidity withdraw should work correctly", async () => {
+        const vaultA = await jettonVault(tokenA.address);
+        const vaultB = await jettonVault(tokenB.address);
+        const ammPoolForAandB = await ammPool(vaultA.address, vaultB.address);
+        const lpWallet = await userLPWallet(deployer.address, ammPoolForAandB.address);
+        const balanceOfLP = await lpWallet.getJettonBalance();
+        expect(balanceOfLP).toBeGreaterThan(0n);
+        console.log("Balance of LP: ", balanceOfLP);
+
+        const balanceOfTokenABefore = await (await userWalletA(deployer.address)).getJettonBalance();
+        const balanceOfTokenBBefore = await (await userWalletB(deployer.address)).getJettonBalance();
+
+        const withdrawLiquidity = await lpWallet.sendBurn(
+            deployer.getSender(),
+            toNano(1),
+            balanceOfLP,
+            deployer.address,
+            null
+        )
+        expect(withdrawLiquidity.transactions).toHaveTransaction({
+            from: lpWallet.address,
+            to: ammPoolForAandB.address,
+            op: AmmPool.opcodes.LiquidityWithdrawViaBurnNotification,
+            success: true,
+        });
+        expect(withdrawLiquidity.transactions).toHaveTransaction({
+            from: ammPoolForAandB.address,
+            to: vaultA.address,
+            op: AmmPool.opcodes.PayoutFromPool,
+            success: true,
+        });
+        expect(withdrawLiquidity.transactions).toHaveTransaction({
+            from: ammPoolForAandB.address,
+            to: vaultB.address,
+            op: AmmPool.opcodes.PayoutFromPool,
+            success: true,
+        });
+        
+        const balanceOfTokenAAfter = await (await userWalletA(deployer.address)).getJettonBalance();
+        const balanceOfTokenBAfter = await (await userWalletB(deployer.address)).getJettonBalance();
+        
+        console.log("Got ", balanceOfTokenAAfter - balanceOfTokenABefore, " of token A");
+        console.log("Got ", balanceOfTokenBAfter - balanceOfTokenBBefore, " of token B");
+        expect(balanceOfTokenAAfter).toBeGreaterThan(balanceOfTokenABefore);
+        expect(balanceOfTokenBAfter).toBeGreaterThan(balanceOfTokenBBefore);
+    });
 });
