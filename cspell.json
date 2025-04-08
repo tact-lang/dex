@@ -30,6 +30,7 @@
         "tsconfig.json",
         "*.boc",
         "*.fif",
-        "*.spec.ts.snap"
+        "*.spec.ts.snap",
+        "tact-upstream/**"
     ]
 }
