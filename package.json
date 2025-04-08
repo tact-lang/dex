@@ -5,7 +5,7 @@
         "build:jettons": "tact --config ./tact.config.json --project Jettons",
         "build": "tact --config ./tact.config.json",
         "lint": "yarn misti ./tact.config.json",
-        "test": "jest",
+        "test": "jest sources/tests",
         "deploy": "ts-node ./sources/contract.deploy.ts",
         "read": "ts-node ./sources/contract.read.ts",
         "prepare": "husky",

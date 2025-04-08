@@ -6,7 +6,9 @@ import {ExtendedJettonWallet as JettonWallet} from "../wrappers/ExtendedJettonWa
 import {JettonVault, VaultDepositOpcode} from "../output/DEX_JettonVault"
 import {AmmPool, storeSwapRequest, SwapRequest, SwapRequestOpcode} from "../output/DEX_AmmPool"
 import {LiquidityDepositContract} from "../output/DEX_LiquidityDepositContract"
+// eslint-disable-next-line
 import {SerializeTransactionsList} from "../utils/testUtils"
+// eslint-disable-next-line
 import fs from "fs"
 
 function createJettonVaultMessage(
@@ -406,7 +408,6 @@ describe("contract", () => {
             toNano(0.5),
             createJettonVaultSwapRequest(vaultB.address, expectedOutput + 1n),
         )
-        fs.writeFileSync("swapRequest.json", SerializeTransactionsList(swapRequest.transactions))
         expect(swapRequest.transactions).toHaveTransaction({
             from: vaultForA.address,
             to: ammPoolForAB.address,
