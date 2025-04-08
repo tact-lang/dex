@@ -1,12 +1,14 @@
-import { Address, beginCell, Cell, StateInit, toNano } from "@ton/core";
+import { Address, beginCell, Cell, toNano } from "@ton/core";
 import { Blockchain, SandboxContract, TreasuryContract, BlockchainSnapshot } from "@ton/sandbox";
 import "@ton/test-utils";
 import { ExtendedJettonMinter as JettonMinter } from "../wrappers/ExtendedJettonMinter";
 import { randomAddress } from "@ton/test-utils";
 import { ExtendedJettonWallet as JettonWallet } from "../wrappers/ExtendedJettonWallet";
 import { JettonVault, VaultDepositOpcode } from "../output/DEX_JettonVault";
-import { AmmPool, SwapRequestOpcode } from "../output/DEX_AmmPool";
+import { AmmPool, storeSwapRequest, SwapRequest, SwapRequestOpcode } from "../output/DEX_AmmPool";
 import { LiquidityDepositContract } from "../output/DEX_LiquidityDepositContract";
+import { SerializeTransactionsList } from "../utils/testUtils";
+import fs from "fs";
 
 
 function createJettonVaultMessage(opcode: bigint, payload: Cell, proofCode: Cell | undefined, proofData: Cell | undefined) {
@@ -19,8 +21,20 @@ function createJettonVaultMessage(opcode: bigint, payload: Cell, proofCode: Cell
         .endCell();
 }
 
-function createJettonVaultSwapRequest(amount: bigint, destinationVault: Address) {
-    return createJettonVaultMessage(SwapRequestOpcode, beginCell().storeAddress(destinationVault).endCell(), undefined, undefined);
+function createJettonVaultSwapRequest(destinationVault: Address, minAmountOut: bigint = 0n, timeout: bigint = 0n) {
+    const swapRequest: SwapRequest = {
+        $$type: 'SwapRequest',
+        destinationVault: destinationVault,
+        minAmountOut: minAmountOut,
+        timeout: timeout,
+    }
+
+    return createJettonVaultMessage(
+        SwapRequestOpcode, 
+        beginCell().store(storeSwapRequest(swapRequest)).endCell(),
+        undefined,
+        undefined
+    );
 }
 
 function sortAddresses(address1: Address, address2: Address, leftAmount: bigint, rightAmount: bigint) {
@@ -70,7 +84,7 @@ describe("contract", () => {
     beforeAll(async () => {
         blockchain = await Blockchain.create();
         //blockchain.verbosity.vmLogs = "vm_logs_full";
-        //blockchain.verbosity.vmLogs = "vm_logs";
+        //blockchain.verbosity.vmLogs = "vm_logs_verbose";
         deployer = await blockchain.treasury("deployer");
         notDeployer = await blockchain.treasury("notDeployer");
 
@@ -213,8 +227,8 @@ describe("contract", () => {
             success: true,
             deploy: true,
         });
-        const amountAdeposit = 100n;
-        const amountBdeposit = 150n;
+        const amountAdeposit = 10000000n;
+        const amountBdeposit = 15000000n;
         const LPDepositContract = await liquidityDepositContract(deployer.address, vaultA.address, vaultB.address, amountAdeposit, amountBdeposit);
         const LPDepositRes = await LPDepositContract.send(deployer.getSender(),
             {value: toNano(0.1), bounce: false},
@@ -320,6 +334,50 @@ describe("contract", () => {
         expect(LPBalance).toBeGreaterThan(0n);
     });
 
+    test("Swap with slippage should revert correctly", async () => {
+        const vaultA = await jettonVault(tokenA.address);
+        const vaultB = await jettonVault(tokenB.address);
+        const ammPoolForAandB = await ammPool(vaultA.address, vaultB.address);
+        
+        const amountToSwap = 100n;
+        const walletA = await userWalletA(deployer.address);
+        const tokenABeforeSwap = await walletA.getJettonBalance();
+        const walletB = await userWalletB(deployer.address);
+        const tokenBBeforeSwap = await walletB.getJettonBalance();
+        const expectedOutput = await ammPoolForAandB.getExpectedOut(vaultA.address, amountToSwap);
+        console.log("Expected output: ", expectedOutput);
+        console.log("Pool address: ", ammPoolForAandB.address.toString());
+        // Expected output field is unsigned
+
+        const swapRequest = await walletA.sendTransfer(
+            deployer.getSender(),
+            toNano(1),
+            amountToSwap,
+            vaultForA.address,
+            deployer.address,
+            null,
+            toNano(0.5),
+            createJettonVaultSwapRequest(vaultB.address, expectedOutput + 1n)
+        );
+        fs.writeFileSync("swapRequest.json", SerializeTransactionsList(swapRequest.transactions));
+        expect(swapRequest.transactions).toHaveTransaction({
+            from: vaultForA.address,
+            to: ammPoolForAandB.address,
+            success: true,
+        });
+        expect(swapRequest.transactions).toHaveTransaction({
+            from: vaultForA.address,
+            to: ammPoolForAandB.address, //NOTE: Swap should fail
+            exitCode: AmmPool.errors["Amount out is less than minAmountOut"],
+            success: true, // That is what happens when throw after commit(), exit code is non-zero, success is true
+        });
+        const tokenAAfterSwap = await walletA.getJettonBalance();
+        const tokenBAfterSwap = await walletB.getJettonBalance();
+        expect(tokenAAfterSwap).toEqual(tokenABeforeSwap);
+        expect(tokenBAfterSwap).toEqual(tokenBBeforeSwap);
+        
+    })
+
     test("Swap should work correctly", async () => {
         const vaultA = await jettonVault(tokenA.address);
         const vaultB = await jettonVault(tokenB.address);
@@ -334,6 +392,8 @@ describe("contract", () => {
         const amountOfTokenB = await walletB.getJettonBalance();
         console.log(`Sending ${amountToSwap} of token A for swap`);
 
+        const expectedOutput = await ammPoolForAandB.getExpectedOut(vaultA.address, amountToSwap);
+
         const swapRequest = await walletA.sendTransfer(
             deployer.getSender(),
             toNano(1),
@@ -342,7 +402,7 @@ describe("contract", () => {
             deployer.address,
             null,
             toNano(0.5),
-            createJettonVaultSwapRequest(amountToSwap, vaultB.address)
+            createJettonVaultSwapRequest(vaultB.address, expectedOutput)
         );
         expect(swapRequest.transactions).toHaveTransaction({
             from: vaultForA.address,
@@ -425,4 +485,6 @@ describe("contract", () => {
         expect(balanceOfTokenAAfter).toBeGreaterThan(balanceOfTokenABefore);
         expect(balanceOfTokenBAfter).toBeGreaterThan(balanceOfTokenBBefore);
     });
+
+    //TODO: Swap after liquidity withdraw
 });

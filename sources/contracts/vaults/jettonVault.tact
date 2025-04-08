@@ -2,20 +2,12 @@ import "../ammPool";
 import "../utils/calculateJettonWallet";
 import "../math";
 import "../liquidityDeposit";
+import "./vaultInterface";
+
 
 struct JettonMasterState {
     jettonMasterCode: Cell?;
     jettonMasterData: Cell?;
-}
-
-const SwapRequestOpcode: Int = 0xbfa68001;
-struct SwapRequest {
-    destinationVault: Address;
-}
-
-const VaultDepositOpcode: Int = 0x64c08bfc;
-struct VaultDeposit {
-    liquidityDepositContract: Address;
 }
 
 // TEP-74 JettonNotify
@@ -68,7 +60,7 @@ contract JettonVault(
         if(msg.actionOpcode == SwapRequestOpcode) {
             handleSwapRequest(msg, SwapRequest.fromCell(msg.actionPayload));
         }
-        else if(msg.actionOpcode == VaultDepositOpcode) {
+        if(msg.actionOpcode == VaultDepositOpcode) {
             handleVaultDeposit(msg, VaultDeposit.fromCell(msg.actionPayload));
         }
     }
@@ -77,7 +69,7 @@ contract JettonVault(
 
     receive(msg: PayoutFromPool) {
         require(self.inited, "Jetton vault not inited");
-        let sortedAddresses = sortAddresses(myAddress(), msg.inVault);
+        let sortedAddresses = sortAddresses(myAddress(), msg.otherVault);
         let poolInit = initOf AmmPool(sortedAddresses.lower, sortedAddresses.higher, 0, 0, 0);
         require(poolInit.hasSameBasechainAddress(sender()), "Sender must be pool");
 
@@ -88,6 +80,7 @@ contract JettonVault(
             body: SendViaJettonTransfer {
                 queryId: 0,
                 amount: msg.amount,
+                responseDestination: msg.receiver,
                 destination: msg.receiver,
                 forwardTonAmount: 1,
                 forwardPayload: sliceWithOneZeroBit(),
@@ -120,6 +113,8 @@ inline fun handleSwapRequest(msg: JettonNotifyWithActionRequest, action: SwapReq
         body: SwapIn {
             swapOutReceiver: msg.sender,
             amount: msg.amount,
+            minAmountOut: action.minAmountOut,
+            timeout: action.timeout,
         }.toCell(),
     });
 }

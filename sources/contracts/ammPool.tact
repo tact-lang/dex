@@ -5,11 +5,13 @@ import "./jettons/jetton-wallet";
 
 message(0xac2f5a38) SwapIn {
     amount: Int as uint256;
+    minAmountOut: Int as uint256;
+    timeout: Int as uint32; // Absolute unix timestamp
     swapOutReceiver: Address;
 }
 
 message(0x74f7a60) PayoutFromPool {
-    inVault: Address; // For proofing purposes
+    otherVault: Address; // For proofing purposes
     amount: Int as uint256;
     receiver: Address;
 }
@@ -80,7 +82,7 @@ contract AmmPool(
                     mode: SendRemainingValue,
                     to: self.rightVault,
                     body: PayoutFromPool {
-                        inVault: self.leftVault,
+                        otherVault: self.leftVault,
                         amount: msg.rightAmount - expectedRightAmount,
                         receiver: msg.depositor,
                     }.toCell(),
@@ -93,7 +95,7 @@ contract AmmPool(
                     mode: SendRemainingValue,
                     to: self.leftVault,
                     body: PayoutFromPool {
-                        inVault: self.rightVault,
+                        otherVault: self.rightVault,
                         amount: msg.leftAmount - expectedLeftAmount,
                         receiver: msg.depositor,
                     }.toCell(),
@@ -150,7 +152,7 @@ contract AmmPool(
             value: halfOfMsgValue,
             mode: SendDefaultMode | SendBounceIfActionFail,
             body: PayoutFromPool {
-                inVault: self.rightVault,
+                otherVault: self.rightVault,
                 amount: amountOfLeftToPay,
                 receiver: msg.sender,
             }.toCell(),
@@ -161,26 +163,29 @@ contract AmmPool(
             value: 0,
             mode: SendRemainingBalance,
             body: PayoutFromPool {
-                inVault: self.leftVault,
+                otherVault: self.leftVault,
                 amount: amountOfRightToPay,
                 receiver: msg.sender,
             }.toCell(),
         });
     }
 
-    // TODO: Add Discoverable functionality
+    // TODO: Add TEP-89 Discoverable functionality
 
     const PoolFee: Int = 3; // 0.3%
 
     receive(msg: SwapIn) {
         let sender = sender();
+
+        // We use require if situations that should never be possible
         require(sender == self.leftVault || sender == self.rightVault, "Sender must be a vault");
 
         let inVault = emptyAddress();
         let outVault = emptyAddress();
         let inBalance = 0;
         let outBalance = 0;
-        let vaultOrderSwap = false;
+        let vaultOrderSwap = false;      
+
         if (sender == self.leftVault) {
             inVault = self.leftVault;
             outVault = self.rightVault;
@@ -194,19 +199,42 @@ contract AmmPool(
             vaultOrderSwap = true;
         }
 
-        //TODO We should check 0 liquidity case
+        // TODO: Need to add block functionality (for exact-time listings)
 
+        if(inBalance == 0 || outBalance == 0) {
+            returnFunds(msg.swapOutReceiver, outVault, msg.amount);
+            require(false, "No liquidity in pool");
+        }
+
+        if(msg.timeout > 0 && now() > msg.timeout) {
+            returnFunds(msg.swapOutReceiver, outVault, msg.amount);
+            require(false, "Swap timeout");
+        }
+           
+        // TODO: Test, that muldiv for msg.amount >= 0, 1000 - self.PoolFee >= 0 does not produce negative result
+        // I couldn't check that in sources, cause there is very shitty c++ code that is impossible to read
+        // So we just need to kinda fuzz it with corner cases
         let amountInWithFee = muldiv(msg.amount, 1000 - self.PoolFee, 1000);
+
+        
         let newAmountIn = inBalance + amountInWithFee;
         let newAmountOut = muldiv(outBalance, inBalance, newAmountIn);
         let amountToPay = outBalance - newAmountOut;
+
+        dump(amountToPay);
+        dump(msg.minAmountOut);
+
+        if(amountToPay < msg.minAmountOut) {
+            returnFunds(msg.swapOutReceiver, outVault, msg.amount);
+            require(false, "Amount out is less than minAmountOut");
+        }
 
         message(MessageParameters {
             value: 0,
             mode: SendRemainingValue,
             to: outVault,
             body: PayoutFromPool {
-                inVault: inVault,
+                otherVault: inVault,
                 amount: amountToPay,
                 receiver: msg.swapOutReceiver,
             }.toCell(),
@@ -232,6 +260,43 @@ contract AmmPool(
     get fun get_wallet_address(ownerAddress: Address): Address {
         return getJettonWalletByOwner(ownerAddress);
     }
+
+    get fun expectedOut(vaultAddress: Address, amountIn: Int): Int {
+        let inVault = emptyAddress();
+        let outVault = emptyAddress();
+        let inBalance = 0;
+        let outBalance = 0;
+
+        if (vaultAddress == self.leftVault) {
+            inVault = self.leftVault;
+            outVault = self.rightVault;
+            inBalance = self.leftSide;
+            outBalance = self.rightSide;
+        } else {
+            inVault = self.rightVault;
+            outVault = self.leftVault;
+            inBalance = self.rightSide;
+            outBalance = self.leftSide;
+        }
+        let amountInWithFee = muldiv(amountIn, 1000 - self.PoolFee, 1000);
+        let newAmountIn = inBalance + amountInWithFee;
+        let newAmountOut = muldiv(outBalance, inBalance, newAmountIn);
+        return outBalance - newAmountOut;
+    }
+}
+
+inline fun returnFunds(receiver: Address, otherVault: Address, amount: Int) {
+    message(MessageParameters {
+        to: sender(),
+        value: 0,
+        mode: SendRemainingValue,
+        body: PayoutFromPool {
+            otherVault: otherVault,
+            amount: amount,
+            receiver: receiver,
+        }.toCell(),
+    });
+    commit();
 }
 
 inline fun getJettonWalletInit(address: Address): StateInit {
