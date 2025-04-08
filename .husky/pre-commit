@@ -1,2 +1,3 @@
+yarn fmt
 yarn deduplicate
 yarn lint-staged
