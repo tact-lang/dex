@@ -221,9 +221,6 @@ contract AmmPool(
         let newAmountOut = muldiv(outBalance, inBalance, newAmountIn);
         let amountToPay = outBalance - newAmountOut;
 
-        dump(amountToPay);
-        dump(msg.minAmountOut);
-
         if(amountToPay < msg.minAmountOut) {
             returnFunds(msg.swapOutReceiver, outVault, msg.amount);
             require(false, "Amount out is less than minAmountOut");
