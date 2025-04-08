@@ -2,7 +2,8 @@
     "private": true,
     "scripts": {
         "build:dex": "tact --config ./tact.config.json --project DEX",
-        "build": "yarn build:dex",
+        "build:jettons": "tact --config ./tact.config.json --project Jettons",
+        "build": "tact --config ./tact.config.json",
         "lint": "yarn misti ./tact.config.json",
         "test": "jest",
         "deploy": "ts-node ./sources/contract.deploy.ts",
