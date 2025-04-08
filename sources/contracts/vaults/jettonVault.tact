@@ -1,7 +1,6 @@
 import "../ammPool";
 import "../utils/calculateJettonWallet";
 import "../math";
-import "../liquidityDeposit";
 import "./vaultInterface";
 
 

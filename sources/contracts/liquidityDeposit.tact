@@ -1,5 +1,4 @@
 import "./ammPool.tact";
-import "./vaults/jettonVault.tact";
 
 message(0xe7a3475f) PartHasBeenDeposited {
     depositor: Address;

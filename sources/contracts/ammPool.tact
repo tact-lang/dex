@@ -62,7 +62,7 @@ contract AmmPool(
             0,
         );
 
-        require(liquidityDepositContractInit.hasSameBasechainAddress(sender()), "Liquidity provisor should be liquidity contract");
+        require(liquidityDepositContractInit.hasSameBasechainAddress(sender()), "Liquidity provider should be liquidity contract");
         require(msg.leftAmount > 0, "You can't add 0 tokens on one side");
         
         let leftSideReceived = msg.leftAmount;
@@ -73,7 +73,7 @@ contract AmmPool(
             self.rightSide = msg.rightAmount;
         } else {
             // Liquidity provide contract does not allow to add 0 tokens on one side.
-            // Probably the rate has changed, so we must remove excessed right tokens.
+            // Probably the rate has changed, so we must return extra tokens.
             if (msg.rightAmount / msg.leftAmount > self.rightSide / self.leftSide) {
                 let expectedRightAmount = muldiv(msg.leftAmount, self.rightSide, self.leftSide);
                 rightSideReceived = expectedRightAmount;

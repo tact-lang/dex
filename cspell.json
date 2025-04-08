@@ -1,0 +1,35 @@
+{
+    "version": "0.2",
+    "language": "en",
+    "dictionaries": ["typescript", "node", "npm", "custom-dictionary", "tvm-instructions"],
+    "dictionaryDefinitions": [
+        {
+            "name": "custom-dictionary",
+            "path": "./spell/custom-dictionary.txt",
+            "addWords": true
+        },
+        {
+            "name": "tvm-instructions",
+            "path": "./spell/tvm-instructions.txt",
+            "addWords": true
+        }
+    ],
+    "ignoreRegExpList": [
+        "\\b[xB]\\{[a-fA-F0-9]*_?\\}",
+        "\\b0[xX][a-fA-F0-9_]*\\b",
+        "\\b(?:address|crc32|cell|slice|rawSlice)\\(\".+?\"\\)"
+    ],
+    "ignorePaths": [
+        "node_modules/**",
+        "dist/**",
+        "build/**",
+        ".git/**",
+        "package.json",
+        "yarn.lock",
+        "src/output/**",
+        "tsconfig.json",
+        "*.boc",
+        "*.fif",
+        "*.spec.ts.snap"
+    ]
+}

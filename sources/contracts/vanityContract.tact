@@ -4,10 +4,10 @@ message initVanityContract {
 }
 
 contract VanityContract(
-    codeDatahash: Int as uint256; 
+    codeDataHash: Int as uint256; 
 ) {
     receive(msg: initVanityContract) {
-        require(msg.code.hash() ^ msg.data.hash() == self.codeDatahash, "Code or data not matched");
+        require(msg.code.hash() ^ msg.data.hash() == self.codeDataHash, "Code or data not matched");
         setCode(msg.code);
         setData(msg.data);
     }

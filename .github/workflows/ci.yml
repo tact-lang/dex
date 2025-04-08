@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
   workflow_dispatch:
 
 jobs:
@@ -38,8 +38,30 @@ jobs:
       - name: Build
         run: yarn build
 
-      - name: Run Misti
-        run: yarn misti --min-severity medium ./tact.config.json
+      #  - name: Check for yarn.lock changes
+      #    run: git diff --exit-code yarn.lock
+
+      - name: Check for duplicates in yarn.lock
+        run: yarn deduplicate
+
+      - name: Check formatting
+        run: yarn fmt:check
+
+      - name: Check spelling
+        run: yarn spell:check
+
+      - name: ESLint
+        run: yarn lint:es
+
+      - name: Type check
+        run: yarn tsc --noEmit
+
+      - name: Build
+        run: yarn build
+
+      # Commented, since we are working with upstream Tact, and Misti is not compatible with it
+      # - name: Run Misti
+      #   run: yarn misti --min-severity medium ./tact.config.json
 
       - name: Run tests
         run: yarn test

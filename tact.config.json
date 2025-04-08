@@ -1,18 +1,19 @@
 {
-    "projects": [{
-        "name": "DEX",
-        "path": "./sources/contracts/ammPool.tact",
-        "output": "./sources/output",
-        "mode": "full",
-        "options": {
-            "external": false,
-            "debug": true,
-            "ipfsAbiGetter": false,
-            "interfacesGetter": false,
-            "experimental": {
-                "inline": true
+    "projects": [
+        {
+            "name": "DEX",
+            "path": "./sources/contracts/vaults/jettonVault.tact",
+            "output": "./sources/output",
+            "mode": "full",
+            "options": {
+                "external": false,
+                "debug": true,
+                "ipfsAbiGetter": false,
+                "interfacesGetter": false,
+                "experimental": {
+                    "inline": true
+                }
             }
         }
-    }]
+    ]
 }
-

@@ -1,22 +1,15 @@
-import { beginCell, storeTransaction, Transaction } from "@ton/core";
+import {beginCell, storeTransaction, Transaction} from "@ton/core"
 
-const fieldsToSave = [
-    'blockchainLogs',
-    'vmLogs',
-    'debugLogs',
-    'shard',
-    'delay',
-    'totalDelay',
-]
+const fieldsToSave = ["blockchainLogs", "vmLogs", "debugLogs", "shard", "delay", "totalDelay"]
 
-export function SerializeTransactionsList(txes: any[]): string {
+export function SerializeTransactionsList(transactions: any[]): string {
     const dump = {
-        transactions: txes.map((t) => {
+        transactions: transactions.map(t => {
             const tx = beginCell()
                 .store(storeTransaction(t as Transaction))
                 .endCell()
                 .toBoc()
-                .toString('base64')
+                .toString("base64")
 
             return {
                 transaction: tx,

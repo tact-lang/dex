@@ -2,9 +2,10 @@
 
 ## Common Interface
 
-Любой Vault должен реализовывать следующий интерфейс, для взаимодействия с остальными компонентами системы:
+Any Vault must implement the following interface to interact with other system components:
 
-### Получение запроса на выплату
+### Receiving a Payout Request
+
 ```tact
 message(0x74f7a60) PayoutFromPool {
     inVault: Address; // For proofing purposes
@@ -13,10 +14,12 @@ message(0x74f7a60) PayoutFromPool {
 }
 ```
 
-### Получение запроса на сохранение средств, для последующего залива ликвидности
-(Оно само зависит от конкретного пула)
+### Receiving a Request to Save Funds for Subsequent Liquidity Addition
 
-(Сообщение, которое должно быть отправлено на LiquidityDeposit контракт)
+(It depends on the specific pool)
+
+(Message that should be sent to the LiquidityDeposit contract)
+
 ```tact
 message(0xe7a3475f) PartHasBeenDeposited {
     depositor: Address;
