@@ -35,6 +35,27 @@ jobs:
       - name: Install dependencies
         run: yarn install
 
+      - name: Clone Tact repository
+        uses: actions/checkout@v2
+        with:
+          repository: tact-lang/tact
+          path: tact-upstream
+
+      - name: Install Tact dependencies
+        working-directory: ./tact-upstream
+        run: yarn install
+
+      - name: Build Tact (fast)
+        working-directory: ./tact-upstream
+        run: yarn build:fast
+
+      - name: Link Tact compiler
+        working-directory: ./tact-upstream
+        run: yarn link
+
+      - name: Use upstream Tact compiler in DEX project
+        run: yarn link @tact-lang/compiler
+
       - name: Build
         run: yarn build
 
@@ -55,9 +76,6 @@ jobs:
 
       - name: Type check
         run: yarn tsc --noEmit
-
-      - name: Build
-        run: yarn build
 
       # Commented, since we are working with upstream Tact, and Misti is not compatible with it
       # - name: Run Misti
