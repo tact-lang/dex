@@ -4,4 +4,3 @@
 yarn lint:es
 yarn spell
 yarn fmt:check
-yarn check:deps 
