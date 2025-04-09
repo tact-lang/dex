@@ -1,7 +1,10 @@
 import {Address, beginCell, Cell, storeTransaction, Transaction} from "@ton/core"
-import {storeLiquidityDeposit, SwapRequest, VaultDepositOpcode} from "../output/DEX_AmmPool"
-import {storeSwapRequest} from "../output/DEX_AmmPool"
-import {SwapRequestOpcode} from "../output/DEX_AmmPool"
+import {
+    SwapRequest,
+    VaultDepositOpcode,
+    storeSwapRequest,
+    SwapRequestOpcode,
+} from "../output/DEX_AmmPool"
 
 const fieldsToSave = ["blockchainLogs", "vmLogs", "debugLogs", "shard", "delay", "totalDelay"]
 

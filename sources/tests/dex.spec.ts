@@ -3,15 +3,18 @@ import {Blockchain, SandboxContract, TreasuryContract, BlockchainSnapshot} from 
 import {ExtendedJettonMinter as JettonMinter} from "../wrappers/ExtendedJettonMinter"
 import {randomAddress} from "@ton/test-utils"
 import {ExtendedJettonWallet as JettonWallet} from "../wrappers/ExtendedJettonWallet"
-import {JettonVault, VaultDepositOpcode} from "../output/DEX_JettonVault"
-import {AmmPool, storeSwapRequest, SwapRequest, SwapRequestOpcode} from "../output/DEX_AmmPool"
+import {JettonVault} from "../output/DEX_JettonVault"
+import {AmmPool} from "../output/DEX_AmmPool"
 import {LiquidityDepositContract} from "../output/DEX_LiquidityDepositContract"
 // eslint-disable-next-line
-import {SerializeTransactionsList} from "../utils/testUtils"
+import {
+    SerializeTransactionsList,
+    createJettonVaultSwapRequest,
+    createJettonVaultLiquidityDeposit,
+} from "../utils/testUtils"
 // eslint-disable-next-line
 import fs from "fs"
 import {sortAddresses} from "../utils/deployUtils"
-import {createJettonVaultSwapRequest, createJettonVaultLiquidityDeposit} from "../utils/testUtils"
 
 type ContractCodeData = {
     code: Cell | undefined
