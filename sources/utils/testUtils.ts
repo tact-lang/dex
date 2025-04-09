@@ -1,4 +1,7 @@
-import {beginCell, storeTransaction, Transaction} from "@ton/core"
+import {Address, beginCell, Cell, storeTransaction, Transaction} from "@ton/core"
+import {storeLiquidityDeposit, SwapRequest, VaultDepositOpcode} from "../output/DEX_AmmPool"
+import {storeSwapRequest} from "../output/DEX_AmmPool"
+import {SwapRequestOpcode} from "../output/DEX_AmmPool"
 
 const fieldsToSave = ["blockchainLogs", "vmLogs", "debugLogs", "shard", "delay", "totalDelay"]
 
@@ -23,4 +26,52 @@ export function SerializeTransactionsList(transactions: any[]): string {
         }),
     }
     return JSON.stringify(dump, null, 2)
+}
+
+function createJettonVaultMessage(
+    opcode: bigint,
+    payload: Cell,
+    proofCode: Cell | undefined,
+    proofData: Cell | undefined,
+) {
+    return beginCell()
+        .storeUint(0, 1) // Either bit
+        .storeMaybeRef(proofCode)
+        .storeMaybeRef(proofData)
+        .storeUint(opcode, 32)
+        .storeRef(payload)
+        .endCell()
+}
+
+export function createJettonVaultSwapRequest(
+    destinationVault: Address,
+    minAmountOut: bigint = 0n,
+    timeout: bigint = 0n,
+) {
+    const swapRequest: SwapRequest = {
+        $$type: "SwapRequest",
+        destinationVault: destinationVault,
+        minAmountOut: minAmountOut,
+        timeout: timeout,
+    }
+
+    return createJettonVaultMessage(
+        SwapRequestOpcode,
+        beginCell().store(storeSwapRequest(swapRequest)).endCell(),
+        undefined,
+        undefined,
+    )
+}
+
+export function createJettonVaultLiquidityDeposit(
+    LPContract: Address,
+    proofCode: Cell | undefined,
+    proofData: Cell | undefined,
+) {
+    return createJettonVaultMessage(
+        VaultDepositOpcode,
+        beginCell().storeAddress(LPContract).endCell(),
+        proofCode,
+        proofData,
+    )
 }

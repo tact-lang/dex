@@ -4,3 +4,4 @@ sources/output
 .vscode/
 .DS_Store/
 tact-upstream/
+.env

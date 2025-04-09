@@ -10,56 +10,8 @@ import {LiquidityDepositContract} from "../output/DEX_LiquidityDepositContract"
 import {SerializeTransactionsList} from "../utils/testUtils"
 // eslint-disable-next-line
 import fs from "fs"
-
-function createJettonVaultMessage(
-    opcode: bigint,
-    payload: Cell,
-    proofCode: Cell | undefined,
-    proofData: Cell | undefined,
-) {
-    return beginCell()
-        .storeUint(0, 1) // Either bit
-        .storeMaybeRef(proofCode)
-        .storeMaybeRef(proofData)
-        .storeUint(opcode, 32)
-        .storeRef(payload)
-        .endCell()
-}
-
-function createJettonVaultSwapRequest(
-    destinationVault: Address,
-    minAmountOut: bigint = 0n,
-    timeout: bigint = 0n,
-) {
-    const swapRequest: SwapRequest = {
-        $$type: "SwapRequest",
-        destinationVault: destinationVault,
-        minAmountOut: minAmountOut,
-        timeout: timeout,
-    }
-
-    return createJettonVaultMessage(
-        SwapRequestOpcode,
-        beginCell().store(storeSwapRequest(swapRequest)).endCell(),
-        undefined,
-        undefined,
-    )
-}
-
-function sortAddresses(
-    address1: Address,
-    address2: Address,
-    leftAmount: bigint,
-    rightAmount: bigint,
-) {
-    const address1Hash = BigInt("0x" + address1.hash.toString("hex"))
-    const address2Hash = BigInt("0x" + address2.hash.toString("hex"))
-    if (address1Hash < address2Hash) {
-        return {lower: address1, higher: address2, leftAmount: leftAmount, rightAmount: rightAmount}
-    } else {
-        return {lower: address2, higher: address1, leftAmount: rightAmount, rightAmount: leftAmount}
-    }
-}
+import {sortAddresses} from "../utils/deployUtils"
+import {createJettonVaultSwapRequest, createJettonVaultLiquidityDeposit} from "../utils/testUtils"
 
 type ContractCodeData = {
     code: Cell | undefined
@@ -231,9 +183,8 @@ describe("contract", () => {
             deployer.address,
             null,
             toNano(0.5),
-            createJettonVaultMessage(
-                VaultDepositOpcode,
-                beginCell().storeAddress(mockDepositLiquidityContract).endCell(),
+            createJettonVaultLiquidityDeposit(
+                mockDepositLiquidityContract,
                 tokenACodeData.code!!,
                 tokenACodeData.data!!,
             ),
@@ -298,7 +249,7 @@ describe("contract", () => {
             deploy: true,
         })
 
-        const transferTokenAToA = await walletA.sendTransfer(
+        const transferAndNotifyLPDeposit = await walletA.sendTransfer(
             deployer.getSender(),
             toNano(1),
             amountA,
@@ -306,19 +257,19 @@ describe("contract", () => {
             deployer.address,
             null,
             toNano(0.5),
-            createJettonVaultMessage(
-                VaultDepositOpcode,
-                beginCell().storeAddress(LPDepositContract.address).endCell(),
+            createJettonVaultLiquidityDeposit(
+                LPDepositContract.address,
                 tokenACodeData.code!!,
                 tokenACodeData.data!!,
             ),
         )
-        expect(transferTokenAToA.transactions).toHaveTransaction({
+        expect(transferAndNotifyLPDeposit.transactions).toHaveTransaction({
             from: vaultForA.address,
             to: LPDepositContract.address,
             op: LiquidityDepositContract.opcodes.PartHasBeenDeposited,
             success: true,
         })
+        let logs = SerializeTransactionsList(transferAndNotifyLPDeposit.transactions)
         expect(await LPDepositContract.getStatus()).toBeGreaterThan(0n) // It could be 1 = 0b01 or 2 = 0b10
 
         const realDeployVaultB = await vaultForB.send(
@@ -338,9 +289,8 @@ describe("contract", () => {
             deployer.address,
             null,
             toNano(0.5),
-            createJettonVaultMessage(
-                VaultDepositOpcode,
-                beginCell().storeAddress(LPDepositContract.address).endCell(),
+            createJettonVaultLiquidityDeposit(
+                LPDepositContract.address,
                 tokenBCodeData.code!!,
                 tokenBCodeData.data!!,
             ),
@@ -351,6 +301,8 @@ describe("contract", () => {
             op: LiquidityDepositContract.opcodes.PartHasBeenDeposited,
             success: true,
         })
+        logs += SerializeTransactionsList(addLiquidityAndMintLP.transactions)
+        fs.writeFileSync("LiquidityDeposit.json", logs)
 
         const contractState = (await blockchain.getContract(LPDepositContract.address)).accountState
             ?.type
@@ -372,6 +324,7 @@ describe("contract", () => {
 
         const LPWallet = await userLPWallet(deployer.address, ammPoolForAB.address)
 
+        // LP tokens minted successfully
         expect(addLiquidityAndMintLP.transactions).toHaveTransaction({
             from: ammPoolForAB.address,
             to: LPWallet.address,
@@ -466,6 +419,7 @@ describe("contract", () => {
             to: vaultB.address,
             success: true,
         })
+        fs.writeFileSync("SuccessfulSwap.json", SerializeTransactionsList(swapRequest.transactions))
         console.log("Vault B address: ", vaultB.address.toString())
         const vaultBWallet = await userWalletB(vaultB.address)
         expect(swapRequest.transactions).toHaveTransaction({
