@@ -8,7 +8,7 @@ struct JettonMasterState {
     jettonMasterData: Cell?;
 }
 
-// TEP-74 JettonNotify
+// Compatible with TEP-74 JettonNotify, but with forwardPayload serialized as expected fields
 message(0x7362d09c) JettonNotifyWithActionRequest {
     queryId: Int as uint64;
     amount: Int as coins;
@@ -19,7 +19,7 @@ message(0x7362d09c) JettonNotifyWithActionRequest {
     actionPayload: Cell; // Obligatory ref
 }
 
-// TEP-74 JettonTransfer
+// TEP-74 JettonTransfer with better DEX naming
 message(0xf8a7ea5) SendViaJettonTransfer {
     queryId: Int as uint64;
     amount: Int as coins;
@@ -40,6 +40,7 @@ contract JettonVault(
         if (!self.inited) {
             // Theoretically, data can be null, but I think it's not possible, so we won't accept such jettons
             if (msg.init.jettonMasterCode != null && msg.init.jettonMasterData != null) {
+                // on-chain hack, dependent on the jetton minter state init
                 let myJettonWallet = calculateJettonWallet(myAddress(), msg.init.jettonMasterData, msg.init.jettonMasterCode, self.jettonMaster);
 
                 if (myJettonWallet == sender() &&
@@ -67,8 +68,10 @@ contract JettonVault(
 
     receive(msg: PayoutFromPool) {
         require(self.inited, "Jetton vault not inited");
+
         let sortedAddresses = sortAddresses(myAddress(), msg.otherVault);
         let poolInit = initOf AmmPool(sortedAddresses.lower, sortedAddresses.higher, 0, 0, 0);
+
         require(poolInit.hasSameBasechainAddress(sender()), "Sender must be pool");
 
         message(MessageParameters {
@@ -82,6 +85,7 @@ contract JettonVault(
                 destination: msg.receiver,
                 forwardTonAmount: 1,
                 forwardPayload: sliceWithOneZeroBit(),
+                customPayload: null,
             }.toCell(),
         });
     }
