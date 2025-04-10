@@ -79,8 +79,9 @@ contract AmmPool(
                 let expectedRightAmount = muldiv(msg.leftAmount, self.rightSideReserve, self.leftSideReserve);
                 rightSideReceived = expectedRightAmount;
                 message(MessageParameters {
-                    value: 0,
-                    mode: SendRemainingValue,
+                    // TODO: think about the value here and in lp minting
+                    value: context().value / 2,
+                    mode: SendPayFwdFeesSeparately,
                     to: self.rightVault,
                     body: PayoutFromPool {
                         otherVault: self.leftVault,
@@ -92,8 +93,8 @@ contract AmmPool(
                 let expectedLeftAmount = muldiv(msg.rightAmount, self.leftSideReserve, self.rightSideReserve);
                 leftSideReceived = expectedLeftAmount;
                 message(MessageParameters {
-                    value: 0,
-                    mode: SendRemainingValue,
+                    value: context().value / 2,
+                    mode: SendPayFwdFeesSeparately,
                     to: self.leftVault,
                     body: PayoutFromPool {
                         otherVault: self.rightVault,
@@ -117,9 +118,9 @@ contract AmmPool(
 
         // Mint LP tokens, amm pool acts as the jetton minter for lp jettons
         deploy(DeployParameters {
-            value: 0,
+            value: context().value / 2 - 1,
             bounce: true,
-            mode: SendRemainingValue,
+            mode: SendPayFwdFeesSeparately,
             init: getJettonWalletInit(msg.depositor),
             body: MintViaJettonTransferInternal {
                 queryId: 0,

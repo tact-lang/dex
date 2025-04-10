@@ -6,12 +6,7 @@ import {ExtendedJettonWallet as JettonWallet} from "../wrappers/ExtendedJettonWa
 import {JettonVault} from "../output/DEX_JettonVault"
 import {AmmPool} from "../output/DEX_AmmPool"
 import {LiquidityDepositContract} from "../output/DEX_LiquidityDepositContract"
-import {
-    // eslint-disable-next-line
-    SerializeTransactionsList,
-    createJettonVaultSwapRequest,
-    createJettonVaultLiquidityDeposit,
-} from "../utils/testUtils"
+import {createJettonVaultLiquidityDeposit} from "../utils/testUtils"
 // eslint-disable-next-line
 import fs from "fs"
 import {sortAddresses} from "../utils/deployUtils"
@@ -132,10 +127,12 @@ describe("contract", () => {
             )
         }
 
+        const mintAmount = toNano(100)
+
         const mintRes = await tokenA.sendMint(
             deployer.getSender(),
             deployer.address,
-            1000000000n,
+            mintAmount,
             0n,
             toNano(1),
         )
@@ -147,7 +144,7 @@ describe("contract", () => {
         const mintRes2 = await tokenB.sendMint(
             deployer.getSender(),
             deployer.address,
-            1000000000n,
+            mintAmount,
             0n,
             toNano(1),
         )
@@ -205,7 +202,6 @@ describe("contract", () => {
         expect(inited).toBe(true)
     })
 
-    // TODO: remove duplicated code
     test("Liquidity deposit should work correctly", async () => {
         const vaultA = await jettonVault(tokenA.address)
         const vaultB = await jettonVault(tokenB.address)
@@ -331,165 +327,231 @@ describe("contract", () => {
         expect(LPBalance).toBeGreaterThan(0n)
     })
 
-    // TODO: fix snapshot deps
-    test("Swap with slippage should revert correctly", async () => {
-        const vaultA = await jettonVault(tokenA.address)
-        const vaultB = await jettonVault(tokenB.address)
+    test("Liquidity deposit should fail with wrong amount", async () => {
+        const vaultA = vaultForA
+        const vaultB = vaultForB
+
         const ammPoolForAB = await ammPool(vaultA.address, vaultB.address)
+        const poolState = (await blockchain.getContract(ammPoolForAB.address)).accountState?.type
+        expect(poolState === "uninit" || poolState === undefined).toBe(true)
 
-        const amountToSwap = 100n
-        const walletA = await userWalletA(deployer.address)
-        const tokenABeforeSwap = await walletA.getJettonBalance()
-        const walletB = await userWalletB(deployer.address)
-        const tokenBBeforeSwap = await walletB.getJettonBalance()
-        const expectedOutput = await ammPoolForAB.getExpectedOut(vaultA.address, amountToSwap)
-        console.log("Expected output: ", expectedOutput)
-        console.log("Pool address: ", ammPoolForAB.address.toString())
-        // Expected output field is unsigned
+        const initialRatio = 2n // 1 a == 2 b
 
-        const swapRequest = await walletA.sendTransfer(
-            deployer.getSender(),
-            toNano(1),
-            amountToSwap,
-            vaultForA.address,
+        const amountA = toNano(1)
+        const amountB = amountA * initialRatio
+
+        const LPDepositContract = await liquidityDepositContract(
             deployer.address,
+            vaultA.address,
+            vaultB.address,
+            amountA,
+            amountB,
+        )
+        const LPDepositRes = await LPDepositContract.send(
+            deployer.getSender(),
+            {value: toNano(0.1), bounce: false},
             null,
-            toNano(0.5),
-            createJettonVaultSwapRequest(vaultB.address, expectedOutput + 1n),
         )
-        expect(swapRequest.transactions).toHaveTransaction({
-            from: vaultForA.address,
-            to: ammPoolForAB.address,
+        expect(LPDepositRes.transactions).toHaveTransaction({
+            to: LPDepositContract.address,
             success: true,
+            deploy: true,
         })
-        expect(swapRequest.transactions).toHaveTransaction({
-            from: vaultForA.address,
-            to: ammPoolForAB.address, //NOTE: Swap should fail
-            exitCode: AmmPool.errors["Amount out is less than minAmountOut"],
-            success: true, // That is what happens when throw after commit(), exit code is non-zero, success is true
-        })
-        const tokenAAfterSwap = await walletA.getJettonBalance()
-        const tokenBAfterSwap = await walletB.getJettonBalance()
-        expect(tokenAAfterSwap).toEqual(tokenABeforeSwap)
-        expect(tokenBAfterSwap).toEqual(tokenBBeforeSwap)
-    })
-
-    test("Swap should work correctly", async () => {
-        const vaultA = await jettonVault(tokenA.address)
-        const vaultB = await jettonVault(tokenB.address)
-        const ammPoolForAB = await ammPool(vaultA.address, vaultB.address)
-
-        console.log(
-            "Amm rate before swap: ",
-            await ammPoolForAB.getGetLeftSide(),
-            "/",
-            await ammPoolForAB.getGetRightSide(),
-        )
-        const amountToSwap = 10n
 
         const walletA = await userWalletA(deployer.address)
         const walletB = await userWalletB(deployer.address)
 
-        const amountOfTokenB = await walletB.getJettonBalance()
-        console.log(`Sending ${amountToSwap} of token A for swap`)
+        const realDeployVaultA = await vaultForA.send(
+            deployer.getSender(),
+            {value: toNano(0.1), bounce: false},
+            null,
+        )
+        expect(realDeployVaultA.transactions).toHaveTransaction({
+            to: vaultForA.address,
+            success: true,
+            deploy: true,
+        })
 
-        const expectedOutput = await ammPoolForAB.getExpectedOut(vaultA.address, amountToSwap)
-
-        const swapRequest = await walletA.sendTransfer(
+        const transferAndNotifyLPDeposit = await walletA.sendTransfer(
             deployer.getSender(),
             toNano(1),
-            amountToSwap,
+            amountA,
             vaultForA.address,
             deployer.address,
             null,
             toNano(0.5),
-            createJettonVaultSwapRequest(vaultB.address, expectedOutput),
+            createJettonVaultLiquidityDeposit(
+                LPDepositContract.address,
+                tokenACodeData.code!!,
+                tokenACodeData.data!!,
+            ),
         )
-        expect(swapRequest.transactions).toHaveTransaction({
+        expect(transferAndNotifyLPDeposit.transactions).toHaveTransaction({
             from: vaultForA.address,
-            to: ammPoolForAB.address,
+            to: LPDepositContract.address,
+            op: LiquidityDepositContract.opcodes.PartHasBeenDeposited,
             success: true,
         })
-        expect(swapRequest.transactions).toHaveTransaction({
-            from: ammPoolForAB.address,
-            to: vaultB.address,
-            success: true,
-        })
-        console.log("Vault B address: ", vaultB.address.toString())
-        const vaultBWallet = await userWalletB(vaultB.address)
-        expect(swapRequest.transactions).toHaveTransaction({
-            from: vaultB.address,
-            to: vaultBWallet.address,
-            success: true,
-        })
-        expect(swapRequest.transactions).toHaveTransaction({
-            from: vaultBWallet.address,
-            to: walletB.address,
-            success: true,
-        })
-        expect(swapRequest.transactions).toHaveTransaction({
-            from: walletB.address,
-            to: deployer.address,
-        })
+        expect(await LPDepositContract.getStatus()).toBeGreaterThan(0n) // It could be 1 = 0b01 or 2 = 0b10
+        expect(await LPDepositContract.getStatus()).toBeLessThan(3n)
 
-        const amountOfTokenBAfterSwap = await walletB.getJettonBalance()
-        console.log("Received ", amountOfTokenBAfterSwap - amountOfTokenB, " of token B")
-        expect(amountOfTokenBAfterSwap).toBeGreaterThan(amountOfTokenB)
-
-        console.log(
-            "Amm rate after swap: ",
-            await ammPoolForAB.getGetLeftSide(),
-            "/",
-            await ammPoolForAB.getGetRightSide(),
-        )
-    })
-
-    test("Liquidity withdraw should work correctly", async () => {
-        const vaultA = await jettonVault(tokenA.address)
-        const vaultB = await jettonVault(tokenB.address)
-        const ammPoolForAB = await ammPool(vaultA.address, vaultB.address)
-        const lpWallet = await userLPWallet(deployer.address, ammPoolForAB.address)
-        const balanceOfLP = await lpWallet.getJettonBalance()
-        expect(balanceOfLP).toBeGreaterThan(0n)
-        console.log("Balance of LP: ", balanceOfLP)
-
-        const balanceOfTokenABefore = await (await userWalletA(deployer.address)).getJettonBalance()
-        const balanceOfTokenBBefore = await (await userWalletB(deployer.address)).getJettonBalance()
-
-        const withdrawLiquidity = await lpWallet.sendBurn(
+        const realDeployVaultB = await vaultForB.send(
             deployer.getSender(),
-            toNano(1),
-            balanceOfLP,
-            deployer.address,
+            {value: toNano(0.1), bounce: false},
             null,
         )
-        expect(withdrawLiquidity.transactions).toHaveTransaction({
-            from: lpWallet.address,
+        expect(realDeployVaultB.transactions).toHaveTransaction({
+            to: vaultForB.address,
+            success: true,
+            deploy: true,
+        })
+        const addLiquidityAndMintLP = await walletB.sendTransfer(
+            deployer.getSender(),
+            toNano(1),
+            amountB,
+            vaultForB.address,
+            deployer.address,
+            null,
+            toNano(0.5),
+            createJettonVaultLiquidityDeposit(
+                LPDepositContract.address,
+                tokenBCodeData.code!!,
+                tokenBCodeData.data!!,
+            ),
+        )
+        expect(addLiquidityAndMintLP.transactions).toHaveTransaction({
+            from: vaultForB.address,
+            to: LPDepositContract.address,
+            op: LiquidityDepositContract.opcodes.PartHasBeenDeposited,
+            success: true,
+            endStatus: "non-existing", // should be destroyed
+        })
+
+        const contractState = (await blockchain.getContract(LPDepositContract.address)).accountState
+            ?.type
+        expect(contractState === "uninit" || contractState === undefined).toBe(true)
+        // Contract has been destroyed after depositing both parts of liquidity
+
+        expect(addLiquidityAndMintLP.transactions).toHaveTransaction({
+            from: LPDepositContract.address,
             to: ammPoolForAB.address,
-            op: AmmPool.opcodes.LiquidityWithdrawViaBurnNotification,
+            op: AmmPool.opcodes.LiquidityDeposit,
             success: true,
         })
-        expect(withdrawLiquidity.transactions).toHaveTransaction({
+        const sortedAddresses = sortAddresses(vaultA.address, vaultB.address, amountA, amountB)
+        const leftSide = await ammPoolForAB.getGetLeftSide()
+        const rightSide = await ammPoolForAB.getGetRightSide()
+
+        expect(leftSide).toBe(sortedAddresses.leftAmount)
+        expect(rightSide).toBe(sortedAddresses.rightAmount)
+
+        const liquidityProviderLPWallet = await userLPWallet(deployer.address, ammPoolForAB.address)
+
+        // LP tokens minted successfully
+        expect(addLiquidityAndMintLP.transactions).toHaveTransaction({
             from: ammPoolForAB.address,
-            to: vaultA.address,
-            op: AmmPool.opcodes.PayoutFromPool,
+            to: liquidityProviderLPWallet.address,
+            op: AmmPool.opcodes.MintViaJettonTransferInternal,
             success: true,
         })
-        expect(withdrawLiquidity.transactions).toHaveTransaction({
+
+        const LPBalance = await liquidityProviderLPWallet.getJettonBalance()
+        // TODO: add off-chain precise balance calculations tests
+        expect(LPBalance).toBeGreaterThan(0n)
+
+        // after first liquidity provisioning, we want to try to add liqudity in wrong ratio and check revert
+        const amountAIncorrect = toNano(1)
+        const amountBIncorrect = amountAIncorrect * initialRatio * 2n // wrong ratio
+
+        const LPDepositContractBadRatio = await liquidityDepositContract(
+            deployer.address,
+            vaultA.address,
+            vaultB.address,
+            amountAIncorrect,
+            amountBIncorrect,
+        )
+
+        const LPDepositRes2 = await LPDepositContractBadRatio.send(
+            deployer.getSender(),
+            {value: toNano(0.1), bounce: false},
+            null,
+        )
+        expect(LPDepositRes2.transactions).toHaveTransaction({
+            to: LPDepositContractBadRatio.address,
+            success: true,
+            deploy: true,
+        })
+
+        const transferAndNotifyLPDepositWrong = await walletA.sendTransfer(
+            deployer.getSender(),
+            toNano(1),
+            amountAIncorrect,
+            vaultForA.address,
+            deployer.address,
+            null,
+            toNano(0.5),
+            createJettonVaultLiquidityDeposit(
+                LPDepositContractBadRatio.address,
+                tokenACodeData.code!!,
+                tokenACodeData.data!!,
+            ),
+        )
+        expect(transferAndNotifyLPDepositWrong.transactions).toHaveTransaction({
+            from: vaultForA.address,
+            to: LPDepositContractBadRatio.address,
+            op: LiquidityDepositContract.opcodes.PartHasBeenDeposited,
+            success: true,
+        })
+        expect(await LPDepositContractBadRatio.getStatus()).toBeGreaterThan(0n) // It could be 1 = 0b01 or 2 = 0b10
+        expect(await LPDepositContractBadRatio.getStatus()).toBeLessThan(3n)
+
+        // a lot of stuff happens here
+        // 1. jetton transfer to vaultB
+        // 2. vaultB sends notification to LPDepositContractBadRatio
+        // 3. LPDepositContractBadRatio sends notification to ammPool
+        // 4. ammPool receives notification and tries to add liquidity, but since we broke the ratio, it
+        //    can add only a part of the liquidity, and the rest of the liquidity is sent back to deployer jetton wallet
+        // (4.1 and 4.2 are pool-payout and jetton stuff)
+        // 5. More LP jettons are minted
+        const addWrongRatioLiquidityAndMintLPAndRevertJettons = await walletB.sendTransfer(
+            deployer.getSender(),
+            toNano(3),
+            amountBIncorrect,
+            vaultForB.address,
+            deployer.address,
+            null,
+            toNano(2),
+            createJettonVaultLiquidityDeposit(
+                LPDepositContractBadRatio.address,
+                tokenBCodeData.code!!,
+                tokenBCodeData.data!!,
+            ),
+        )
+        // it is tx #2
+        expect(addWrongRatioLiquidityAndMintLPAndRevertJettons.transactions).toHaveTransaction({
+            from: vaultForB.address,
+            to: LPDepositContractBadRatio.address,
+            op: LiquidityDepositContract.opcodes.PartHasBeenDeposited,
+            success: true,
+        })
+
+        // it is tx #3
+        expect(addWrongRatioLiquidityAndMintLPAndRevertJettons.transactions).toHaveTransaction({
+            from: LPDepositContractBadRatio.address,
+            to: ammPoolForAB.address,
+            op: AmmPool.opcodes.LiquidityDeposit,
+            success: true,
+        })
+
+        // it is tx #4
+        expect(addWrongRatioLiquidityAndMintLPAndRevertJettons.transactions).toHaveTransaction({
             from: ammPoolForAB.address,
             to: vaultB.address,
             op: AmmPool.opcodes.PayoutFromPool,
             success: true,
         })
 
-        const balanceOfTokenAAfter = await (await userWalletA(deployer.address)).getJettonBalance()
-        const balanceOfTokenBAfter = await (await userWalletB(deployer.address)).getJettonBalance()
-
-        console.log("Got ", balanceOfTokenAAfter - balanceOfTokenABefore, " of token A")
-        console.log("Got ", balanceOfTokenBAfter - balanceOfTokenBBefore, " of token B")
-        expect(balanceOfTokenAAfter).toBeGreaterThan(balanceOfTokenABefore)
-        expect(balanceOfTokenBAfter).toBeGreaterThan(balanceOfTokenBBefore)
+        // TODO: add tests for precise amounts of jettons sent back to deployer wallet
+        // it is tx #5
     })
-
-    //TODO: Swap after liquidity withdraw
 })
