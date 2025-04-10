@@ -3,7 +3,6 @@ import "../utils/calculateJettonWallet";
 import "../math";
 import "./vaultInterface";
 
-
 struct JettonMasterState {
     jettonMasterCode: Cell?;
     jettonMasterData: Cell?;
@@ -56,10 +55,10 @@ contract JettonVault(
         require(self.inited, "Jetton vault not inited");
         require(sender() == self.jettonWallet, "Jetton vault not inited");
 
-        if(msg.actionOpcode == SwapRequestOpcode) {
+        if (msg.actionOpcode == SwapRequestOpcode) {
             handleSwapRequest(msg, SwapRequest.fromCell(msg.actionPayload));
         }
-        if(msg.actionOpcode == VaultDepositOpcode) {
+        if (msg.actionOpcode == VaultDepositOpcode) {
             handleVaultDeposit(msg, VaultDeposit.fromCell(msg.actionPayload));
         }
     }
@@ -123,7 +122,7 @@ inline fun handleVaultDeposit(msg: JettonNotifyWithActionRequest, action: VaultD
         to: action.liquidityDepositContract,
         value: 0,
         mode: SendRemainingValue,
-        body: PartHasBeenDeposited{
+        body: PartHasBeenDeposited {
             depositor: msg.sender,
             amount: msg.amount,
         }.toCell(),

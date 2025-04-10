@@ -64,7 +64,7 @@ contract AmmPool(
 
         require(liquidityDepositContractInit.hasSameBasechainAddress(sender()), "Liquidity provider should be liquidity contract");
         require(msg.leftAmount > 0, "You can't add 0 tokens on one side");
-        
+
         let leftSideReceived = msg.leftAmount;
         let rightSideReceived = msg.rightAmount;
         // Both sides are 0 in this case.
@@ -184,7 +184,7 @@ contract AmmPool(
         let outVault = emptyAddress();
         let inBalance = 0;
         let outBalance = 0;
-        let vaultOrderSwap = false;      
+        let vaultOrderSwap = false;
 
         if (sender == self.leftVault) {
             inVault = self.leftVault;
@@ -201,27 +201,26 @@ contract AmmPool(
 
         // TODO: Need to add block functionality (for exact-time listings)
 
-        if(inBalance == 0 || outBalance == 0) {
+        if (inBalance == 0 || outBalance == 0) {
             returnFunds(msg.swapOutReceiver, outVault, msg.amount);
             require(false, "No liquidity in pool");
         }
 
-        if(msg.timeout > 0 && now() > msg.timeout) {
+        if (msg.timeout > 0 && now() > msg.timeout) {
             returnFunds(msg.swapOutReceiver, outVault, msg.amount);
             require(false, "Swap timeout");
         }
-           
+
         // TODO: Test, that muldiv for msg.amount >= 0, 1000 - self.PoolFee >= 0 does not produce negative result
         // I couldn't check that in sources, cause there is very shitty c++ code that is impossible to read
         // So we just need to kinda fuzz it with corner cases
         let amountInWithFee = muldiv(msg.amount, 1000 - self.PoolFee, 1000);
 
-        
         let newAmountIn = inBalance + amountInWithFee;
         let newAmountOut = muldiv(outBalance, inBalance, newAmountIn);
         let amountToPay = outBalance - newAmountOut;
 
-        if(amountToPay < msg.minAmountOut) {
+        if (amountToPay < msg.minAmountOut) {
             returnFunds(msg.swapOutReceiver, outVault, msg.amount);
             require(false, "Amount out is less than minAmountOut");
         }

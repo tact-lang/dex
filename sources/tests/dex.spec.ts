@@ -6,8 +6,8 @@ import {ExtendedJettonWallet as JettonWallet} from "../wrappers/ExtendedJettonWa
 import {JettonVault} from "../output/DEX_JettonVault"
 import {AmmPool} from "../output/DEX_AmmPool"
 import {LiquidityDepositContract} from "../output/DEX_LiquidityDepositContract"
-// eslint-disable-next-line
 import {
+    // eslint-disable-next-line
     SerializeTransactionsList,
     createJettonVaultSwapRequest,
     createJettonVaultLiquidityDeposit,
@@ -209,17 +209,12 @@ describe("contract", () => {
         await blockchain.loadFrom(snapshot)
         const vaultA = await jettonVault(tokenA.address)
         const vaultB = await jettonVault(tokenB.address)
-        const ammPoolForAB = await ammPool(vaultA.address, vaultB.address)
 
-        const deployAmmPool = await ammPoolForAB.send(
-            deployer.getSender(),
-            {value: toNano(0.1), bounce: false},
-            null,
-        )
-        expect(deployAmmPool.transactions).toHaveTransaction({
-            success: true,
-            deploy: true,
-        })
+        // No need to deploy ammPool, it will be deployed in the LiquidityDepositContract
+        const ammPoolForAB = await ammPool(vaultA.address, vaultB.address)
+        const poolState = (await blockchain.getContract(ammPoolForAB.address)).accountState?.type
+        expect(poolState === "uninit" || poolState === undefined).toBe(true)
+
         const amountA = 10000000n
         const amountB = 15000000n
         const LPDepositContract = await liquidityDepositContract(
@@ -272,7 +267,6 @@ describe("contract", () => {
             op: LiquidityDepositContract.opcodes.PartHasBeenDeposited,
             success: true,
         })
-        let logs = SerializeTransactionsList(transferAndNotifyLPDeposit.transactions)
         expect(await LPDepositContract.getStatus()).toBeGreaterThan(0n) // It could be 1 = 0b01 or 2 = 0b10
 
         const realDeployVaultB = await vaultForB.send(
@@ -304,8 +298,6 @@ describe("contract", () => {
             op: LiquidityDepositContract.opcodes.PartHasBeenDeposited,
             success: true,
         })
-        logs += SerializeTransactionsList(addLiquidityAndMintLP.transactions)
-        fs.writeFileSync("LiquidityDeposit.json", logs)
 
         const contractState = (await blockchain.getContract(LPDepositContract.address)).accountState
             ?.type
@@ -422,7 +414,6 @@ describe("contract", () => {
             to: vaultB.address,
             success: true,
         })
-        fs.writeFileSync("SuccessfulSwap.json", SerializeTransactionsList(swapRequest.transactions))
         console.log("Vault B address: ", vaultB.address.toString())
         const vaultBWallet = await userWalletB(vaultB.address)
         expect(swapRequest.transactions).toHaveTransaction({
