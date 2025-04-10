@@ -459,7 +459,7 @@ describe("contract", () => {
         // TODO: add off-chain precise balance calculations tests
         expect(LPBalance).toBeGreaterThan(0n)
 
-        // after first liquidity provisioning, we want to try to add liqudity in wrong ratio and check revert
+        // after first liquidity provisioning, we want to try to add liquidity in wrong ratio and check revert
         const amountAIncorrect = toNano(1)
         const amountBIncorrect = amountAIncorrect * initialRatio * 2n // wrong ratio
 
