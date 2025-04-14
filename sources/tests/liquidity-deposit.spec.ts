@@ -8,7 +8,7 @@ import {sortAddresses} from "../utils/deployUtils"
 
 describe("contract", () => {
     test("Jetton vault should deploy correctly", async () => {
-        // deploy vault -> send jetton trasnfer -> notify vault -> notify liq dep contract
+        // deploy vault -> send jetton transfer -> notify vault -> notify liq dep contract
         const blockchain = await Blockchain.create()
         const vault = await createJettonVault(blockchain)
 
@@ -37,7 +37,7 @@ describe("contract", () => {
         expect(inited).toBe(true)
     })
 
-    test("should correctly depost liquidity", async () => {
+    test("should correctly deposit liquidity", async () => {
         // create and deploy 2 vaults
         // deploy liquidity deposit contract
         // send jetton transfer to both vaults and check notifications
