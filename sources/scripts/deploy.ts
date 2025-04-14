@@ -8,7 +8,7 @@ import {JettonVault} from "../output/DEX_JettonVault"
 import {LiquidityDepositContract} from "../output/DEX_LiquidityDepositContract"
 import {ExtendedJettonWallet} from "../wrappers/ExtendedJettonWallet"
 import {storeJettonTransfer} from "../output/Jetton_JettonMinter"
-import {createJettonVaultLiquidityDeposit} from "../utils/testUtils"
+import {createJettonVaultLiquidityDepositPayload} from "../utils/testUtils"
 import {AmmPool} from "../output/DEX_AmmPool"
 
 const main = async () => {
@@ -158,7 +158,7 @@ const main = async () => {
                 responseDestination: deployerWallet.address,
                 customPayload: null,
                 forwardTonAmount: toNano(0.5),
-                forwardPayload: createJettonVaultLiquidityDeposit(
+                forwardPayload: createJettonVaultLiquidityDepositPayload(
                     LPprovider.address,
                     jettonMinterACode!!,
                     jettonMinterAData!!,
@@ -177,7 +177,7 @@ const main = async () => {
                 responseDestination: deployerWallet.address,
                 customPayload: null,
                 forwardTonAmount: toNano(0.5),
-                forwardPayload: createJettonVaultLiquidityDeposit(
+                forwardPayload: createJettonVaultLiquidityDepositPayload(
                     LPprovider.address,
                     jettonMinterBCode!!,
                     jettonMinterBData!!,

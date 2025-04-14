@@ -8,7 +8,7 @@ import {
 
 const fieldsToSave = ["blockchainLogs", "vmLogs", "debugLogs", "shard", "delay", "totalDelay"]
 
-export function SerializeTransactionsList(transactions: any[]): string {
+export function serializeTransactionsList(transactions: any[]): string {
     const dump = {
         transactions: transactions.map(t => {
             const tx = beginCell()
@@ -66,7 +66,7 @@ export function createJettonVaultSwapRequest(
     )
 }
 
-export function createJettonVaultLiquidityDeposit(
+export function createJettonVaultLiquidityDepositPayload(
     LPContract: Address,
     proofCode: Cell | undefined,
     proofData: Cell | undefined,

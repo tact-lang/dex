@@ -8,9 +8,9 @@ import {AmmPool} from "../output/DEX_AmmPool"
 import {LiquidityDepositContract} from "../output/DEX_LiquidityDepositContract"
 import {
     // eslint-disable-next-line
-    SerializeTransactionsList,
+    serializeTransactionsList,
     createJettonVaultSwapRequest,
-    createJettonVaultLiquidityDeposit,
+    createJettonVaultLiquidityDepositPayload,
 } from "../utils/testUtils"
 // eslint-disable-next-line
 import fs from "fs"
@@ -186,7 +186,7 @@ describe("contract", () => {
             deployer.address,
             null,
             toNano(0.5),
-            createJettonVaultLiquidityDeposit(
+            createJettonVaultLiquidityDepositPayload(
                 mockDepositLiquidityContract,
                 tokenACodeData.code!!,
                 tokenACodeData.data!!,
@@ -255,7 +255,7 @@ describe("contract", () => {
             deployer.address,
             null,
             toNano(0.5),
-            createJettonVaultLiquidityDeposit(
+            createJettonVaultLiquidityDepositPayload(
                 LPDepositContract.address,
                 tokenACodeData.code!!,
                 tokenACodeData.data!!,
@@ -286,7 +286,7 @@ describe("contract", () => {
             deployer.address,
             null,
             toNano(0.5),
-            createJettonVaultLiquidityDeposit(
+            createJettonVaultLiquidityDepositPayload(
                 LPDepositContract.address,
                 tokenBCodeData.code!!,
                 tokenBCodeData.data!!,

@@ -6,9 +6,10 @@ import {JettonVault} from "../output/DEX_JettonVault"
 import {sortAddresses} from "./deployUtils"
 import {AmmPool} from "../output/DEX_AmmPool"
 import {LiquidityDepositContract} from "../output/DEX_LiquidityDepositContract"
-import {createJettonVaultLiquidityDeposit} from "./testUtils"
+import {createJettonVaultLiquidityDepositPayload} from "./testUtils"
 import {randomAddress} from "@ton/test-utils"
 
+// TODO: unify common prefix to structs on create setups
 const createJetton = async (blockchain: Blockchain) => {
     const minterOwner = await blockchain.treasury("jetton-owner")
     const walletOwner = await blockchain.treasury("wallet-owner")
@@ -72,7 +73,7 @@ export const createJettonVault = async (blockchain: Blockchain) => {
         const addLiquidityResult = await jetton.transfer(
             vault.address,
             amount,
-            createJettonVaultLiquidityDeposit(
+            createJettonVaultLiquidityDepositPayload(
                 liquidityDepositContractAddress,
                 jetton.minter.init?.code,
                 jetton.minter.init?.data,
