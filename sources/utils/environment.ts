@@ -1,4 +1,4 @@
-import {Blockchain, SandboxContract, SendMessageResult, TreasuryContract} from "@ton/sandbox"
+import {Blockchain} from "@ton/sandbox"
 import {ExtendedJettonMinter as JettonMinter} from "../wrappers/ExtendedJettonMinter"
 import {ExtendedJettonWallet as JettonWallet} from "../wrappers/ExtendedJettonWallet"
 import {Address, beginCell, Cell, toNano} from "@ton/core"
@@ -8,13 +8,6 @@ import {AmmPool} from "../output/DEX_AmmPool"
 import {LiquidityDepositContract} from "../output/DEX_LiquidityDepositContract"
 import {createJettonVaultLiquidityDeposit} from "./testUtils"
 import {randomAddress} from "@ton/test-utils"
-
-type JettonSetup = {
-    minter: SandboxContract<JettonMinter>
-    wallet: SandboxContract<JettonWallet>
-    walletOwner: SandboxContract<TreasuryContract>
-    transfer: (to: Address, forwardPayload: Cell | null) => Promise<SendMessageResult>
-}
 
 const createJetton = async (blockchain: Blockchain) => {
     const minterOwner = await blockchain.treasury("jetton-owner")
@@ -58,13 +51,6 @@ const createJetton = async (blockchain: Blockchain) => {
     }
 }
 
-type JettonVaultSetup = {
-    vault: SandboxContract<JettonVault>
-    jetton: JettonSetup
-    deploy: () => Promise<SendMessageResult>
-    addLiquidity: (liquidityDepositContractAddress: Address) => Promise<SendMessageResult>
-}
-
 export const createJettonVault = async (blockchain: Blockchain) => {
     const jetton = await createJetton(blockchain)
 
@@ -104,7 +90,7 @@ export const createJettonVault = async (blockchain: Blockchain) => {
     }
 }
 
-export const createLiquidityDepositContract = (
+export const createLiquidityDepositSetup = (
     blockchain: Blockchain,
     vaultLeft: Address,
     vaultRight: Address,
@@ -116,15 +102,14 @@ export const createLiquidityDepositContract = (
         const contractId = depositorIds.get(depositorKey) || 0n
         depositorIds.set(depositorKey, contractId + 1n)
 
-        // const sortedAddresses = sortAddresses(vaultLeft, vaultRight, amountLeft, amountRight)
-        // bug
+        const sortedAddresses = sortAddresses(vaultLeft, vaultRight, amountLeft, amountRight)
 
         const liquidityDeposit = blockchain.openContract(
             await LiquidityDepositContract.fromInit(
-                vaultLeft,
-                vaultRight,
-                amountLeft,
-                amountRight,
+                sortedAddresses.lower,
+                sortedAddresses.higher,
+                sortedAddresses.leftAmount,
+                sortedAddresses.rightAmount,
                 depositor,
                 contractId,
                 0n,
@@ -142,7 +127,7 @@ export const createLiquidityDepositContract = (
         }
 
         const ammPool = blockchain.openContract(
-            await AmmPool.fromInit(vaultLeft, vaultRight, 0n, 0n, 0n),
+            await AmmPool.fromInit(sortedAddresses.lower, sortedAddresses.higher, 0n, 0n, 0n),
         )
 
         const depositorLpWallet = blockchain.openContract(
@@ -163,26 +148,47 @@ export const createAmmPool = async (blockchain: Blockchain) => {
     const vaultA = await createJettonVault(blockchain)
     const vaultB = await createJettonVault(blockchain)
 
-    // const sortedAddresses = sortAddresses(vaultA.vault.address, vaultB.vault.address, 0n, 0n)
-    // bug
+    const sortedAddresses = sortAddresses(vaultA.vault.address, vaultB.vault.address, 0n, 0n)
 
     const ammPool = blockchain.openContract(
-        await AmmPool.fromInit(vaultA.vault.address, vaultB.vault.address, 0n, 0n, 0n),
+        await AmmPool.fromInit(sortedAddresses.lower, sortedAddresses.higher, 0n, 0n, 0n),
     )
 
-    // for later stage setup do everything by obtaining the address of the liq deposit here
-
-    const liquidityDepositSetup = createLiquidityDepositContract(
+    const liquidityDepositSetup = createLiquidityDepositSetup(
         blockchain,
         vaultA.vault.address,
         vaultB.vault.address,
     )
+
+    // for later stage setup do everything by obtaining the address of the liq deposit here
+    //
+    // - deploy vaults
+    // - deploy liq deposit
+    // - add liq to vaults
+    const initWithLiquidity = async (
+        depositor: Address,
+        amountLeft: bigint,
+        amountRight: bigint,
+    ) => {
+        await vaultA.deploy()
+        await vaultB.deploy()
+        const liqSetup = await liquidityDepositSetup(depositor, amountLeft, amountRight)
+
+        await liqSetup.deploy()
+        await vaultA.addLiquidity(liqSetup.liquidityDeposit.address, amountLeft)
+        await vaultB.addLiquidity(liqSetup.liquidityDeposit.address, amountRight)
+
+        return {
+            depositorLpWallet: liqSetup.depositorLpWallet,
+        }
+    }
 
     return {
         ammPool,
         vaultA,
         vaultB,
         liquidityDepositSetup,
+        initWithLiquidity,
     }
 }
 

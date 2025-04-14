@@ -1,509 +1,202 @@
-import {Address, beginCell, Cell, toNano} from "@ton/core"
-import {Blockchain, SandboxContract, TreasuryContract, BlockchainSnapshot} from "@ton/sandbox"
-import {ExtendedJettonMinter as JettonMinter} from "../wrappers/ExtendedJettonMinter"
+import {toNano} from "@ton/core"
+import {Blockchain} from "@ton/sandbox"
 import {randomAddress} from "@ton/test-utils"
-import {ExtendedJettonWallet as JettonWallet} from "../wrappers/ExtendedJettonWallet"
-import {JettonVault} from "../output/DEX_JettonVault"
 import {AmmPool} from "../output/DEX_AmmPool"
 import {LiquidityDepositContract} from "../output/DEX_LiquidityDepositContract"
-import {createJettonVaultLiquidityDeposit} from "../utils/testUtils"
-// eslint-disable-next-line
-import fs from "fs"
+import {createAmmPool, createJettonVault} from "../utils/environment"
 import {sortAddresses} from "../utils/deployUtils"
 
-type ContractCodeData = {
-    code: Cell | undefined
-    data: Cell | undefined
-}
-
 describe("contract", () => {
-    let blockchain: Blockchain
-    let deployer: SandboxContract<TreasuryContract>
-
-    let userWalletA: (address: Address) => Promise<SandboxContract<JettonWallet>>
-    let userWalletB: (address: Address) => Promise<SandboxContract<JettonWallet>>
-    let userLPWallet: (owner: Address, pool: Address) => Promise<SandboxContract<JettonWallet>>
-    let jettonVault: (address: Address) => Promise<SandboxContract<JettonVault>>
-    let ammPool: (vaultLeft: Address, vaultRight: Address) => Promise<SandboxContract<AmmPool>>
-    const depositorIds: Map<string, bigint> = new Map()
-    let liquidityDepositContract: (
-        depositor: Address,
-        vaultLeft: Address,
-        vaultRight: Address,
-        amountLeft: bigint,
-        amountRight: bigint,
-    ) => Promise<SandboxContract<LiquidityDepositContract>>
-
-    let tokenA: SandboxContract<JettonMinter>
-    let tokenACodeData: ContractCodeData
-    let tokenB: SandboxContract<JettonMinter>
-    let tokenBCodeData: ContractCodeData
-    let vaultForA: SandboxContract<JettonVault>
-    let vaultForB: SandboxContract<JettonVault>
-
-    let snapshot: BlockchainSnapshot
-
-    beforeAll(async () => {
-        blockchain = await Blockchain.create()
-        //blockchain.verbosity.vmLogs = "vm_logs_full";
-        //blockchain.verbosity.vmLogs = "vm_logs_verbose";
-        deployer = await blockchain.treasury("deployer")
-
-        // Two different jettonMaster addresses, as jettonContent is different
-        tokenA = blockchain.openContract(
-            await JettonMinter.fromInit(
-                0n,
-                deployer.address,
-                beginCell().storeInt(0x01, 6).endCell(),
-            ),
-        )
-        tokenACodeData = {
-            code: tokenA.init?.code,
-            data: tokenA.init?.data,
-        }
-        tokenB = blockchain.openContract(
-            await JettonMinter.fromInit(
-                0n,
-                deployer.address,
-                beginCell().storeInt(0x02, 6).endCell(),
-            ),
-        )
-        tokenBCodeData = {
-            code: tokenB.init?.code,
-            data: tokenB.init?.data,
-        }
-        userWalletA = async (address: Address) => {
-            return blockchain.openContract(
-                new JettonWallet(await tokenA.getGetWalletAddress(address)),
-            )
-        }
-
-        userWalletB = async (address: Address) => {
-            return blockchain.openContract(
-                new JettonWallet(await tokenB.getGetWalletAddress(address)),
-            )
-        }
-
-        vaultForA = blockchain.openContract(await JettonVault.fromInit(tokenA.address, false, null))
-        vaultForB = blockchain.openContract(await JettonVault.fromInit(tokenB.address, false, null))
-
-        jettonVault = async (address: Address) => {
-            return blockchain.openContract(await JettonVault.fromInit(address, false, null))
-        }
-
-        ammPool = async (vaultLeft: Address, vaultRight: Address) => {
-            let sortedAddresses = sortAddresses(vaultLeft, vaultRight, 0n, 0n)
-            return blockchain.openContract(
-                await AmmPool.fromInit(sortedAddresses.lower, sortedAddresses.higher, 0n, 0n, 0n),
-            )
-        }
-
-        userLPWallet = async (owner: Address, pool: Address) => {
-            return blockchain.openContract(await JettonWallet.fromInit(0n, owner, pool))
-        }
-
-        liquidityDepositContract = async (
-            depositor: Address,
-            vaultLeft: Address,
-            vaultRight: Address,
-            amountLeft: bigint,
-            amountRight: bigint,
-        ): Promise<SandboxContract<LiquidityDepositContract>> => {
-            const depositorKey = depositor.toRawString()
-            let contractId = depositorIds.get(depositorKey) || 0n
-            depositorIds.set(depositorKey, contractId + 1n)
-
-            let sortedAddresses = sortAddresses(vaultLeft, vaultRight, amountLeft, amountRight)
-            return blockchain.openContract(
-                await LiquidityDepositContract.fromInit(
-                    sortedAddresses.lower,
-                    sortedAddresses.higher,
-                    sortedAddresses.leftAmount,
-                    sortedAddresses.rightAmount,
-                    depositor,
-                    contractId,
-                    0n,
-                ),
-            )
-        }
-
-        const mintAmount = toNano(100)
-
-        const mintRes = await tokenA.sendMint(
-            deployer.getSender(),
-            deployer.address,
-            mintAmount,
-            0n,
-            toNano(1),
-        )
-        expect(mintRes.transactions).toHaveTransaction({
-            deploy: true,
-            success: true,
-        })
-
-        const mintRes2 = await tokenB.sendMint(
-            deployer.getSender(),
-            deployer.address,
-            mintAmount,
-            0n,
-            toNano(1),
-        )
-        expect(mintRes2.transactions).toHaveTransaction({
-            deploy: true,
-            success: true,
-        })
-
-        snapshot = blockchain.snapshot()
-    })
-
-    beforeEach(async () => {
-        await blockchain.loadFrom(snapshot)
-    })
-
     test("Jetton vault should deploy correctly", async () => {
+        // deploy vault -> send jetton trasnfer -> notify vault -> notify liq dep contract
+        const blockchain = await Blockchain.create()
+        const vault = await createJettonVault(blockchain)
+
+        const vaultDeployResult = await vault.deploy()
+        expect(vaultDeployResult.transactions).toHaveTransaction({
+            success: true,
+            deploy: true,
+        })
+
         const mockDepositLiquidityContract = randomAddress(0)
 
-        const realDeployment = await vaultForA.send(
-            deployer.getSender(),
-            {value: toNano(0.1), bounce: false},
-            null,
-        )
-
-        expect(realDeployment.transactions).toHaveTransaction({
-            success: true,
-            deploy: true,
-        })
-
-        const deployerWallet = await userWalletA(deployer.address)
-        const transferRes = await deployerWallet.sendTransfer(
-            deployer.getSender(),
+        const jettonTransferToVault = await vault.addLiquidity(
+            mockDepositLiquidityContract,
             toNano(1),
-            100n,
-            vaultForA.address,
-            deployer.address,
-            null,
-            toNano(0.5),
-            createJettonVaultLiquidityDeposit(
-                mockDepositLiquidityContract,
-                tokenACodeData.code!!,
-                tokenACodeData.data!!,
-            ),
         )
 
-        expect(transferRes.transactions).toHaveTransaction({
+        expect(jettonTransferToVault.transactions).toHaveTransaction({
             success: true,
         })
 
-        expect(transferRes.transactions).toHaveTransaction({
+        expect(jettonTransferToVault.transactions).toHaveTransaction({
             to: mockDepositLiquidityContract,
         })
 
-        const inited = await vaultForA.getInited()
+        const inited = await vault.vault.getInited()
         expect(inited).toBe(true)
     })
 
-    test("Liquidity deposit should work correctly", async () => {
-        const vaultA = await jettonVault(tokenA.address)
-        const vaultB = await jettonVault(tokenB.address)
+    test("should correctly depost liquidity", async () => {
+        // create and deploy 2 vaults
+        // deploy liquidity deposit contract
+        // send jetton transfer to both vaults and check notifications
+        // on the 2nd notify on the liquidity deposit contract check ammDeploy
+        // check lp token mint
+        // check liquidity deposit contract destroy
 
-        // No need to deploy ammPool, it will be deployed in the LiquidityDepositContract
-        const ammPoolForAB = await ammPool(vaultA.address, vaultB.address)
-        const poolState = (await blockchain.getContract(ammPoolForAB.address)).accountState?.type
+        const blockchain = await Blockchain.create()
+
+        const {ammPool, vaultA, vaultB, liquidityDepositSetup} = await createAmmPool(blockchain)
+
+        const poolState = (await blockchain.getContract(ammPool.address)).accountState?.type
         expect(poolState === "uninit" || poolState === undefined).toBe(true)
 
-        const amountA = 10000000n
-        const amountB = 15000000n
-        const LPDepositContract = await liquidityDepositContract(
-            deployer.address,
-            vaultA.address,
-            vaultB.address,
-            amountA,
-            amountB,
-        )
-        const LPDepositRes = await LPDepositContract.send(
-            deployer.getSender(),
-            {value: toNano(0.1), bounce: false},
-            null,
-        )
-        expect(LPDepositRes.transactions).toHaveTransaction({
+        // deploy liquidity deposit contract
+        const amountA = toNano(1)
+        const amountB = toNano(2) // 1 a == 2 b ratio
+
+        // this is bad way of doing it, we need to create new depositor, transfer
+        // jettons to it, and use it as a parameter in all vaults methods too
+        //
+        // depositor should be the same for both vaults jettons transfers
+        const depositor = vaultA.jetton.walletOwner
+
+        const liqSetup = await liquidityDepositSetup(depositor.address, amountA, amountB)
+
+        const liqDepositDeployResult = await liqSetup.deploy()
+
+        expect(liqDepositDeployResult.transactions).toHaveTransaction({
             success: true,
             deploy: true,
         })
 
-        const walletA = await userWalletA(deployer.address)
-        const walletB = await userWalletB(deployer.address)
-
-        const realDeployVaultA = await vaultForA.send(
-            deployer.getSender(),
-            {value: toNano(0.1), bounce: false},
-            null,
-        )
-        expect(realDeployVaultA.transactions).toHaveTransaction({
+        // deploy vaultA
+        const vaultADeployResult = await vaultA.deploy()
+        // under the hood ?
+        expect(vaultADeployResult.transactions).toHaveTransaction({
             success: true,
             deploy: true,
         })
 
-        const transferAndNotifyLPDeposit = await walletA.sendTransfer(
-            deployer.getSender(),
-            toNano(1),
+        // add liquidity to vaultA
+        const vaultALiquidityAddResult = await vaultA.addLiquidity(
+            liqSetup.liquidityDeposit.address,
             amountA,
-            vaultForA.address,
-            deployer.address,
-            null,
-            toNano(0.5),
-            createJettonVaultLiquidityDeposit(
-                LPDepositContract.address,
-                tokenACodeData.code!!,
-                tokenACodeData.data!!,
-            ),
         )
-        expect(transferAndNotifyLPDeposit.transactions).toHaveTransaction({
-            from: vaultForA.address,
-            to: LPDepositContract.address,
+
+        expect(vaultALiquidityAddResult.transactions).toHaveTransaction({
+            from: vaultA.vault.address,
+            to: liqSetup.liquidityDeposit.address,
             op: LiquidityDepositContract.opcodes.PartHasBeenDeposited,
             success: true,
         })
-        expect(await LPDepositContract.getStatus()).toBeGreaterThan(0n) // It could be 1 = 0b01 or 2 = 0b10
+        expect(await liqSetup.liquidityDeposit.getStatus()).toBeGreaterThan(0n) // It could be 1 = 0b01 or 2 = 0b10
 
-        const realDeployVaultB = await vaultForB.send(
-            deployer.getSender(),
-            {value: toNano(0.1), bounce: false},
-            null,
-        )
-        expect(realDeployVaultB.transactions).toHaveTransaction({
+        // deploy vaultB
+        const vaultBDeployResult = await vaultB.deploy()
+        expect(vaultBDeployResult.transactions).toHaveTransaction({
             success: true,
             deploy: true,
         })
-        const addLiquidityAndMintLP = await walletB.sendTransfer(
-            deployer.getSender(),
-            toNano(1),
+
+        // add liquidity to vaultB
+        const vaultBLiquidityAddResult = await vaultB.addLiquidity(
+            liqSetup.liquidityDeposit.address,
             amountB,
-            vaultForB.address,
-            deployer.address,
-            null,
-            toNano(0.5),
-            createJettonVaultLiquidityDeposit(
-                LPDepositContract.address,
-                tokenBCodeData.code!!,
-                tokenBCodeData.data!!,
-            ),
         )
-        expect(addLiquidityAndMintLP.transactions).toHaveTransaction({
-            from: vaultForB.address,
-            to: LPDepositContract.address,
+
+        expect(vaultBLiquidityAddResult.transactions).toHaveTransaction({
+            from: vaultB.vault.address,
+            to: liqSetup.liquidityDeposit.address,
             op: LiquidityDepositContract.opcodes.PartHasBeenDeposited,
             success: true,
         })
 
-        const contractState = (await blockchain.getContract(LPDepositContract.address)).accountState
-            ?.type
+        // liq deposit contract should be destroyed after depositing both parts of liquidity
+        const contractState = (await blockchain.getContract(liqSetup.liquidityDeposit.address))
+            .accountState?.type
         expect(contractState === "uninit" || contractState === undefined).toBe(true)
-        // Contract has been destroyed after depositing both parts of liquidity
 
-        expect(addLiquidityAndMintLP.transactions).toHaveTransaction({
-            from: LPDepositContract.address,
-            to: ammPoolForAB.address,
+        // check amm pool deploy and notification
+        expect(vaultBLiquidityAddResult.transactions).toHaveTransaction({
+            from: liqSetup.liquidityDeposit.address,
+            to: ammPool.address,
             op: AmmPool.opcodes.LiquidityDeposit,
             success: true,
+            deploy: true,
         })
-        const sortedAddresses = sortAddresses(vaultA.address, vaultB.address, amountA, amountB)
-        const leftSide = await ammPoolForAB.getGetLeftSide()
-        const rightSide = await ammPoolForAB.getGetRightSide()
 
-        expect(leftSide).toBe(sortedAddresses.leftAmount)
-        expect(rightSide).toBe(sortedAddresses.rightAmount)
+        const leftSide = await ammPool.getGetLeftSide()
+        const rightSide = await ammPool.getGetRightSide()
 
-        const LPWallet = await userLPWallet(deployer.address, ammPoolForAB.address)
+        // correct liquidity amount was added
+        const sorted = sortAddresses(vaultA.vault.address, vaultB.vault.address, amountA, amountB)
+        expect(leftSide).toBe(sorted.leftAmount)
+        expect(rightSide).toBe(sorted.rightAmount)
 
-        // LP tokens minted successfully
-        expect(addLiquidityAndMintLP.transactions).toHaveTransaction({
-            from: ammPoolForAB.address,
-            to: LPWallet.address,
+        // check LP token mint
+        expect(vaultBLiquidityAddResult.transactions).toHaveTransaction({
+            from: ammPool.address,
+            to: liqSetup.depositorLpWallet.address,
             op: AmmPool.opcodes.MintViaJettonTransferInternal,
             success: true,
         })
 
-        const LPBalance = await LPWallet.getJettonBalance()
-        expect(LPBalance).toBeGreaterThan(0n)
+        const lpBalance = await liqSetup.depositorLpWallet.getJettonBalance()
+        // TODO: add off-chain precise balance calculations tests (with sqrt and separate cases)
+        expect(lpBalance).toBeGreaterThan(0n)
     })
 
-    test("Liquidity deposit should fail with wrong amount", async () => {
-        const vaultA = vaultForA
-        const vaultB = vaultForB
+    test("should revert liquidity deposit with wrong ratio", async () => {
+        const blockchain = await Blockchain.create()
 
-        const ammPoolForAB = await ammPool(vaultA.address, vaultB.address)
-        const poolState = (await blockchain.getContract(ammPoolForAB.address)).accountState?.type
-        expect(poolState === "uninit" || poolState === undefined).toBe(true)
+        const {ammPool, vaultA, vaultB, liquidityDepositSetup, initWithLiquidity} =
+            await createAmmPool(blockchain)
 
-        const initialRatio = 2n // 1 a == 2 b
+        // deploy liquidity deposit contract
+        const initialRatio = 2n
 
         const amountA = toNano(1)
-        const amountB = amountA * initialRatio
+        const amountB = amountA * initialRatio // 1 a == 2 b ratio
 
-        const LPDepositContract = await liquidityDepositContract(
-            deployer.address,
-            vaultA.address,
-            vaultB.address,
-            amountA,
-            amountB,
+        const depositor = vaultA.jetton.walletOwner
+
+        const {depositorLpWallet} = await initWithLiquidity(depositor.address, amountA, amountB)
+
+        const lpBalanceAfterFirstLiq = await depositorLpWallet.getJettonBalance()
+        // check that first liquidity deposit was successful
+        expect(lpBalanceAfterFirstLiq).toBeGreaterThan(0n)
+
+        // now we want to try to add liquidity in wrong ratio and check revert
+        const amountABadRatio = toNano(1)
+        const amountBBadRatio = amountABadRatio * initialRatio * 5n // wrong ratio
+
+        const liqSetupBadRatio = await liquidityDepositSetup(
+            depositor.address,
+            amountABadRatio,
+            amountBBadRatio,
         )
-        const LPDepositRes = await LPDepositContract.send(
-            deployer.getSender(),
-            {value: toNano(0.1), bounce: false},
-            null,
-        )
-        expect(LPDepositRes.transactions).toHaveTransaction({
-            to: LPDepositContract.address,
+        const liqDepositDeployResultBadRatio = await liqSetupBadRatio.deploy()
+        expect(liqDepositDeployResultBadRatio.transactions).toHaveTransaction({
             success: true,
             deploy: true,
         })
 
-        const walletA = await userWalletA(deployer.address)
-        const walletB = await userWalletB(deployer.address)
-
-        const realDeployVaultA = await vaultForA.send(
-            deployer.getSender(),
-            {value: toNano(0.1), bounce: false},
-            null,
+        // both vaults are already deployed so we can just add next liquidity
+        const vaultALiquidityAddResultBadRatio = await vaultA.addLiquidity(
+            liqSetupBadRatio.liquidityDeposit.address,
+            amountABadRatio,
         )
-        expect(realDeployVaultA.transactions).toHaveTransaction({
-            to: vaultForA.address,
-            success: true,
-            deploy: true,
-        })
 
-        const transferAndNotifyLPDeposit = await walletA.sendTransfer(
-            deployer.getSender(),
-            toNano(1),
-            amountA,
-            vaultForA.address,
-            deployer.address,
-            null,
-            toNano(0.5),
-            createJettonVaultLiquidityDeposit(
-                LPDepositContract.address,
-                tokenACodeData.code!!,
-                tokenACodeData.data!!,
-            ),
-        )
-        expect(transferAndNotifyLPDeposit.transactions).toHaveTransaction({
-            from: vaultForA.address,
-            to: LPDepositContract.address,
+        expect(vaultALiquidityAddResultBadRatio.transactions).toHaveTransaction({
+            from: vaultA.vault.address,
+            to: liqSetupBadRatio.liquidityDeposit.address,
             op: LiquidityDepositContract.opcodes.PartHasBeenDeposited,
             success: true,
         })
-        expect(await LPDepositContract.getStatus()).toBeGreaterThan(0n) // It could be 1 = 0b01 or 2 = 0b10
-        expect(await LPDepositContract.getStatus()).toBeLessThan(3n)
 
-        const realDeployVaultB = await vaultForB.send(
-            deployer.getSender(),
-            {value: toNano(0.1), bounce: false},
-            null,
-        )
-        expect(realDeployVaultB.transactions).toHaveTransaction({
-            to: vaultForB.address,
-            success: true,
-            deploy: true,
-        })
-        const addLiquidityAndMintLP = await walletB.sendTransfer(
-            deployer.getSender(),
-            toNano(1),
-            amountB,
-            vaultForB.address,
-            deployer.address,
-            null,
-            toNano(0.5),
-            createJettonVaultLiquidityDeposit(
-                LPDepositContract.address,
-                tokenBCodeData.code!!,
-                tokenBCodeData.data!!,
-            ),
-        )
-        expect(addLiquidityAndMintLP.transactions).toHaveTransaction({
-            from: vaultForB.address,
-            to: LPDepositContract.address,
-            op: LiquidityDepositContract.opcodes.PartHasBeenDeposited,
-            success: true,
-            endStatus: "non-existing", // should be destroyed
-        })
-
-        const contractState = (await blockchain.getContract(LPDepositContract.address)).accountState
-            ?.type
-        expect(contractState === "uninit" || contractState === undefined).toBe(true)
-        // Contract has been destroyed after depositing both parts of liquidity
-
-        expect(addLiquidityAndMintLP.transactions).toHaveTransaction({
-            from: LPDepositContract.address,
-            to: ammPoolForAB.address,
-            op: AmmPool.opcodes.LiquidityDeposit,
-            success: true,
-        })
-        const sortedAddresses = sortAddresses(vaultA.address, vaultB.address, amountA, amountB)
-        const leftSide = await ammPoolForAB.getGetLeftSide()
-        const rightSide = await ammPoolForAB.getGetRightSide()
-
-        expect(leftSide).toBe(sortedAddresses.leftAmount)
-        expect(rightSide).toBe(sortedAddresses.rightAmount)
-
-        const liquidityProviderLPWallet = await userLPWallet(deployer.address, ammPoolForAB.address)
-
-        // LP tokens minted successfully
-        expect(addLiquidityAndMintLP.transactions).toHaveTransaction({
-            from: ammPoolForAB.address,
-            to: liquidityProviderLPWallet.address,
-            op: AmmPool.opcodes.MintViaJettonTransferInternal,
-            success: true,
-        })
-
-        const LPBalance = await liquidityProviderLPWallet.getJettonBalance()
-        // TODO: add off-chain precise balance calculations tests
-        expect(LPBalance).toBeGreaterThan(0n)
-
-        // after first liquidity provisioning, we want to try to add liquidity in wrong ratio and check revert
-        const amountAIncorrect = toNano(1)
-        const amountBIncorrect = amountAIncorrect * initialRatio * 2n // wrong ratio
-
-        const LPDepositContractBadRatio = await liquidityDepositContract(
-            deployer.address,
-            vaultA.address,
-            vaultB.address,
-            amountAIncorrect,
-            amountBIncorrect,
-        )
-
-        const LPDepositRes2 = await LPDepositContractBadRatio.send(
-            deployer.getSender(),
-            {value: toNano(0.1), bounce: false},
-            null,
-        )
-        expect(LPDepositRes2.transactions).toHaveTransaction({
-            to: LPDepositContractBadRatio.address,
-            success: true,
-            deploy: true,
-        })
-
-        const transferAndNotifyLPDepositWrong = await walletA.sendTransfer(
-            deployer.getSender(),
-            toNano(1),
-            amountAIncorrect,
-            vaultForA.address,
-            deployer.address,
-            null,
-            toNano(0.5),
-            createJettonVaultLiquidityDeposit(
-                LPDepositContractBadRatio.address,
-                tokenACodeData.code!!,
-                tokenACodeData.data!!,
-            ),
-        )
-        expect(transferAndNotifyLPDepositWrong.transactions).toHaveTransaction({
-            from: vaultForA.address,
-            to: LPDepositContractBadRatio.address,
-            op: LiquidityDepositContract.opcodes.PartHasBeenDeposited,
-            success: true,
-        })
-        expect(await LPDepositContractBadRatio.getStatus()).toBeGreaterThan(0n) // It could be 1 = 0b01 or 2 = 0b10
-        expect(await LPDepositContractBadRatio.getStatus()).toBeLessThan(3n)
+        expect(await liqSetupBadRatio.liquidityDeposit.getStatus()).toBeGreaterThan(0n)
 
         // a lot of stuff happens here
         // 1. jetton transfer to vaultB
@@ -513,45 +206,41 @@ describe("contract", () => {
         //    can add only a part of the liquidity, and the rest of the liquidity is sent back to deployer jetton wallet
         // (4.1 and 4.2 are pool-payout and jetton stuff)
         // 5. More LP jettons are minted
-        const addWrongRatioLiquidityAndMintLPAndRevertJettons = await walletB.sendTransfer(
-            deployer.getSender(),
-            toNano(3),
-            amountBIncorrect,
-            vaultForB.address,
-            deployer.address,
-            null,
-            toNano(2),
-            createJettonVaultLiquidityDeposit(
-                LPDepositContractBadRatio.address,
-                tokenBCodeData.code!!,
-                tokenBCodeData.data!!,
-            ),
+        const vaultBLiquidityAddResultBadRatio = await vaultB.addLiquidity(
+            liqSetupBadRatio.liquidityDeposit.address,
+            amountBBadRatio,
         )
+
         // it is tx #2
-        expect(addWrongRatioLiquidityAndMintLPAndRevertJettons.transactions).toHaveTransaction({
-            from: vaultForB.address,
-            to: LPDepositContractBadRatio.address,
+        expect(vaultBLiquidityAddResultBadRatio.transactions).toHaveTransaction({
+            from: vaultB.vault.address,
+            to: liqSetupBadRatio.liquidityDeposit.address,
             op: LiquidityDepositContract.opcodes.PartHasBeenDeposited,
             success: true,
         })
 
         // it is tx #3
-        expect(addWrongRatioLiquidityAndMintLPAndRevertJettons.transactions).toHaveTransaction({
-            from: LPDepositContractBadRatio.address,
-            to: ammPoolForAB.address,
+        expect(vaultBLiquidityAddResultBadRatio.transactions).toHaveTransaction({
+            from: liqSetupBadRatio.liquidityDeposit.address,
+            to: ammPool.address,
             op: AmmPool.opcodes.LiquidityDeposit,
             success: true,
         })
 
         // it is tx #4
-        expect(addWrongRatioLiquidityAndMintLPAndRevertJettons.transactions).toHaveTransaction({
-            from: ammPoolForAB.address,
-            to: vaultB.address,
+        expect(vaultBLiquidityAddResultBadRatio.transactions).toHaveTransaction({
+            from: ammPool.address,
+            to: vaultB.vault.address, // TODO: add dynamic test why we revert B here
             op: AmmPool.opcodes.PayoutFromPool,
             success: true,
         })
 
         // TODO: add tests for precise amounts of jettons sent back to deployer wallet
-        // it is tx #5
+        // for tx #5
+
+        const lpBalanceAfterSecond = await depositorLpWallet.getJettonBalance()
+        // check that the second liquidity deposit was successful
+        // and we got more LP tokens
+        expect(lpBalanceAfterSecond).toBeGreaterThan(lpBalanceAfterFirstLiq)
     })
 })
