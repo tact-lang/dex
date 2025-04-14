@@ -192,17 +192,3 @@ export const createAmmPool = async (blockchain: Blockchain) => {
         initWithLiquidity,
     }
 }
-
-// const createDexEnvironment = async (blockchain: Blockchain) => {
-//     const tokenA = createJetton(blockchain)
-//     const tokenB = createJetton(blockchain)
-
-//     return {
-//         tokenA,
-//         tokenB,
-//     }
-// }
-
-// const fabrik = blockchain => {
-//     return {}
-// }
