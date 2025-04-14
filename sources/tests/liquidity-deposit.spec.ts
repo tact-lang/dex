@@ -6,7 +6,7 @@ import {LiquidityDepositContract} from "../output/DEX_LiquidityDepositContract"
 import {createAmmPool, createJettonVault} from "../utils/environment"
 import {sortAddresses} from "../utils/deployUtils"
 
-describe("contract", () => {
+describe("Liquidity deposit", () => {
     test("Jetton vault should deploy correctly", async () => {
         // deploy vault -> send jetton transfer -> notify vault -> notify liq dep contract
         const blockchain = await Blockchain.create()
@@ -62,7 +62,7 @@ describe("contract", () => {
         // depositor should be the same for both vaults jettons transfers
         const depositor = vaultA.jetton.walletOwner
 
-        const liqSetup = await liquidityDepositSetup(depositor.address, amountA, amountB)
+        const liqSetup = await liquidityDepositSetup(depositor, amountA, amountB)
 
         const liqDepositDeployResult = await liqSetup.deploy()
 
@@ -162,7 +162,7 @@ describe("contract", () => {
 
         const depositor = vaultA.jetton.walletOwner
 
-        const {depositorLpWallet} = await initWithLiquidity(depositor.address, amountA, amountB)
+        const {depositorLpWallet} = await initWithLiquidity(depositor, amountA, amountB)
 
         const lpBalanceAfterFirstLiq = await depositorLpWallet.getJettonBalance()
         // check that first liquidity deposit was successful
@@ -173,7 +173,7 @@ describe("contract", () => {
         const amountBBadRatio = amountABadRatio * initialRatio * 5n // wrong ratio
 
         const liqSetupBadRatio = await liquidityDepositSetup(
-            depositor.address,
+            depositor,
             amountABadRatio,
             amountBBadRatio,
         )

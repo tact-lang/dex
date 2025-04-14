@@ -1,4 +1,4 @@
-import {Blockchain} from "@ton/sandbox"
+import {Blockchain, SandboxContract, TreasuryContract} from "@ton/sandbox"
 import {ExtendedJettonMinter as JettonMinter} from "../wrappers/ExtendedJettonMinter"
 import {ExtendedJettonWallet as JettonWallet} from "../wrappers/ExtendedJettonWallet"
 import {Address, beginCell, Cell, toNano} from "@ton/core"
@@ -6,7 +6,7 @@ import {JettonVault} from "../output/DEX_JettonVault"
 import {sortAddresses} from "./deployUtils"
 import {AmmPool} from "../output/DEX_AmmPool"
 import {LiquidityDepositContract} from "../output/DEX_LiquidityDepositContract"
-import {createJettonVaultLiquidityDepositPayload} from "./testUtils"
+import {createJettonVaultLiquidityDepositPayload, createJettonVaultSwapRequest} from "./testUtils"
 import {randomAddress} from "@ton/test-utils"
 
 // TODO: unify common prefix to structs on create setups
@@ -98,7 +98,13 @@ export const createLiquidityDepositSetup = (
 ) => {
     const depositorIds: Map<string, bigint> = new Map()
 
-    const setup = async (depositor: Address, amountLeft: bigint, amountRight: bigint) => {
+    const setup = async (
+        depositorContract: SandboxContract<TreasuryContract>,
+        amountLeft: bigint,
+        amountRight: bigint,
+    ) => {
+        const depositor = depositorContract.address
+
         const depositorKey = depositor.toRawString()
         const contractId = depositorIds.get(depositorKey) || 0n
         depositorIds.set(depositorKey, contractId + 1n)
@@ -135,10 +141,23 @@ export const createLiquidityDepositSetup = (
             await JettonWallet.fromInit(0n, depositor, ammPool.address),
         )
 
+        const withdrawLiquidity = async (amount: bigint) => {
+            const withdrawResult = await depositorLpWallet.sendBurn(
+                depositorContract.getSender(),
+                toNano(2),
+                amount,
+                depositor,
+                null,
+            )
+
+            return withdrawResult
+        }
+
         return {
             deploy,
             liquidityDeposit,
             depositorLpWallet,
+            withdrawLiquidity,
         }
     }
 
@@ -167,7 +186,7 @@ export const createAmmPool = async (blockchain: Blockchain) => {
     // - deploy liq deposit
     // - add liq to vaults
     const initWithLiquidity = async (
-        depositor: Address,
+        depositor: SandboxContract<TreasuryContract>,
         amountLeft: bigint,
         amountRight: bigint,
     ) => {
@@ -181,7 +200,28 @@ export const createAmmPool = async (blockchain: Blockchain) => {
 
         return {
             depositorLpWallet: liqSetup.depositorLpWallet,
+            withdrawLiquidity: liqSetup.withdrawLiquidity,
         }
+    }
+
+    const swap = async (
+        amountToSwap: bigint,
+        swapFrom: "vaultA" | "vaultB",
+        expectedOutput: bigint,
+    ) => {
+        if (swapFrom === "vaultA") {
+            return await vaultA.jetton.transfer(
+                vaultA.vault.address,
+                amountToSwap,
+                createJettonVaultSwapRequest(vaultB.vault.address, expectedOutput),
+            )
+        }
+
+        return await vaultB.jetton.transfer(
+            vaultB.vault.address,
+            amountToSwap,
+            createJettonVaultSwapRequest(vaultA.vault.address, expectedOutput),
+        )
     }
 
     return {
@@ -189,6 +229,7 @@ export const createAmmPool = async (blockchain: Blockchain) => {
         vaultA,
         vaultB,
         liquidityDepositSetup,
+        swap,
         initWithLiquidity,
     }
 }
