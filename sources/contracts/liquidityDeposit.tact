@@ -8,8 +8,8 @@ message(0xe7a3475f) PartHasBeenDeposited {
 contract LiquidityDepositContract(
     leftVault: Address, // To be deterministic, leftVault address must be less than rightVault address
     rightVault: Address,
-    leftSide: Int as uint256,
-    rightSide: Int as uint256,
+    leftSideAmount: Int as uint256,
+    rightSideAmount: Int as uint256,
     depositor: Address, // This and the next field are kind of salt, so several similar contracts can exist
     contractId: Int as uint64,
     status: Int as uint3, // Should be deployed with 0.
@@ -23,12 +23,12 @@ contract LiquidityDepositContract(
         require(sender == self.leftVault || sender == self.rightVault, "Sender must be a vault");
         if (sender == self.leftVault) {
             // TODO maybe here we should check that it is not already filled and revert on errors.
-            require(msg.amount == self.leftSide, "Amount must be equal to leftSide");
+            require(msg.amount == self.leftSideAmount, "Amount must be equal to leftSide");
             require(msg.depositor == self.depositor, "Depositor must be the same");
             self.status |= 1;
         } else {
             // TODO maybe here we should check that it is not already filled and revert on errors.
-            require(msg.amount == self.rightSide, "Amount must be equal to rightSide");
+            require(msg.amount == self.rightSideAmount, "Amount must be equal to rightSide");
             require(msg.depositor == self.depositor, "Depositor must be the same");
             self.status |= 2;
         }
@@ -39,8 +39,8 @@ contract LiquidityDepositContract(
                 mode: SendRemainingBalance + SendDestroyIfZero, // We don't need to keep this contract alive
                 init: initOf AmmPool(self.leftVault, self.rightVault, 0, 0, 0),
                 body: LiquidityDeposit {
-                    leftAmount: self.leftSide,
-                    rightAmount: self.rightSide,
+                    leftAmount: self.leftSideAmount,
+                    rightAmount: self.rightSideAmount,
                     depositor: self.depositor,
                     contractId: self.contractId,
                 }.toCell(),

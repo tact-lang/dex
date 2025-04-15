@@ -4,6 +4,7 @@ struct SwapRequest {
     // Or we can specify ammPool address here, which I think is better
     destinationVault: Address;
     minAmountOut: Int as uint256;
+    // amountIn is part of the jetton notification
     timeout: Int as uint32;
 }
 

@@ -44,8 +44,8 @@ message(0x178d4519) MintViaJettonTransferInternal {
 contract AmmPool(
     leftVault: Address,
     rightVault: Address, // To be deterministic, rightVault address must be greater than leftVault address
-    leftSide: Int as uint256, // Should be deployed with 0
-    rightSide: Int as uint256, // Should be deployed with 0
+    leftSideReserve: Int as uint256, // Should be deployed with 0
+    rightSideReserve: Int as uint256, // Should be deployed with 0
     // LP tokens-related fields
     totalSupply: Int as coins, // Should be deployed with 0
 ) {
@@ -68,18 +68,20 @@ contract AmmPool(
         let leftSideReceived = msg.leftAmount;
         let rightSideReceived = msg.rightAmount;
         // Both sides are 0 in this case.
-        if (self.leftSide == 0) {
-            self.leftSide = msg.leftAmount;
-            self.rightSide = msg.rightAmount;
+        if (self.leftSideReserve == 0) {
+            // TODO: check bug here
+            self.leftSideReserve = msg.leftAmount;
+            self.rightSideReserve = msg.rightAmount;
         } else {
             // Liquidity provide contract does not allow to add 0 tokens on one side.
             // Probably the rate has changed, so we must return extra tokens.
-            if (msg.rightAmount / msg.leftAmount > self.rightSide / self.leftSide) {
-                let expectedRightAmount = muldiv(msg.leftAmount, self.rightSide, self.leftSide);
+            if (msg.rightAmount / msg.leftAmount > self.rightSideReserve / self.leftSideReserve) {
+                let expectedRightAmount = muldiv(msg.leftAmount, self.rightSideReserve, self.leftSideReserve);
                 rightSideReceived = expectedRightAmount;
                 message(MessageParameters {
-                    value: 0,
-                    mode: SendRemainingValue,
+                    // TODO: think about the value here and in lp minting
+                    value: context().value / 2,
+                    mode: SendPayFwdFeesSeparately,
                     to: self.rightVault,
                     body: PayoutFromPool {
                         otherVault: self.leftVault,
@@ -88,11 +90,11 @@ contract AmmPool(
                     }.toCell(),
                 });
             } else {
-                let expectedLeftAmount = muldiv(msg.rightAmount, self.leftSide, self.rightSide);
+                let expectedLeftAmount = muldiv(msg.rightAmount, self.leftSideReserve, self.rightSideReserve);
                 leftSideReceived = expectedLeftAmount;
                 message(MessageParameters {
-                    value: 0,
-                    mode: SendRemainingValue,
+                    value: context().value / 2,
+                    mode: SendPayFwdFeesSeparately,
                     to: self.leftVault,
                     body: PayoutFromPool {
                         otherVault: self.rightVault,
@@ -103,7 +105,7 @@ contract AmmPool(
             }
         }
 
-        //TODO Consider checking overflow
+        // TODO Consider checking overflow
         let liquidityTokensToMint = sqrt(leftSideReceived * rightSideReceived);
 
         self.totalSupply += liquidityTokensToMint;
@@ -114,11 +116,11 @@ contract AmmPool(
 
         self.totalSupply += liquidityTokensToMint;
 
-        //Mint LP tokens
+        // Mint LP tokens, amm pool acts as the jetton minter for lp jettons
         deploy(DeployParameters {
-            value: 0,
+            value: context().value / 2 - 1,
             bounce: true,
-            mode: SendRemainingValue,
+            mode: SendPayFwdFeesSeparately,
             init: getJettonWalletInit(msg.depositor),
             body: MintViaJettonTransferInternal {
                 queryId: 0,
@@ -138,8 +140,8 @@ contract AmmPool(
         // Workchain 0 is basechain
         require(sender.workchain == Basechain && sender.address == wallet.hash!!, "Invalid sender of JettonBurn notification");
 
-        let amountOfLeftToPay = muldiv(msg.amount, self.leftSide, self.totalSupply);
-        let amountOfRightToPay = muldiv(msg.amount, self.rightSide, self.totalSupply);
+        let amountOfLeftToPay = muldiv(msg.amount, self.leftSideReserve, self.totalSupply);
+        let amountOfRightToPay = muldiv(msg.amount, self.rightSideReserve, self.totalSupply);
 
         self.totalSupply -= msg.amount;
         let halfOfMsgValue = context().value / 2;
@@ -189,13 +191,13 @@ contract AmmPool(
         if (sender == self.leftVault) {
             inVault = self.leftVault;
             outVault = self.rightVault;
-            inBalance = self.leftSide;
-            outBalance = self.rightSide;
+            inBalance = self.leftSideReserve;
+            outBalance = self.rightSideReserve;
         } else {
             inVault = self.rightVault;
             outVault = self.leftVault;
-            inBalance = self.rightSide;
-            outBalance = self.leftSide;
+            inBalance = self.rightSideReserve;
+            outBalance = self.leftSideReserve;
             vaultOrderSwap = true;
         }
 
@@ -237,20 +239,20 @@ contract AmmPool(
         });
 
         if (vaultOrderSwap) {
-            self.leftSide = newAmountOut;
-            self.rightSide = newAmountIn;
+            self.leftSideReserve = newAmountOut;
+            self.rightSideReserve = newAmountIn;
         } else {
-            self.leftSide = newAmountIn;
-            self.rightSide = newAmountOut;
+            self.leftSideReserve = newAmountIn;
+            self.rightSideReserve = newAmountOut;
         }
     }
 
     get fun getLeftSide(): Int {
-        return self.leftSide;
+        return self.leftSideReserve;
     }
 
     get fun getRightSide(): Int {
-        return self.rightSide;
+        return self.rightSideReserve;
     }
 
     get fun get_wallet_address(ownerAddress: Address): Address {
@@ -266,13 +268,13 @@ contract AmmPool(
         if (vaultAddress == self.leftVault) {
             inVault = self.leftVault;
             outVault = self.rightVault;
-            inBalance = self.leftSide;
-            outBalance = self.rightSide;
+            inBalance = self.leftSideReserve;
+            outBalance = self.rightSideReserve;
         } else {
             inVault = self.rightVault;
             outVault = self.leftVault;
-            inBalance = self.rightSide;
-            outBalance = self.leftSide;
+            inBalance = self.rightSideReserve;
+            outBalance = self.leftSideReserve;
         }
         let amountInWithFee = muldiv(amountIn, 1000 - self.PoolFee, 1000);
         let newAmountIn = inBalance + amountInWithFee;
