@@ -1317,6 +1317,11 @@
     teslabot "^1.3.0"
     zod "^3.21.4"
 
+"@tondevwallet/traces@^0.1.6":
+  version "0.1.6"
+  resolved "https://registry.yarnpkg.com/@tondevwallet/traces/-/traces-0.1.6.tgz#716ee5923c51ee8fd83b68f629d8773347e55cd4"
+  integrity sha512-/aOwNLBUCtgweNzHzRQ1cm1kweXn3Kv5/pUYKYDiyOyV9GPKCBdWp1lwc4t9hgr6WrzUOrbovJkqxH1hG2Mhcw==
+
 "@tonstudio/parser-runtime@^0.0.1":
   version "0.0.1"
   resolved "https://registry.yarnpkg.com/@tonstudio/parser-runtime/-/parser-runtime-0.0.1.tgz#469955fb7ea354d4fadaa5964359b11fd17f926b"

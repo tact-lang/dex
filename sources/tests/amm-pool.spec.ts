@@ -2,6 +2,7 @@ import {Blockchain} from "@ton/sandbox"
 import {createAmmPool} from "../utils/environment"
 import {toNano} from "@ton/core"
 import {AmmPool} from "../output/DEX_AmmPool"
+import {SendDumpToDevWallet} from "@tondevwallet/traces"
 
 describe("Amm pool", () => {
     test("should swap exact amount of tokens", async () => {
@@ -83,6 +84,10 @@ describe("Amm pool", () => {
         const amountAJettonBeforeSwap = await vaultA.jetton.wallet.getJettonBalance()
 
         const swapResult = await swap(amountToSwap, "vaultA", expectedOutput + 1n) // slippage
+
+        await SendDumpToDevWallet({
+            transactions: swapResult.transactions as any,
+        })
 
         expect(swapResult.transactions).toHaveTransaction({
             from: vaultA.vault.address,

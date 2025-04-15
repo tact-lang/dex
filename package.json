@@ -27,6 +27,7 @@
         "@ton/sandbox": "^0.27.0",
         "@ton/test-utils": "^0.4.2",
         "@ton/ton": "^13.9.0",
+        "@tondevwallet/traces": "^0.1.6",
         "@types/jest": "^29.2.4",
         "@types/node": "^18.11.14",
         "@types/qs": "^6.9.7",
