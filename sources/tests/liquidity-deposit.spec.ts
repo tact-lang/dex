@@ -10,9 +10,9 @@ describe("Liquidity deposit", () => {
     test("Jetton vault should deploy correctly", async () => {
         // deploy vault -> send jetton transfer -> notify vault -> notify liq dep contract
         const blockchain = await Blockchain.create()
-        const vault = await createJettonVault(blockchain)
+        const vaultSetup = await createJettonVault(blockchain)
 
-        const vaultDeployResult = await vault.deploy()
+        const vaultDeployResult = await vaultSetup.deploy()
         expect(vaultDeployResult.transactions).toHaveTransaction({
             success: true,
             deploy: true,
@@ -20,7 +20,7 @@ describe("Liquidity deposit", () => {
 
         const mockDepositLiquidityContract = randomAddress(0)
 
-        const jettonTransferToVault = await vault.addLiquidity(
+        const jettonTransferToVault = await vaultSetup.addLiquidity(
             mockDepositLiquidityContract,
             toNano(1),
         )
@@ -33,7 +33,7 @@ describe("Liquidity deposit", () => {
             to: mockDepositLiquidityContract,
         })
 
-        const inited = await vault.vault.getInited()
+        const inited = await vaultSetup.vault.getInited()
         expect(inited).toBe(true)
     })
 

@@ -23,16 +23,7 @@ describe("Amm pool", () => {
         // check that liquidity deposit was successful
         expect(lpBalanceAfterFirstLiq).toBeGreaterThan(0n)
 
-        console.log(
-            "Amm rate before swap: ",
-            await ammPool.getGetLeftSide(),
-            "/",
-            await ammPool.getGetRightSide(),
-        )
-
         const amountToSwap = 10n
-        console.log(`Sending ${amountToSwap} of token A for swap`)
-
         const expectedOutput = await ammPool.getExpectedOut(vaultA.vault.address, amountToSwap)
 
         const amountBJettonBeforeSwap = await vaultB.jetton.wallet.getJettonBalance()
@@ -62,16 +53,8 @@ describe("Amm pool", () => {
         })
 
         const amountOfJettonBAfterSwap = await vaultB.jetton.wallet.getJettonBalance()
-        console.log("Received ", amountOfJettonBAfterSwap - amountBJettonBeforeSwap, " of token B")
         // TODO: calculate precise expected amount of token B off-chain
         expect(amountOfJettonBAfterSwap).toBeGreaterThan(amountBJettonBeforeSwap)
-
-        console.log(
-            "Amm rate after swap: ",
-            await ammPool.getGetLeftSide(),
-            "/",
-            await ammPool.getGetRightSide(),
-        )
     })
 
     test("should revert swap with slippage", async () => {
@@ -95,7 +78,6 @@ describe("Amm pool", () => {
 
         const amountToSwap = 10n
         const expectedOutput = await ammPool.getExpectedOut(vaultA.vault.address, amountToSwap)
-        console.log("Expected output: ", expectedOutput)
 
         const amountBJettonBeforeSwap = await vaultB.jetton.wallet.getJettonBalance()
         const amountAJettonBeforeSwap = await vaultA.jetton.wallet.getJettonBalance()
@@ -139,8 +121,6 @@ describe("Amm pool", () => {
         const lpBalanceAfterFirstLiq = await depositorLpWallet.getJettonBalance()
         // check that liquidity deposit was successful
         expect(lpBalanceAfterFirstLiq).toBeGreaterThan(0n)
-
-        console.log("Balance of LP: ", lpBalanceAfterFirstLiq)
 
         const amountBJettonBefore = await vaultB.jetton.wallet.getJettonBalance()
         const amountAJettonBefore = await vaultA.jetton.wallet.getJettonBalance()

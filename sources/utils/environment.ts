@@ -91,7 +91,7 @@ export const createJettonVault = async (blockchain: Blockchain) => {
     }
 }
 
-export const createLiquidityDepositSetup = (
+const createLiquidityDepositSetup = (
     blockchain: Blockchain,
     vaultLeft: Address,
     vaultRight: Address,
