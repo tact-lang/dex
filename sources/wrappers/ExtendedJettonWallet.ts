@@ -1,14 +1,14 @@
-import {ClaimTON, JettonTransfer, JettonWallet} from "../output/Jetton_JettonWallet"
+import {ClaimTON, JettonTransfer, LPJettonWallet} from "../output/Jetton_LPJettonWallet"
 import {Address, Builder, Cell, ContractProvider, Sender, toNano} from "@ton/core"
 import {JettonBurn, ProvideWalletBalance} from "../output/Jetton_JettonMinter"
 
-export class ExtendedJettonWallet extends JettonWallet {
+export class ExtendedJettonWallet extends LPJettonWallet {
     constructor(address: Address, init?: {code: Cell; data: Cell}) {
         super(address, init)
     }
 
     static async fromInit(balance: bigint, owner: Address, minter: Address) {
-        const base = await JettonWallet.fromInit(balance, owner, minter)
+        const base = await LPJettonWallet.fromInit(balance, owner, minter)
         if (base.init === undefined) {
             throw new Error("JettonWallet init is not defined")
         }

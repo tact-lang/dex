@@ -69,18 +69,27 @@ export const createJettonVault = async (blockchain: Blockchain) => {
         return vaultDeployResult
     }
 
-    const addLiquidity = async (liquidityDepositContractAddress: Address, amount: bigint) => {
-        const addLiquidityResult = await jetton.transfer(
+    const addLiquidity = async (
+        liquidityDepositContractAddress: Address,
+        amount: bigint,
+        payloadOnSuccess: Cell | null = null,
+        payloadOnFailure: Cell | null = null,
+        minAmountToDeposit: bigint = 0n,
+        lpTimeout: bigint = BigInt(Math.ceil(Date.now() / 1000) + 5 * 60), // 5 minutes
+    ) => {
+        return await jetton.transfer(
             vault.address,
             amount,
             createJettonVaultLiquidityDepositPayload(
                 liquidityDepositContractAddress,
                 jetton.minter.init?.code,
                 jetton.minter.init?.data,
+                minAmountToDeposit,
+                lpTimeout,
+                payloadOnSuccess,
+                payloadOnFailure,
             ),
         )
-
-        return addLiquidityResult
     }
 
     return {
@@ -120,6 +129,8 @@ const createLiquidityDepositSetup = (
                 depositor,
                 contractId,
                 0n,
+                null,
+                null,
             ),
         )
 
@@ -165,19 +176,24 @@ const createLiquidityDepositSetup = (
 }
 
 export const createAmmPool = async (blockchain: Blockchain) => {
-    const vaultA = await createJettonVault(blockchain)
-    const vaultB = await createJettonVault(blockchain)
+    const firstVault = await createJettonVault(blockchain)
+    const secondVault = await createJettonVault(blockchain)
+
+    const sortedVaults = sortAddresses(firstVault.vault.address, secondVault.vault.address, 0n, 0n)
+
+    const vaultA = sortedVaults.lower === firstVault.vault.address ? firstVault : secondVault
+    const vaultB = sortedVaults.lower === firstVault.vault.address ? secondVault : firstVault
 
     const sortedAddresses = sortAddresses(vaultA.vault.address, vaultB.vault.address, 0n, 0n)
 
     const ammPool = blockchain.openContract(
-        await AmmPool.fromInit(sortedAddresses.lower, sortedAddresses.higher, 0n, 0n, 0n),
+        await AmmPool.fromInit(vaultA.vault.address, vaultB.vault.address, 0n, 0n, 0n),
     )
 
     const liquidityDepositSetup = createLiquidityDepositSetup(
         blockchain,
-        vaultA.vault.address,
-        vaultB.vault.address,
+        sortedAddresses.lower,
+        sortedAddresses.higher,
     )
 
     // for later stage setup do everything by obtaining the address of the liq deposit here
@@ -207,20 +223,35 @@ export const createAmmPool = async (blockchain: Blockchain) => {
     const swap = async (
         amountToSwap: bigint,
         swapFrom: "vaultA" | "vaultB",
-        expectedOutput: bigint,
+        expectedOutput: bigint = 0n,
+        timeout: bigint = 0n,
+        payloadOnSuccess: Cell | null = null,
+        payloadOnFailure: Cell | null = null,
     ) => {
         if (swapFrom === "vaultA") {
             return await vaultA.jetton.transfer(
                 vaultA.vault.address,
                 amountToSwap,
-                createJettonVaultSwapRequest(vaultB.vault.address, expectedOutput),
+                createJettonVaultSwapRequest(
+                    vaultB.vault.address,
+                    expectedOutput,
+                    timeout,
+                    payloadOnSuccess,
+                    payloadOnFailure,
+                ),
             )
         }
 
         return await vaultB.jetton.transfer(
             vaultB.vault.address,
             amountToSwap,
-            createJettonVaultSwapRequest(vaultA.vault.address, expectedOutput),
+            createJettonVaultSwapRequest(
+                vaultA.vault.address,
+                expectedOutput,
+                timeout,
+                payloadOnSuccess,
+                payloadOnFailure,
+            ),
         )
     }
 

@@ -89,7 +89,7 @@ describe("Amm pool", () => {
         expect(swapResult.transactions).toHaveTransaction({
             from: vaultA.vault.address,
             to: ammPool.address, // NOTE: Swap should fail
-            exitCode: AmmPool.errors["Amount out is less than minAmountOut"],
+            exitCode: AmmPool.errors["Pool: Amount out is less than minAmountOut"],
             success: true, // That is what happens when throw after commit(), exit code is non-zero, success is true
         })
 

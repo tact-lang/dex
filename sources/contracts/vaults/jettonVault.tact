@@ -8,7 +8,7 @@ struct JettonMasterState {
     jettonMasterData: Cell?;
 }
 
-// Compatible with TEP-74 JettonNotify, but with forwardPayload serialized as expected fields
+// TEP-74 JettonNotify, but with forwardPayload serialized as expected fields
 message(0x7362d09c) JettonNotifyWithActionRequest {
     queryId: Int as uint64;
     amount: Int as coins;
@@ -53,26 +53,26 @@ contract JettonVault(
                 }
             }
         }
-        require(self.inited, "Jetton vault not inited");
-        require(sender() == self.jettonWallet, "Jetton vault not inited");
+        require(self.inited, "JettonVault: Not inited");
+        require(sender() == self.jettonWallet, "JettonVault: Sender must be jetton wallet");
 
         if (msg.actionOpcode == SwapRequestOpcode) {
             handleSwapRequest(msg, SwapRequest.fromCell(msg.actionPayload));
         }
-        if (msg.actionOpcode == VaultDepositOpcode) {
-            handleVaultDeposit(msg, VaultDeposit.fromCell(msg.actionPayload));
+        if (msg.actionOpcode == LPDepositPartOpcode) {
+            handleLPDepositPart(msg, LPDepositPart.fromCell(msg.actionPayload));
         }
     }
 
     receive() {}
 
     receive(msg: PayoutFromPool) {
-        require(self.inited, "Jetton vault not inited");
+        require(self.inited, "JettonVault: Not inited");
 
         let sortedAddresses = sortAddresses(myAddress(), msg.otherVault);
         let poolInit = initOf AmmPool(sortedAddresses.lower, sortedAddresses.higher, 0, 0, 0);
 
-        require(poolInit.hasSameBasechainAddress(sender()), "Sender must be pool");
+        require(poolInit.hasSameBasechainAddress(sender()), "JettonVault: Sender must be pool");
 
         message(MessageParameters {
             to: self.jettonWallet!!,
@@ -83,8 +83,9 @@ contract JettonVault(
                 amount: msg.amount,
                 responseDestination: msg.receiver,
                 destination: msg.receiver,
+                // TODO: We probably want to maximize forwardTonAmount, or user should specify it.....
                 forwardTonAmount: 1,
-                forwardPayload: sliceWithOneZeroBit(),
+                forwardPayload: beginCell().storeMaybeRef(msg.payloadToForward).endCell().beginParse(),
                 customPayload: null,
             }.toCell(),
         });
@@ -110,6 +111,7 @@ inline fun handleSwapRequest(msg: JettonNotifyWithActionRequest, action: SwapReq
     let poolAddress = contractAddress(initOf AmmPool(sortedAddresses.lower, sortedAddresses.higher, 0, 0, 0));
     message(MessageParameters {
         value: 0,
+        bounce: false,
         mode: SendRemainingValue,
         to: poolAddress,
         body: SwapIn {
@@ -117,11 +119,13 @@ inline fun handleSwapRequest(msg: JettonNotifyWithActionRequest, action: SwapReq
             amount: msg.amount,
             minAmountOut: action.minAmountOut,
             timeout: action.timeout,
+            payloadOnSuccess: action.payloadOnSuccess,
+            payloadOnFailure: action.payloadOnFailure,
         }.toCell(),
     });
 }
 
-inline fun handleVaultDeposit(msg: JettonNotifyWithActionRequest, action: VaultDeposit) {
+inline fun handleLPDepositPart(msg: JettonNotifyWithActionRequest, action: LPDepositPart) {
     message(MessageParameters {
         to: action.liquidityDepositContract,
         value: 0,
@@ -129,6 +133,7 @@ inline fun handleVaultDeposit(msg: JettonNotifyWithActionRequest, action: VaultD
         body: PartHasBeenDeposited {
             depositor: msg.sender,
             amount: msg.amount,
+            additionalParams: action.additionalParams,
         }.toCell(),
     });
 }

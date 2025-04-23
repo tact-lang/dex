@@ -5,6 +5,8 @@ import {AmmPool} from "../output/DEX_AmmPool"
 import {LiquidityDepositContract} from "../output/DEX_LiquidityDepositContract"
 import {createAmmPool, createJettonVault} from "../utils/environment"
 import {sortAddresses} from "../utils/deployUtils"
+// eslint-disable-next-line
+import {SendDumpToDevWallet} from "@tondevwallet/traces"
 
 describe("Liquidity deposit", () => {
     test("Jetton vault should deploy correctly", async () => {
@@ -32,7 +34,6 @@ describe("Liquidity deposit", () => {
         expect(jettonTransferToVault.transactions).toHaveTransaction({
             to: mockDepositLiquidityContract,
         })
-
         const inited = await vaultSetup.vault.getInited()
         expect(inited).toBe(true)
     })
@@ -56,7 +57,7 @@ describe("Liquidity deposit", () => {
         const amountA = toNano(1)
         const amountB = toNano(2) // 1 a == 2 b ratio
 
-        // this is bad way of doing it, we need to create new depositor, transfer
+        // this is a bad way of doing it, we need to create new depositor, transfer
         // jettons to it, and use it as a parameter in all vaults methods too
         //
         // depositor should be the same for both vaults jettons transfers
@@ -130,7 +131,7 @@ describe("Liquidity deposit", () => {
         const leftSide = await ammPool.getGetLeftSide()
         const rightSide = await ammPool.getGetRightSide()
 
-        // correct liquidity amount was added
+        // the correct liquidity amount was added
         const sorted = sortAddresses(vaultA.vault.address, vaultB.vault.address, amountA, amountB)
         expect(leftSide).toBe(sorted.leftAmount)
         expect(rightSide).toBe(sorted.rightAmount)

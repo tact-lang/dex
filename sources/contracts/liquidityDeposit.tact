@@ -1,8 +1,17 @@
 import "./ammPool.tact";
+import "./math";
 
 message(0xe7a3475f) PartHasBeenDeposited {
     depositor: Address;
     amount: Int as uint256;
+    additionalParams: AdditionalParams;
+}
+
+struct AdditionalParams {
+    minAmountToDeposit: Int as uint256;
+    lpTimeout: Int as uint32;
+    payloadOnSuccess: Cell? = null;
+    payloadOnFailure: Cell? = null;
 }
 
 contract LiquidityDepositContract(
@@ -17,32 +26,44 @@ contract LiquidityDepositContract(
     // 1 - left side is filled
     // 2 - right side is filled
     // 3 - both sides are filled
+
+    // These fields are needed to store the payloads from the vaults
+    leftAdditionalParams: AdditionalParams?, // Should be deployed with null
+    rightAdditionalParams: AdditionalParams?, // Should be deployed with null
 ) {
     receive(msg: PartHasBeenDeposited) {
         let sender = sender();
-        require(sender == self.leftVault || sender == self.rightVault, "Sender must be a vault");
         if (sender == self.leftVault) {
             // TODO maybe here we should check that it is not already filled and revert on errors.
-            require(msg.amount == self.leftSideAmount, "Amount must be equal to leftSide");
-            require(msg.depositor == self.depositor, "Depositor must be the same");
+            require(msg.amount == self.leftSideAmount, "LP Deposit: Amount must be equal to leftSide");
+            require(msg.depositor == self.depositor, "LP Deposit: Depositor must be the same");
+            self.leftAdditionalParams = msg.additionalParams;
             self.status |= 1;
-        } else {
+        }
+        if (sender == self.rightVault) {
             // TODO maybe here we should check that it is not already filled and revert on errors.
-            require(msg.amount == self.rightSideAmount, "Amount must be equal to rightSide");
-            require(msg.depositor == self.depositor, "Depositor must be the same");
+            require(msg.amount == self.rightSideAmount, "LP Deposit: Amount must be equal to rightSide");
+            require(msg.depositor == self.depositor, "LP Deposit: Depositor must be the same");
+            self.rightAdditionalParams = msg.additionalParams;
             self.status |= 2;
         }
         // Both sides are filled, we can deposit now.
         if (self.status == 3) {
+            // We must check, that this account was deployed with sorted vault, otherwise it could be a security issue
+            let sortedAddresses = sortAddresses(self.leftVault, self.rightVault);
+            require(sortedAddresses.lower == self.leftVault, "LP Deposit: Vaults MUST be sorted, to not break invariant");
             deploy(DeployParameters {
                 value: 0,
+                bounce: false, // 1. To pay storage fees of AmmPool. 2. We will destroy this contract, so bounce does not have sense.
                 mode: SendRemainingBalance + SendDestroyIfZero, // We don't need to keep this contract alive
                 init: initOf AmmPool(self.leftVault, self.rightVault, 0, 0, 0),
                 body: LiquidityDeposit {
-                    leftAmount: self.leftSideAmount,
-                    rightAmount: self.rightSideAmount,
                     depositor: self.depositor,
                     contractId: self.contractId,
+                    leftAmount: self.leftSideAmount,
+                    rightAmount: self.rightSideAmount,
+                    leftAdditionalParams: self.leftAdditionalParams!!,
+                    rightAdditionalParams: self.rightAdditionalParams!!,
                 }.toCell(),
             });
         }
