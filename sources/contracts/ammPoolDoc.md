@@ -2,7 +2,7 @@
 
 ## Liquidity Provision
 
-This message is used to notify LP Deposit Contract, that Vault succesfully accepted liquidity.
+This message is used to notify LP Deposit Contract, that Vault successfully accepted liquidity.
 
 ```tact
 message(0xe7a3475f) PartHasBeenDeposited {

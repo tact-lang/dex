@@ -57,7 +57,7 @@ message(0x595f07bc) JettonBurn {
     customPayload: Cell?;
 }
 
-// This message is not direclty specified by TEP-74
+// This message is not directly specified by TEP-74
 // https://github.com/ton-blockchain/TEPs/blob/master/text/0074-jettons-standard.md#2-burn
 message(0x7bdd97de) JettonBurnNotification {
     queryId: Int as uint64;

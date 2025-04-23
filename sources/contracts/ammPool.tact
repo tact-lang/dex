@@ -330,7 +330,7 @@ contract AmmPool(
 
     inline fun failLiquidityProvision(msg: LiquidityDeposit) {
         let halfOfMsgValue = context().value / 2;
-        // TODO: Maybe netiveReserve() here?
+        // TODO: Maybe nativeReserve() here?
         // nativeReserve(myStorageDue(), ReserveAddOriginalBalance | ReserveExact);
         // Check tha sample above
         message(MessageParameters {
