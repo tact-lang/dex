@@ -51,8 +51,10 @@ message(0x178d4519) MintViaJettonTransferInternal {
 contract AmmPool(
     leftVault: Address,
     rightVault: Address, // To be deterministic, rightVault address must be greater than leftVault address
-    leftSideReserve: Int as uint256, // Should be deployed with 0
-    rightSideReserve: Int as uint256, // Should be deployed with 0
+    // Amount of tokens are stored as coins, as all minted TONs can be stored as coins
+    // And Jetton TEP-74 also uses coins for amount
+    leftSideReserve: Int as coins, // Should be deployed with 0
+    rightSideReserve: Int as coins, // Should be deployed with 0
     // LP tokens-related field
     totalSupply: Int as coins, // Should be deployed with 0
 ) {
@@ -93,7 +95,9 @@ contract AmmPool(
         } else {
             // Liquidity provide contract does not allow to add 0 tokens on one side.
             // Probably the rate has changed, so we must return extra tokens.
-            if (msg.rightAmount / msg.leftAmount > self.rightSideReserve / self.leftSideReserve) {
+
+            // We can multiply without overflow, as coins are have 120 bits precision, so coins * coins < 2^256 and we will never overflow
+            if (msg.rightAmount * self.leftSideReserve > self.rightSideReserve * msg.leftAmount) {
                 let expectedRightAmount = muldiv(msg.leftAmount, self.rightSideReserve, self.leftSideReserve);
                 rightSideReceived = expectedRightAmount;
 
@@ -101,7 +105,7 @@ contract AmmPool(
                 if (rightSideReceived < msg.rightAdditionalParams.minAmountToDeposit) {
                     // We can't reuse returnFunds function because we need to return both sides
                     self.failLiquidityProvision(msg);
-                    require(false, "Pool: Liquidity provision failed due to slippage");
+                    require(false, "Pool: Liquidity provision failed due to slippage on right side");
                 }
 
                 message(MessageParameters {
@@ -125,7 +129,7 @@ contract AmmPool(
                 if (leftSideReceived < msg.leftAdditionalParams.minAmountToDeposit) {
                     // We can't reuse returnFunds function because we need to return both sides
                     self.failLiquidityProvision(msg);
-                    require(false, "Pool: Liquidity provision failed due to slippage");
+                    require(false, "Pool: Liquidity provision failed due to slippage on left side");
                 }
 
                 message(MessageParameters {
@@ -147,8 +151,6 @@ contract AmmPool(
 
         // TODO Consider checking overflow
         let liquidityTokensToMint = sqrt(leftSideReceived * rightSideReceived);
-
-        self.totalSupply += liquidityTokensToMint;
 
         let forwardPayload = beginCell()
             .storeUint(0, 1) // Either bit equals 0
