@@ -1,12 +1,7 @@
 import {beginCell, toNano} from "@ton/core"
 import {Blockchain} from "@ton/sandbox"
 import {findTransactionRequired, flattenTransaction} from "@ton/test-utils"
-import {
-    AmmPool,
-    loadMintViaJettonTransferInternal,
-    loadPayoutFromPool,
-    loadSendViaJettonTransfer,
-} from "../output/DEX_AmmPool"
+import {AmmPool, loadMintViaJettonTransferInternal, loadPayoutFromPool} from "../output/DEX_AmmPool"
 import {createAmmPool} from "../utils/environment"
 // eslint-disable-next-line
 import {SendDumpToDevWallet} from "@tondevwallet/traces"
