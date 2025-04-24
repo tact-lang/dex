@@ -301,7 +301,6 @@ describe("Liquidity payloads", () => {
         const parsedPayoutFromPoolBBody = loadPayoutFromPool(payoutFromPoolBBody!!)
         expect(parsedPayoutFromPoolBBody.payloadToForward).not.toBe(null)
         expect(parsedPayoutFromPoolBBody.payloadToForward!!).toEqualCell(rightPayloadOnFailure)
-
         expect(insufficientLiquidityResult.transactions).toHaveTransaction({
             from: ammPool.address,
             to: vaultB.vault.address,
