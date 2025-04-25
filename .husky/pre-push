@@ -1,6 +1,5 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
 yarn lint:es
 yarn spell:check
 yarn fmt:check
+yarn tsc --noEmit
+yarn tact-fmt --check ./sources

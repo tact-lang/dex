@@ -1,7 +1,7 @@
 import "./messages";
 import "./constants";
 
-contract JettonWallet(
+contract LPJettonWallet(
     balance: Int as coins,
     owner: Address,
     minter: Address,
@@ -36,15 +36,15 @@ contract JettonWallet(
                 forwardTonAmount: msg.forwardTonAmount,
                 forwardPayload: msg.forwardPayload,
             }.toCell(),
-            init: initOf JettonWallet(0, msg.destination, self.minter),
+            init: initOf LPJettonWallet(0, msg.destination, self.minter),
         });
     }
 
     receive(msg: JettonTransferInternal) {
         self.balance += msg.amount;
 
-        // This message should come only from master, or from other JettonWallet
-        let wallet: StateInit = initOf JettonWallet(0, msg.sender, self.minter);
+        // This message should come only from master, or from other LPJettonWallet
+        let wallet: StateInit = initOf LPJettonWallet(0, msg.sender, self.minter);
         if (!wallet.hasSameBasechainAddress(sender())) {
             require(self.minter == sender(), "Incorrect sender");
         }
@@ -104,7 +104,7 @@ contract JettonWallet(
     }
 
     receive(msg: JettonBurn) {
-        // we can skip forceBasechain here because with other checks in place it's not possible 
+        // we can skip forceBasechain here because with other checks in place it's not possible
         // to acquire jettons outside of basechain, so amount check is enough
         require(sender() == self.owner, "Incorrect sender");
 
@@ -125,6 +125,7 @@ contract JettonWallet(
                 amount: msg.amount,
                 sender: self.owner,
                 responseDestination: msg.responseDestination,
+                forwardPayload: msg.customPayload,
             }.toCell(),
         });
     }
