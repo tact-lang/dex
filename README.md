@@ -1,6 +1,4 @@
-# Tact template project
-
-This template comes pre-configured to kickstart your new Tact project. It includes the Tact compiler, TypeScript, Jest integrated with [Sandbox](https://github.com/ton-org/sandbox), and a sample demonstrating how to run tests.
+# OpenDeFi Library: Decentralized Exchange (DEX)
 
 ## How to use
 
