@@ -1,7 +1,7 @@
-import "../core/ammPool";
-import "../utils/calculateJettonWallet";
+import "../core/amm-pool";
+import "../utils/calculate-jetton-wallet";
 import "../math";
-import "./vaultInterface";
+import "./vault-interface";
 
 struct JettonMasterState {
     jettonMasterCode: Cell?;

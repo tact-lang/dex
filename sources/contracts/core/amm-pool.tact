@@ -1,4 +1,4 @@
-import "./liquidityDeposit";
+import "./liquidity-deposit";
 import "./messages";
 import "../utils/utils";
 import "../jettons/utils";
