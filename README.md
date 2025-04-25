@@ -208,7 +208,7 @@ graph LR
     VaultBNote["Different implementation<br>for Jetton assets"]
     VaultB1 --- VaultBNote
 
-    LPDepositNote["Coordinates deposits<br>Ensures atomicity<br>Destoys itself after deposit<br>Acts like a point of synchronization"]
+    LPDepositNote["Coordinates deposits<br>Ensures atomicity<br>Destroys itself after deposit<br>Acts like a point of synchronization"]
     LPDeposit1 --- LPDepositNote
 
     AMMPoolNote["Never interacts directly<br>with underlying assets"]
