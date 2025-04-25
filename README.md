@@ -1,4 +1,4 @@
-# TON DEX
+# OpenDeFi Library: Decentralized Exchange (DEX)
 
 A decentralized exchange (DEX) on the TON blockchain providing efficient exchange of various token types with a high degree of asset abstraction.
 
