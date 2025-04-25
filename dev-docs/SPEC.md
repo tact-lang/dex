@@ -7,11 +7,13 @@
 All `require` statements must include the contract name as a prefix in error messages. This helps with debugging and quickly identifying which contract threw an error.
 
 **❌ Don't:**
+
 ```solidity
 require(false, "Liquidity provision failed due to timeout");
 ```
 
 **✅ Do:**
+
 ```solidity
 require(false, "Pool: Liquidity provision failed due to timeout");
 ```
@@ -35,8 +37,8 @@ Using unbounceable internal messages provides a significant advantage for handli
 
 - When an unbounceable internal message is received, funds are automatically spent to cover storage fees
 - This eliminates the need for:
-  - Using `rawReserve` in every message handler
-  - Complex storage fee calculations
-  - Additional code to ensure contract storage is paid for
+    - Using `rawReserve` in every message handler
+    - Complex storage fee calculations
+    - Additional code to ensure contract storage is paid for
 
 This approach results in cleaner, more efficient code with simplified message handling logic.

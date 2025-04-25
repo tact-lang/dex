@@ -30,42 +30,42 @@ graph LR
     end
 
     Vault["Vault<br>(Asset Container)"]
-    
+
     subgraph "Different Asset Implementations"
         JettonVault["Jetton Vault<br>(Different Implementation)"]
         TONVault["TON Vault<br>(Different Implementation)"]
         ExtraCurrencyVault["Extra-Currency Vault<br>(Different Implementation)"]
     end
-    
+
     subgraph "DEX Component"
         AMMPool["AMM Pool"]
     end
-    
+
     subgraph "User"
         Trader["Trader"]
     end
-    
+
     JettonVault -->|implements| Vault
     TONVault -->|implements| Vault
     ExtraCurrencyVault -->|implements| Vault
-    
+
     Vault --> PayoutRequest
     Vault --> DepositRequest
     Vault --> SwapRequestMsg
-    
-    
+
+
     Trader -->|"sends SwapRequest"| Vault
     Vault -->|"forwards to"| AMMPool
-    
+
     VaultAbstraction["Asset Abstraction Layer"]
     Vault --- VaultAbstraction
-    
+
     VaultNote["Any contract that implements<br>the Vault interface can serve<br>as a Vault regardless of asset type.<br>Each asset has its own implementation."]
     VaultAbstraction --- VaultNote
-    
+
     AMMPoolNote["AMM Pool only knows Vault addresses,<br>not the actual asset details,<br>enabling uniform asset handling"]
     AMMPool --- AMMPoolNote
-    
+
     TraderNote["Trader interacts with assets<br>only through their Vaults"]
     Trader --- TraderNote
 
@@ -89,46 +89,46 @@ graph LR
     subgraph Step1["Step 1: Trader Sends Swap Request to Vault"]
         Trader1["Trader"]
         VaultA1["Vault A<br>(e.g. TON Vault)"]
-        
+
         Trader1 -->|"Swap Request<br>(msg 0x123456)<br>ammPool: Address<br>minAmountOut: uint256"| VaultA1
     end
-    
+
     subgraph Step2["Step 2: Vault A Forwards to AMM Pool"]
         VaultA2["Vault A<br>(e.g. TON Vault)"]
         AMMPool1["AMM Pool Contract"]
-        
+
         VaultA2 -->|"Swap In<br>Send tokens to pool"| AMMPool1
     end
-    
+
     subgraph Step3["Step 3: AMM Pool Calculates and Requests Output"]
         AMMPool2["AMM Pool Contract"]
         VaultB1["Vault B<br>(e.g. Jetton Vault)"]
-        
+
         AMMPool2 -->|"Swap Out<br>Request token transfer"| VaultB1
     end
-    
+
     subgraph Step4["Step 4: Vault B Pays Out to Trader"]
         VaultB2["Vault B<br>(e.g. Jetton Vault)"]
         Trader2["Trader"]
-        
+
         VaultB2 -->|"PayoutFromPool<br>(msg 0x74f7a60)<br>amount: uint256<br>receiver: Address"| Trader2
     end
-    
+
     %% Connect the steps in sequence
     Step1 --> Step2
     Step2 --> Step3
     Step3 --> Step4
-    
+
     %% Notes
     AMM_FormulaNotes["Constant Product Formula<br>x * y = k<br>Where x and y are token balances"]
     AMMPool1 --- AMM_FormulaNotes
-    
+
     VaultAbstractionNote["Asset Abstraction Layer:<br>AMM Pool doesn't know asset implementation details"]
     AMMPool2 --- VaultAbstractionNote
-    
+
     TraderNote["Swap request exact format<br>depends on exact Vault type"]
     Trader1 --- TraderNote
-    
+
     style Trader1 fill:#ffe,stroke:#333,stroke-width:2px
     style Trader2 fill:#ffe,stroke:#333,stroke-width:2px
     style VaultA1 fill:#dfd,stroke:#333,stroke-width:2px
@@ -137,11 +137,11 @@ graph LR
     style VaultB2 fill:#dfd,stroke:#333,stroke-width:2px
     style AMMPool1 fill:#f9f,stroke:#333,stroke-width:2px
     style AMMPool2 fill:#f9f,stroke:#333,stroke-width:2px
-    
+
     style AMM_FormulaNotes fill:#fff,stroke:#888,stroke-dasharray: 5 5
     style VaultAbstractionNote fill:#fff,stroke:#888,stroke-dasharray: 5 5
     style TraderNote fill:#fff,stroke:#888,stroke-dasharray: 5 5
-    
+
     style Step1 fill:none,stroke:#333,stroke-width:1px
     style Step2 fill:none,stroke:#333,stroke-width:1px
     style Step3 fill:none,stroke:#333,stroke-width:1px
@@ -157,63 +157,63 @@ graph LR
         Depositor1["Depositor (Wallet)"]
         VaultA1["Vault A<br>(TON Vault)"]
         VaultB1["Vault B<br>(Jetton Vault)"]
-        
+
         Depositor1 -->|"Asset A Deposit"| VaultA1
         Depositor1 -->|"Asset B Deposit"| VaultB1
     end
-    
+
     subgraph StepB["Step 2: Vaults Notify LP Deposit Contract"]
         VaultA2["Vault A<br>(TON Vault)"]
         VaultB2["Vault B<br>(Jetton Vault)"]
         LPDeposit1["LP Deposit Contract"]
-        
+
         VaultA2 -->|"PartHasBeenDeposited<br>(msg 0xe7a3475f)<br>depositor: Address<br>amount: uint256"| LPDeposit1
         VaultB2 -->|"PartHasBeenDeposited<br>(msg 0xe7a3475f)<br>depositor: Address<br>amount: uint256"| LPDeposit1
     end
-    
+
     subgraph StepC["Step 3: LP Deposit Confirms to AMM Pool"]
         LPDeposit2["LP Deposit Contract"]
         AMMPool1["AMM Pool Contract"]
-        
+
         LPDeposit2 -->|"BothPartHasBeenDeposited<br>(msg 0x333333)<br>depositor: Address<br>amountA: uint256<br>amountB: uint256"| AMMPool1
     end
-    
+
     subgraph StepD["Step 4: AMM Pool Returns Extra Coins"]
         AMMPool2["AMM Pool Contract"]
         VaultB3["Vault<br>(Some vault, depending on how price changed)"]
         Depositor2["Depositor (Wallet)"]
-        
+
         AMMPool2 -->|"PayoutFromPool<br>(due to slippage)"| VaultB3
-        
+
         VaultB3 -->|"Return extra coins"| Depositor2
     end
-    
+
     subgraph StepE["Step 5: AMM Pool Mints LP Tokens"]
         AMMPool3["AMM Pool Contract"]
         Depositor3["Depositor (Wallet)"]
-        
+
         AMMPool3 -->|"Mint LP Tokens"| Depositor3
     end
-    
+
     %% Connect the steps in sequence
     StepA --> StepB
     StepB --> StepC
     StepC --> StepD
     StepD --> StepE
-    
+
     %% Notes
     VaultANote["Different implementation<br>for TON assets"]
     VaultA1 --- VaultANote
-    
+
     VaultBNote["Different implementation<br>for Jetton assets"]
     VaultB1 --- VaultBNote
-    
+
     LPDepositNote["Coordinates deposits<br>Ensures atomicity<br>Destoys itself after deposit<br>Acts like a point of synchronization"]
     LPDeposit1 --- LPDepositNote
-    
+
     AMMPoolNote["Never interacts directly<br>with underlying assets"]
     AMMPool1 --- AMMPoolNote
-    
+
     style Depositor1 fill:#ffe,stroke:#333,stroke-width:2px
     style Depositor2 fill:#ffe,stroke:#333,stroke-width:2px
     style Depositor3 fill:#ffe,stroke:#333,stroke-width:2px
@@ -227,12 +227,12 @@ graph LR
     style AMMPool1 fill:#f9f,stroke:#333,stroke-width:2px
     style AMMPool2 fill:#f9f,stroke:#333,stroke-width:2px
     style AMMPool3 fill:#f9f,stroke:#333,stroke-width:2px
-    
+
     style VaultANote fill:#fff,stroke:#888,stroke-dasharray: 5 5
     style VaultBNote fill:#fff,stroke:#888,stroke-dasharray: 5 5
     style LPDepositNote fill:#fff,stroke:#888,stroke-dasharray: 5 5
     style AMMPoolNote fill:#fff,stroke:#888,stroke-dasharray: 5 5
-    
+
     style StepA fill:none,stroke:#333,stroke-width:1px
     style StepB fill:none,stroke:#333,stroke-width:1px
     style StepC fill:none,stroke:#333,stroke-width:1px
