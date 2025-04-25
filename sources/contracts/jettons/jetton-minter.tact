@@ -133,16 +133,3 @@ contract JettonMinter(
         return getJettonWalletByOwner(ownerAddress);
     }
 }
-
-
-inline fun getJettonWalletInit(address: Address): StateInit {
-    return initOf LPJettonWallet(0, address, myAddress());
-}
-
-inline fun getJettonWalletByOwner(jettonWalletOwner: Address): Address {
-    return contractAddress(getJettonWalletInit(jettonWalletOwner));
-}
-
-inline fun getJettonBasechainWalletByOwner(jettonWalletOwner: Address): BasechainAddress {
-    return contractBasechainAddress(getJettonWalletInit(jettonWalletOwner));
-}

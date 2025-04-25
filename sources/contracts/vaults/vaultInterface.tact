@@ -1,4 +1,4 @@
-import "../liquidityDeposit.tact";
+import "../core/liquidityDeposit.tact";
 
 const SwapRequestOpcode: Int = 0xbfa68001;
 struct SwapRequest {

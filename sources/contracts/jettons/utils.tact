@@ -1,3 +1,6 @@
+import "./messages";
+import "./LP-jetton-wallet";
+
 inline fun checkEitherForwardPayload(forwardPayload: Slice) {
     if (forwardPayload.preloadUint(1) == 1) {
         let bitsAndRefs = calculateSliceBitsAndRefs(forwardPayload);
@@ -21,4 +24,16 @@ struct SliceBitsAndRefs {
 
 asm fun calculateSliceBitsAndRefs(slice: Slice): SliceBitsAndRefs {
     SBITREFS
+}
+
+inline fun getJettonWalletInit(address: Address): StateInit {
+    return initOf LPJettonWallet(0, address, myAddress());
+}
+
+inline fun getJettonWalletByOwner(jettonWalletOwner: Address): Address {
+    return contractAddress(getJettonWalletInit(jettonWalletOwner));
+}
+
+inline fun getJettonBasechainWalletByOwner(jettonWalletOwner: Address): BasechainAddress {
+    return contractBasechainAddress(getJettonWalletInit(jettonWalletOwner));
 }

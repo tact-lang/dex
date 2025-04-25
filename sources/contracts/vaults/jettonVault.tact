@@ -1,4 +1,4 @@
-import "../ammPool";
+import "../core/ammPool";
 import "../utils/calculateJettonWallet";
 import "../math";
 import "./vaultInterface";

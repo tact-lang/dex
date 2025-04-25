@@ -1,52 +1,7 @@
 import "./liquidityDeposit";
-import "./utils/utils";
-import "./jettons/utils";
-import "./jettons/LP-jetton-wallet";
-
-message(0xac2f5a38) SwapIn {
-    amount: Int as uint256;
-    minAmountOut: Int as uint256;
-    timeout: Int as uint32; // Absolute unix timestamp
-    swapOutReceiver: Address;
-    payloadOnSuccess: Cell? = null;
-    payloadOnFailure: Cell? = null;
-}
-
-message(0x74f7a60) PayoutFromPool {
-    otherVault: Address; // For proofing purposes
-    amount: Int as uint256;
-    receiver: Address;
-    payloadToForward: Cell? = null;
-}
-
-message(0x6752aa52) LiquidityDeposit {
-    depositor: Address;
-    contractId: Int as uint64;
-    leftAmount: Int as uint256;
-    rightAmount: Int as uint256;
-    leftAdditionalParams: AdditionalParams;
-    rightAdditionalParams: AdditionalParams;
-}
-
-// JettonBurnNotification
-message(0x7bdd97de) LiquidityWithdrawViaBurnNotification {
-    queryId: Int as uint64;
-    amount: Int as coins;
-    sender: Address;
-    responseDestination: Address?;
-    // Payload to forward with withdrawn tokens
-    forwardPayload: Cell?;
-}
-
-// For LP tokens minting
-message(0x178d4519) MintViaJettonTransferInternal {
-    queryId: Int as uint64;
-    amount: Int as coins;
-    sender: Address;
-    responseDestination: Address?;
-    forwardTonAmount: Int as coins;
-    forwardPayload: Slice as remaining;
-}
+import "./messages";
+import "../utils/utils";
+import "../jettons/utils";
 
 contract AmmPool(
     leftVault: Address,
@@ -361,32 +316,4 @@ contract AmmPool(
         });
         commit();
     }
-}
-
-inline fun returnFunds(receiver: Address, otherVault: Address, amount: Int, payloadOnFailure: Cell?) {
-    message(MessageParameters {
-        to: sender(),
-        value: 0,
-        bounce: false,
-        mode: SendRemainingValue,
-        body: PayoutFromPool {
-            otherVault: otherVault,
-            amount: amount,
-            receiver: receiver,
-            payloadToForward: payloadOnFailure,
-        }.toCell(),
-    });
-    commit();
-}
-
-inline fun getJettonWalletInit(address: Address): StateInit {
-    return initOf LPJettonWallet(0, address, myAddress());
-}
-
-inline fun getJettonWalletByOwner(jettonWalletOwner: Address): Address {
-    return contractAddress(getJettonWalletInit(jettonWalletOwner));
-}
-
-inline fun getJettonBasechainWalletByOwner(jettonWalletOwner: Address): BasechainAddress {
-    return contractBasechainAddress(getJettonWalletInit(jettonWalletOwner));
 }
