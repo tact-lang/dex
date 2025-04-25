@@ -127,7 +127,7 @@ describe("Amm pool", () => {
         const amountBJettonBefore = await vaultB.jetton.wallet.getJettonBalance()
         const amountAJettonBefore = await vaultA.jetton.wallet.getJettonBalance()
 
-        const withdrawResult = await withdrawLiquidity(lpBalanceAfterFirstLiq)
+        const withdrawResult = await withdrawLiquidity(lpBalanceAfterFirstLiq, null)
 
         expect(withdrawResult.transactions).toHaveTransaction({
             from: depositorLpWallet.address,

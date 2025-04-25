@@ -307,4 +307,64 @@ describe("Liquidity payloads", () => {
         const lpBalanceAfterFailedLiq = await depositorLpWallet.getJettonBalance()
         expect(lpBalanceAfterFailedLiq).toEqual(lpBalanceAfterExactLiq)
     })
+
+    test("should return withdrawal payload on both jettons", async () => {
+        const blockchain = await Blockchain.create()
+
+        const {ammPool, vaultA, vaultB, initWithLiquidity} = await createAmmPool(blockchain)
+
+        const successfulPayloadOnWithdraw = beginCell()
+            .storeStringTail("SuccessWithdrawPayload")
+            .endCell()
+
+        // deploy liquidity deposit contract
+        const initialRatio = 2n
+
+        const amountA = toNano(1)
+        const amountB = amountA * initialRatio // 1 a == 2 b ratio
+
+        const depositor = vaultA.jetton.walletOwner
+
+        const {depositorLpWallet, withdrawLiquidity} = await initWithLiquidity(
+            depositor,
+            amountA,
+            amountB,
+        )
+
+        const lpBalanceAfterFirstLiq = await depositorLpWallet.getJettonBalance()
+        // check that the first liquidity deposit was successful
+        expect(lpBalanceAfterFirstLiq).toBeGreaterThan(0n)
+
+        const withdrawResultWithPayloads = await withdrawLiquidity(
+            lpBalanceAfterFirstLiq,
+            successfulPayloadOnWithdraw,
+        )
+
+        // we have separate unit test that burn works as withdrawal at amm-pool.spec
+        const payoutFromPoolA = findTransactionRequired(withdrawResultWithPayloads.transactions, {
+            from: ammPool.address,
+            to: vaultA.vault.address,
+            op: AmmPool.opcodes.PayoutFromPool,
+            success: true,
+        })
+        const payoutFromPoolABody = flattenTransaction(payoutFromPoolA).body?.beginParse()
+        const parsedPayoutFromPoolABody = loadPayoutFromPool(payoutFromPoolABody!!)
+        expect(parsedPayoutFromPoolABody.payloadToForward).not.toBe(null)
+        expect(parsedPayoutFromPoolABody.payloadToForward!!).toEqualCell(
+            successfulPayloadOnWithdraw,
+        )
+
+        const payoutFromPoolB = findTransactionRequired(withdrawResultWithPayloads.transactions, {
+            from: ammPool.address,
+            to: vaultB.vault.address,
+            op: AmmPool.opcodes.PayoutFromPool,
+            success: true,
+        })
+        const payoutFromPoolBBody = flattenTransaction(payoutFromPoolB).body?.beginParse()
+        const parsedPayoutFromPoolBBody = loadPayoutFromPool(payoutFromPoolBBody!!)
+        expect(parsedPayoutFromPoolBBody.payloadToForward).not.toBe(null)
+        expect(parsedPayoutFromPoolBBody.payloadToForward!!).toEqualCell(
+            successfulPayloadOnWithdraw,
+        )
+    })
 })

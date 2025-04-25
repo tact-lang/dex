@@ -152,13 +152,13 @@ const createLiquidityDepositSetup = (
             await JettonWallet.fromInit(0n, depositor, ammPool.address),
         )
 
-        const withdrawLiquidity = async (amount: bigint) => {
+        const withdrawLiquidity = async (amount: bigint, successfulPayload: Cell | null) => {
             const withdrawResult = await depositorLpWallet.sendBurn(
                 depositorContract.getSender(),
                 toNano(2),
                 amount,
                 depositor,
-                null,
+                successfulPayload,
             )
 
             return withdrawResult
