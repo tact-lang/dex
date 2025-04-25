@@ -104,7 +104,7 @@ contract LPJettonWallet(
     }
 
     receive(msg: JettonBurn) {
-        // we can skip forceBasechain here because with other checks in place it's not possible 
+        // we can skip forceBasechain here because with other checks in place it's not possible
         // to acquire jettons outside of basechain, so amount check is enough
         require(sender() == self.owner, "Incorrect sender");
 

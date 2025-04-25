@@ -2,3 +2,4 @@ yarn lint:es
 yarn spell:check
 yarn fmt:check
 yarn tsc --noEmit
+yarn tact-fmt --check ./src

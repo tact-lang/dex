@@ -4,7 +4,7 @@
         "build:dex": "tact --config ./tact.config.json --project DEX",
         "build:jettons": "tact --config ./tact.config.json --project Jettons",
         "build": "rm -rf sources/output/* && tact --config ./tact.config.json",
-        "lint": "yarn misti ./tact.config.json",
+        "lint": "tact-fmt --check ./sources && yarn misti ./tact.config.json",
         "test": "jest sources/tests",
         "deploy": "ts-node ./sources/scripts/deploy.ts",
         "read": "ts-node ./sources/contract.read.ts",
@@ -14,6 +14,7 @@
         "spell": "cspell \"**/*.{ts,js,json,md,yml,tact}\"",
         "fmt": "yarn prettier -l -w .",
         "fmt:check": "yarn prettier --check .",
+        "fmt:tact": "tact-fmt --write ./sources",
         "deduplicate": "yarn yarn-deduplicate --list --fail"
     },
     "dependencies": {

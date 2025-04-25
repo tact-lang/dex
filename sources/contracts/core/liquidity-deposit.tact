@@ -26,7 +26,6 @@ contract LiquidityDepositContract(
     // 1 - left side is filled
     // 2 - right side is filled
     // 3 - both sides are filled
-
     // These fields are needed to store the payloads from the vaults
     leftAdditionalParams: AdditionalParams?, // Should be deployed with null
     rightAdditionalParams: AdditionalParams?, // Should be deployed with null
