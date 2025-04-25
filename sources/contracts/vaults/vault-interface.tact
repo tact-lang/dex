@@ -6,7 +6,7 @@ struct SwapRequest {
     // We want to specify destination vault here, or destination ammPool
     // Maybe we can even allow to specify anything
     destinationVault: Address;
-    minAmountOut: Int as uint256;
+    minAmountOut: Int as coins;
     // amountIn is part of the jetton notification
     timeout: Int as uint32;
     payloadOnSuccess: Cell? = null;

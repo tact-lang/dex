@@ -1,6 +1,6 @@
 message(0xac2f5a38) SwapIn {
-    amount: Int as uint256;
-    minAmountOut: Int as uint256;
+    amount: Int as coins;
+    minAmountOut: Int as coins;
     timeout: Int as uint32; // Absolute unix timestamp
     swapOutReceiver: Address;
     payloadOnSuccess: Cell? = null;
@@ -9,16 +9,18 @@ message(0xac2f5a38) SwapIn {
 
 message(0x74f7a60) PayoutFromPool {
     otherVault: Address; // For proofing purposes
-    amount: Int as uint256;
+    amount: Int as coins;
     receiver: Address;
     payloadToForward: Cell? = null;
 }
 
-message(0x6752aa52) LiquidityDeposit {
+// We are using USDT-like mint opcode for liquidity deposit
+// So this operation will be nicely displayed in Tonviewer
+message(0x642b7d07) LiquidityDeposit {
     depositor: Address;
     contractId: Int as uint64;
-    leftAmount: Int as uint256;
-    rightAmount: Int as uint256;
+    leftAmount: Int as coins;
+    rightAmount: Int as coins;
     leftAdditionalParams: AdditionalParams;
     rightAdditionalParams: AdditionalParams;
 }

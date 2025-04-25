@@ -3,12 +3,12 @@ import "../math";
 
 message(0xe7a3475f) PartHasBeenDeposited {
     depositor: Address;
-    amount: Int as uint256;
+    amount: Int as coins;
     additionalParams: AdditionalParams;
 }
 
 struct AdditionalParams {
-    minAmountToDeposit: Int as uint256;
+    minAmountToDeposit: Int as coins;
     lpTimeout: Int as uint32;
     payloadOnSuccess: Cell? = null;
     payloadOnFailure: Cell? = null;
@@ -17,8 +17,8 @@ struct AdditionalParams {
 contract LiquidityDepositContract(
     leftVault: Address, // To be deterministic, leftVault address must be less than rightVault address
     rightVault: Address,
-    leftSideAmount: Int as uint256,
-    rightSideAmount: Int as uint256,
+    leftSideAmount: Int as coins,
+    rightSideAmount: Int as coins,
     depositor: Address, // This and the next field are kind of salt, so several similar contracts can exist
     contractId: Int as uint64,
     status: Int as uint3, // Should be deployed with 0.

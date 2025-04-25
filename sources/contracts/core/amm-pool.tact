@@ -108,7 +108,7 @@ contract AmmPool(
         let liquidityTokensToMint = sqrt(leftSideReceived * rightSideReceived);
 
         let forwardPayload = beginCell()
-            .storeUint(0, 1) // Either bit equals 0
+            .storeBit(false) // Either bit equals 0
             .storeMaybeRef(msg.leftAdditionalParams.payloadOnSuccess)
             .storeMaybeRef(msg.rightAdditionalParams.payloadOnSuccess)
             .endCell()
