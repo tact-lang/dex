@@ -9,7 +9,6 @@ struct JettonMasterState {
 
 // 0 - No proof attached, 1 - TEP-89, 2 - StateInit, 3 - State, 4 - Jetton Burn
 inline fun checkProof(jettonMaster: Address, proofType: Int, proof: Slice, msgCell: Cell) {
-    dump(proofType);
     if (proofType == 1) {
         let prooferStateInit = initOf TEP89Proofer(
             jettonMaster,
@@ -17,15 +16,6 @@ inline fun checkProof(jettonMaster: Address, proofType: Int, proof: Slice, msgCe
             sender(),
             null,
         );
-        let prooferAddress = contractAddress(prooferStateInit);
-        dump(sender());
-        dump(prooferAddress);
-        if (sender() == prooferAddress) {
-            dump("Proof has been validated.");
-            // Proof has been validated.
-            return;
-        }
-        dump("Deploying proofer.");
         deploy(DeployParameters {
             mode: SendRemainingValue,
             value: 0,

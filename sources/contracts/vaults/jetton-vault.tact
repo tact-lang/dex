@@ -2,6 +2,7 @@ import "../core/amm-pool";
 import "../math";
 import "./vault-interface";
 import "./proofs/check-proof";
+import "./proofs/tep-89-proofer";
 
 // There are 4 kinds of proof of jettonWallet:
 // 1) TEP-89 proof (discoverable)
@@ -48,7 +49,6 @@ contract JettonVault(
 ) {
     receive(msg: JettonNotifyWithActionRequest) {
         if (self.jettonWallet == null) {
-            dump(666);
             // This function proofs that jetton wallet is valid
             // This function throws if proof is invalid
             checkProof(self.jettonMaster, msg.proofType, msg.proof, msg.toCell());
@@ -60,16 +60,15 @@ contract JettonVault(
             commit();
         }
         require(sender() == self.jettonWallet, "JettonVault: Sender must be jetton wallet");
+        vaultHandlerSelector(msg);
+    }
 
-        if (msg.actionOpcode == SwapRequestOpcode) {
-            handleSwapRequest(msg, SwapRequest.fromCell(msg.actionPayload));
-            return;
-        }
-        else if (msg.actionOpcode == LPDepositPartOpcode) {
-            handleLPDepositPart(msg, LPDepositPart.fromCell(msg.actionPayload));
-            return;
-        }
-        require(false, "JettonVault: Invalid action opcode");
+    // We will receive this message only if TEP-89 proofer will succesfully validate jettonWallet
+    receive(msg: TEP89ProofResponse) {
+        let prooferStateInit = initOf TEP89Proofer(self.jettonMaster, myAddress(), msg.proofedJettonWallet, null);
+        require(prooferStateInit.hasSameBasechainAddress(sender()), "JettonVault: Sender must be a valid proofer");
+        self.jettonWallet = msg.proofedJettonWallet;
+        vaultHandlerSelector(JettonNotifyWithActionRequest.fromCell(msg.action));
     }
 
     receive() {}
@@ -106,8 +105,16 @@ contract JettonVault(
     }
 }
 
-asm fun sliceWithOneZeroBit(): Slice {
-    b{0} PUSHSLICE
+inline fun vaultHandlerSelector(msg: JettonNotifyWithActionRequest) {
+    if (msg.actionOpcode == SwapRequestOpcode) {
+        handleSwapRequest(msg, SwapRequest.fromCell(msg.actionPayload));
+        return;
+    }
+    else if (msg.actionOpcode == LPDepositPartOpcode) {
+        handleLPDepositPart(msg, LPDepositPart.fromCell(msg.actionPayload));
+        return;
+    }
+    require(false, "JettonVault: Invalid action opcode");
 }
 
 inline fun handleSwapRequest(msg: JettonNotifyWithActionRequest, action: SwapRequest) {

@@ -8,6 +8,11 @@ message(0xb6a69dbc) TEP89ProofRequest {
     action: Cell; // Actually it is JettonNotifyWithActionRequest, but is cheaper to store it as Cell
 }
 
+message(0x7a1267fd) TEP89ProofResponse {
+    proofedJettonWallet: Address;
+    action: Cell;
+}
+
 contract TEP89Proofer(
     jettonMaster: Address,
     proofRequester: Address,
@@ -43,7 +48,10 @@ contract TEP89Proofer(
             bounce: false,
             value: 0,
             mode: SendRemainingBalance + SendDestroyIfZero,
-            body: self.action!!, // Send the action to the proof requester
+            body: TEP89ProofResponse {
+                proofedJettonWallet: msg.walletAddress,
+                action: self.action!!,
+            }.toCell(),
         });
     }
 }
