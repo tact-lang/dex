@@ -1,52 +1,16 @@
-import "./liquidityDeposit";
-import "./utils/utils";
-import "./jettons/utils";
-import "./jettons/jetton-wallet";
-
-message(0xac2f5a38) SwapIn {
-    amount: Int as uint256;
-    minAmountOut: Int as uint256;
-    timeout: Int as uint32; // Absolute unix timestamp
-    swapOutReceiver: Address;
-}
-
-message(0x74f7a60) PayoutFromPool {
-    otherVault: Address; // For proofing purposes
-    amount: Int as uint256;
-    receiver: Address;
-}
-
-message(0x6752aa52) LiquidityDeposit {
-    leftAmount: Int as uint256;
-    rightAmount: Int as uint256;
-    depositor: Address;
-    contractId: Int as uint64;
-}
-
-// JettonBurnNotification
-message(0x7bdd97de) LiquidityWithdrawViaBurnNotification {
-    queryId: Int as uint64;
-    amount: Int as coins;
-    sender: Address;
-    responseDestination: Address?;
-}
-
-// For LP tokens minting
-message(0x178d4519) MintViaJettonTransferInternal {
-    queryId: Int as uint64;
-    amount: Int as coins;
-    sender: Address;
-    responseDestination: Address?;
-    forwardTonAmount: Int as coins;
-    forwardPayload: Slice as remaining;
-}
+import "./liquidity-deposit";
+import "./messages";
+import "../utils/utils";
+import "../jettons/utils";
 
 contract AmmPool(
     leftVault: Address,
     rightVault: Address, // To be deterministic, rightVault address must be greater than leftVault address
-    leftSideReserve: Int as uint256, // Should be deployed with 0
-    rightSideReserve: Int as uint256, // Should be deployed with 0
-    // LP tokens-related fields
+    // Amount of tokens are stored as coins, as all minted TONs can be stored as coins
+    // And Jetton TEP-74 also uses coins for amount
+    leftSideReserve: Int as coins, // Should be deployed with 0
+    rightSideReserve: Int as coins, // Should be deployed with 0
+    // LP tokens-related field
     totalSupply: Int as coins, // Should be deployed with 0
 ) {
     receive() {}
@@ -60,24 +24,45 @@ contract AmmPool(
             msg.depositor,
             msg.contractId,
             0,
+            null,
+            null,
         );
 
-        require(liquidityDepositContractInit.hasSameBasechainAddress(sender()), "Liquidity provider should be liquidity contract");
-        require(msg.leftAmount > 0, "You can't add 0 tokens on one side");
+        require(liquidityDepositContractInit.hasSameBasechainAddress(sender()), "Pool: Liquidity provider should be liquidity contract");
+        require(msg.leftAmount > 0, "Pool: You can't add 0 tokens on one side");
 
         let leftSideReceived = msg.leftAmount;
         let rightSideReceived = msg.rightAmount;
         // Both sides are 0 in this case.
+        if (now() > max(msg.leftAdditionalParams.lpTimeout, msg.rightAdditionalParams.lpTimeout)) {
+            self.failLiquidityProvision(msg);
+            require(false, "Pool: Liquidity provision failed due to timeout");
+        }
+
+        require(
+            (self.leftSideReserve == 0) ==
+            (self.rightSideReserve == 0),
+            "Pool: INVARIANT BROKEN",
+        );
         if (self.leftSideReserve == 0) {
-            // TODO: check bug here
             self.leftSideReserve = msg.leftAmount;
             self.rightSideReserve = msg.rightAmount;
         } else {
             // Liquidity provide contract does not allow to add 0 tokens on one side.
             // Probably the rate has changed, so we must return extra tokens.
-            if (msg.rightAmount / msg.leftAmount > self.rightSideReserve / self.leftSideReserve) {
+
+            // We can multiply without overflow, as coins are have 120 bits precision, so coins * coins < 2^256 and we will never overflow
+            if (msg.rightAmount * self.leftSideReserve > self.rightSideReserve * msg.leftAmount) {
                 let expectedRightAmount = muldiv(msg.leftAmount, self.rightSideReserve, self.leftSideReserve);
                 rightSideReceived = expectedRightAmount;
+
+                // Slippage is too high, we need to decline liquidity provision and return all tokens
+                if (rightSideReceived < msg.rightAdditionalParams.minAmountToDeposit) {
+                    // We can't reuse returnFunds function because we need to return both sides
+                    self.failLiquidityProvision(msg);
+                    require(false, "Pool: Liquidity provision failed due to slippage on right side");
+                }
+
                 message(MessageParameters {
                     // TODO: think about the value here and in lp minting
                     value: context().value / 2,
@@ -87,16 +72,30 @@ contract AmmPool(
                         otherVault: self.leftVault,
                         amount: msg.rightAmount - expectedRightAmount,
                         receiver: msg.depositor,
+                        // TODO: Maybe we don't need to forward any payload here?
+                        // Or we can even forward both payloads?
+                        payloadToForward: msg.rightAdditionalParams.payloadOnSuccess,
                     }.toCell(),
                 });
             } else {
                 let expectedLeftAmount = muldiv(msg.rightAmount, self.leftSideReserve, self.rightSideReserve);
                 leftSideReceived = expectedLeftAmount;
+
+                if (leftSideReceived < msg.leftAdditionalParams.minAmountToDeposit) {
+                    // We can't reuse returnFunds function because we need to return both sides
+                    self.failLiquidityProvision(msg);
+                    require(false, "Pool: Liquidity provision failed due to slippage on left side");
+                }
+
                 message(MessageParameters {
                     value: context().value / 2,
                     mode: SendPayFwdFeesSeparately,
                     to: self.leftVault,
+                    bounce: false,
                     body: PayoutFromPool {
+                        // TODO: Maybe we don't need to forward any payload here?
+                        // Or we can even forward both payloads?
+                        payloadToForward: msg.leftAdditionalParams.payloadOnSuccess,
                         otherVault: self.rightVault,
                         amount: msg.leftAmount - expectedLeftAmount,
                         receiver: msg.depositor,
@@ -108,11 +107,12 @@ contract AmmPool(
         // TODO Consider checking overflow
         let liquidityTokensToMint = sqrt(leftSideReceived * rightSideReceived);
 
-        self.totalSupply += liquidityTokensToMint;
-
-        // TODO: We should add custom payload to the messages
-        let forwardPayload = beginCell().storeUint(0, 1).storeUint(0, 64).endCell().beginParse();
-        checkEitherForwardPayload(forwardPayload);
+        let forwardPayload = beginCell()
+            .storeBit(false) // Either bit equals 0
+            .storeMaybeRef(msg.leftAdditionalParams.payloadOnSuccess)
+            .storeMaybeRef(msg.rightAdditionalParams.payloadOnSuccess)
+            .endCell()
+            .beginParse();
 
         self.totalSupply += liquidityTokensToMint;
 
@@ -127,7 +127,7 @@ contract AmmPool(
                 amount: liquidityTokensToMint,
                 sender: myAddress(),
                 responseDestination: msg.depositor,
-                forwardTonAmount: 0, // TODO: We should maximize forwardTonAmount, and attach custom payload to the messages
+                forwardTonAmount: 1, // TODO: We should maximize forwardTonAmount
                 forwardPayload: forwardPayload,
             }.toCell(),
         });
@@ -138,7 +138,7 @@ contract AmmPool(
         let wallet = getJettonBasechainWalletByOwner(msg.sender);
 
         // Workchain 0 is basechain
-        require(sender.workchain == Basechain && sender.address == wallet.hash!!, "Invalid sender of JettonBurn notification");
+        require(sender.workchain == Basechain && sender.address == wallet.hash!!, "Pool: Invalid sender of JettonBurn notification");
 
         let amountOfLeftToPay = muldiv(msg.amount, self.leftSideReserve, self.totalSupply);
         let amountOfRightToPay = muldiv(msg.amount, self.rightSideReserve, self.totalSupply);
@@ -157,6 +157,7 @@ contract AmmPool(
                 otherVault: self.rightVault,
                 amount: amountOfLeftToPay,
                 receiver: msg.sender,
+                payloadToForward: msg.forwardPayload,
             }.toCell(),
         });
 
@@ -168,6 +169,7 @@ contract AmmPool(
                 otherVault: self.leftVault,
                 amount: amountOfRightToPay,
                 receiver: msg.sender,
+                payloadToForward: msg.forwardPayload,
             }.toCell(),
         });
     }
@@ -180,7 +182,7 @@ contract AmmPool(
         let sender = sender();
 
         // We use require if situations that should never be possible
-        require(sender == self.leftVault || sender == self.rightVault, "Sender must be a vault");
+        require(sender == self.leftVault || sender == self.rightVault, "Pool: Sender must be a vault");
 
         let inVault = emptyAddress();
         let outVault = emptyAddress();
@@ -204,13 +206,13 @@ contract AmmPool(
         // TODO: Need to add block functionality (for exact-time listings)
 
         if (inBalance == 0 || outBalance == 0) {
-            returnFunds(msg.swapOutReceiver, outVault, msg.amount);
-            require(false, "No liquidity in pool");
+            returnFunds(msg.swapOutReceiver, outVault, msg.amount, msg.payloadOnFailure);
+            require(false, "Pool: No liquidity in pool");
         }
 
         if (msg.timeout > 0 && now() > msg.timeout) {
-            returnFunds(msg.swapOutReceiver, outVault, msg.amount);
-            require(false, "Swap timeout");
+            returnFunds(msg.swapOutReceiver, outVault, msg.amount, msg.payloadOnFailure);
+            require(false, "Pool: Swap timeout");
         }
 
         // TODO: Test, that muldiv for msg.amount >= 0, 1000 - self.PoolFee >= 0 does not produce negative result
@@ -223,8 +225,8 @@ contract AmmPool(
         let amountToPay = outBalance - newAmountOut;
 
         if (amountToPay < msg.minAmountOut) {
-            returnFunds(msg.swapOutReceiver, outVault, msg.amount);
-            require(false, "Amount out is less than minAmountOut");
+            returnFunds(msg.swapOutReceiver, outVault, msg.amount, msg.payloadOnFailure);
+            require(false, "Pool: Amount out is less than minAmountOut");
         }
 
         message(MessageParameters {
@@ -235,6 +237,7 @@ contract AmmPool(
                 otherVault: inVault,
                 amount: amountToPay,
                 receiver: msg.swapOutReceiver,
+                payloadToForward: msg.payloadOnSuccess,
             }.toCell(),
         });
 
@@ -281,30 +284,36 @@ contract AmmPool(
         let newAmountOut = muldiv(outBalance, inBalance, newAmountIn);
         return outBalance - newAmountOut;
     }
-}
 
-inline fun returnFunds(receiver: Address, otherVault: Address, amount: Int) {
-    message(MessageParameters {
-        to: sender(),
-        value: 0,
-        mode: SendRemainingValue,
-        body: PayoutFromPool {
-            otherVault: otherVault,
-            amount: amount,
-            receiver: receiver,
-        }.toCell(),
-    });
-    commit();
-}
-
-inline fun getJettonWalletInit(address: Address): StateInit {
-    return initOf JettonWallet(0, address, myAddress());
-}
-
-inline fun getJettonWalletByOwner(jettonWalletOwner: Address): Address {
-    return contractAddress(getJettonWalletInit(jettonWalletOwner));
-}
-
-inline fun getJettonBasechainWalletByOwner(jettonWalletOwner: Address): BasechainAddress {
-    return contractBasechainAddress(getJettonWalletInit(jettonWalletOwner));
+    inline fun failLiquidityProvision(msg: LiquidityDeposit) {
+        let halfOfMsgValue = context().value / 2;
+        // TODO: Maybe nativeReserve() here?
+        // nativeReserve(myStorageDue(), ReserveAddOriginalBalance | ReserveExact);
+        // Check tha sample above
+        message(MessageParameters {
+            to: self.leftVault,
+            value: halfOfMsgValue,
+            bounce: false,
+            mode: SendDefaultMode | SendIgnoreErrors,
+            body: PayoutFromPool {
+                otherVault: self.rightVault,
+                amount: msg.rightAmount,
+                receiver: msg.depositor,
+                payloadToForward: msg.leftAdditionalParams.payloadOnFailure,
+            }.toCell(),
+        });
+        message(MessageParameters {
+            to: self.rightVault,
+            value: halfOfMsgValue,
+            bounce: false,
+            mode: SendDefaultMode | SendIgnoreErrors,
+            body: PayoutFromPool {
+                otherVault: self.leftVault,
+                amount: msg.leftAmount,
+                receiver: msg.depositor,
+                payloadToForward: msg.rightAdditionalParams.payloadOnFailure,
+            }.toCell(),
+        });
+        commit();
+    }
 }

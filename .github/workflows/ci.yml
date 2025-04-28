@@ -59,8 +59,12 @@ jobs:
       - name: Build
         run: yarn build
 
-      #  - name: Check for yarn.lock changes
-      #    run: git diff --exit-code yarn.lock
+      # Commented, since we are working with upstream Tact, and codestyle in formatter is different there
+      # - name: Run Tact formatter
+      #   run: yarn tact-fmt --check ./sources
+
+      - name: Check for yarn.lock changes
+        run: git diff --exit-code yarn.lock
 
       - name: Check for duplicates in yarn.lock
         run: yarn deduplicate

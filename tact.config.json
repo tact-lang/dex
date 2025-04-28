@@ -2,7 +2,7 @@
     "projects": [
         {
             "name": "DEX",
-            "path": "./sources/contracts/vaults/jettonVault.tact",
+            "path": "./sources/contracts/vaults/jetton-vault.tact",
             "output": "./sources/output",
             "mode": "full",
             "options": {
