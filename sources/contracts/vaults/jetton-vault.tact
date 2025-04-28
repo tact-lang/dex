@@ -63,7 +63,7 @@ contract JettonVault(
         vaultHandlerSelector(msg);
     }
 
-    // We will receive this message only if TEP-89 proofer will succesfully validate jettonWallet
+    // We will receive this message only if TEP-89 proofer will successfully validate jettonWallet
     receive(msg: TEP89ProofResponse) {
         let prooferStateInit = initOf TEP89Proofer(self.jettonMaster, myAddress(), msg.proofedJettonWallet, null);
         require(prooferStateInit.hasSameBasechainAddress(sender()), "JettonVault: Sender must be a valid proofer");
