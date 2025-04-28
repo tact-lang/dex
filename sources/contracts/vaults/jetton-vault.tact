@@ -1,12 +1,13 @@
 import "../core/amm-pool";
-import "../utils/calculate-jetton-wallet";
 import "../math";
 import "./vault-interface";
+import "./proofs/check-proof";
 
-struct JettonMasterState {
-    jettonMasterCode: Cell?;
-    jettonMasterData: Cell?;
-}
+// There are 4 kinds of proof of jettonWallet:
+// 1) TEP-89 proof (discoverable)
+// 2) StateInit proof (for non-vanity jettons)
+// 3) State proof for vanity jettons (Proof for block)
+// 4) Jetton Burn proof (We try to burn 0 jettons and wait for excess from JettonMaster)
 
 // TEP-74 JettonNotify, but with forwardPayload serialized as expected fields
 message(0x7362d09c) JettonNotifyWithActionRequest {
@@ -14,9 +15,10 @@ message(0x7362d09c) JettonNotifyWithActionRequest {
     amount: Int as coins;
     sender: Address;
     eitherBit: Bool; // Should be 0, so other fields are stored inline
-    init: JettonMasterState; // 2 refs max
     actionOpcode: Int as uint32;
     actionPayload: Cell; // Obligatory ref
+    proofType: Int as uint8; // 0 - No proof attached, 1 - TEP-89, 2 - StateInit, 3 - State, 4 - Jetton Burn
+    proof: Slice as remaining;
 }
 
 // TEP-74 JettonTransfer with better DEX naming
@@ -30,45 +32,49 @@ message(0xf8a7ea5) SendViaJettonTransfer {
     forwardPayload: Slice as remaining;
 }
 
+// TODO: Kind of hack for now, blocked by https://github.com/tact-lang/tact/issues/2496
+asm fun saveState(jettonWallet: Address?, jettonMaster: Address) {
+    NEWC
+    STSLICE
+    STSLICE
+    ENDC
+    c4 POP
+}
+
 // First sender proves that it sent the correct jetton via attaching the jetton master init state
 contract JettonVault(
     jettonMaster: Address,
-    inited: Bool, // Should be deployed with false
     jettonWallet: Address?, // Should be deployed with null
 ) {
     receive(msg: JettonNotifyWithActionRequest) {
-        if (!self.inited) {
-            // Theoretically, data can be null, but I think it's not possible, so we won't accept such jettons
-            if (msg.init.jettonMasterCode != null && msg.init.jettonMasterData != null) {
-                // on-chain hack, dependent on the jetton minter state init
-                let myJettonWallet = calculateJettonWallet(myAddress(), msg.init.jettonMasterData, msg.init.jettonMasterCode, self.jettonMaster);
+        if (self.jettonWallet == null) {
+            dump(666);
+            // This function proofs that jetton wallet is valid
+            // This function throws if proof is invalid
+            checkProof(self.jettonMaster, msg.proofType, msg.proof, msg.toCell());
+            self.jettonWallet = sender();
+            // There is no sense to bounce, as Jettons won't be sent back
+            // However, we can save jettonWallet address to the storage, as the proof succeeded
 
-                if (myJettonWallet == sender() &&
-                    contractAddress(StateInit {
-                        code: msg.init.jettonMasterCode!!,
-                        data: msg.init.jettonMasterData!!,
-                    }) == self.jettonMaster) {
-                    self.inited = true;
-                    self.jettonWallet = myJettonWallet;
-                }
-            }
+            saveState(self.jettonWallet, self.jettonMaster);
+            commit();
         }
-        require(self.inited, "JettonVault: Not inited");
         require(sender() == self.jettonWallet, "JettonVault: Sender must be jetton wallet");
 
         if (msg.actionOpcode == SwapRequestOpcode) {
             handleSwapRequest(msg, SwapRequest.fromCell(msg.actionPayload));
+            return;
         }
-        if (msg.actionOpcode == LPDepositPartOpcode) {
+        else if (msg.actionOpcode == LPDepositPartOpcode) {
             handleLPDepositPart(msg, LPDepositPart.fromCell(msg.actionPayload));
+            return;
         }
+        require(false, "JettonVault: Invalid action opcode");
     }
 
     receive() {}
 
     receive(msg: PayoutFromPool) {
-        require(self.inited, "JettonVault: Not inited");
-
         let sortedAddresses = sortAddresses(myAddress(), msg.otherVault);
         let poolInit = initOf AmmPool(sortedAddresses.lower, sortedAddresses.higher, 0, 0, 0);
 
@@ -92,7 +98,7 @@ contract JettonVault(
     }
 
     get fun inited(): Bool {
-        return self.inited;
+        return self.jettonWallet != null;
     }
 
     get fun jettonWallet(): Address? {

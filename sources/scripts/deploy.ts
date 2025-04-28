@@ -129,8 +129,6 @@ const main = async () => {
         deployerWallet.address,
         0n,
         0n,
-        null,
-        null,
     )
     const LPprovider = client.open(LPproviderContract)
 

@@ -55,9 +55,7 @@ const createJetton = async (blockchain: Blockchain) => {
 export const createJettonVault = async (blockchain: Blockchain) => {
     const jetton = await createJetton(blockchain)
 
-    const vault = blockchain.openContract(
-        await JettonVault.fromInit(jetton.minter.address, false, null),
-    )
+    const vault = blockchain.openContract(await JettonVault.fromInit(jetton.minter.address, null))
 
     const deploy = async () => {
         const vaultDeployResult = await vault.send(

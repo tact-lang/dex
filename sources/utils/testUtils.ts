@@ -1,4 +1,4 @@
-import {Address, beginCell, Cell, storeTransaction, Transaction} from "@ton/core"
+import {Address, beginCell, Builder, Cell, storeTransaction, Transaction} from "@ton/core"
 import {
     SwapRequest,
     storeSwapRequest,
@@ -32,18 +32,47 @@ export function serializeTransactionsList(transactions: any[]): string {
     return JSON.stringify(dump, null, 2)
 }
 
-function createJettonVaultMessage(
-    opcode: bigint,
-    payload: Cell,
-    proofCode: Cell | undefined,
-    proofData: Cell | undefined,
-) {
+export type NoProof = {
+    $$type: "NoProof"
+    proofType: 0n
+}
+
+export type TEP89Proof = {
+    $$type: "TEP89Proof"
+    proofType: 1n
+}
+
+export type StateInitProof = {
+    $$type: "StateInitProof"
+    proofType: 2n
+    code: Cell
+    data: Cell
+}
+
+export type Proof = NoProof | TEP89Proof | StateInitProof
+
+function storeProof(proof: Proof) {
+    return (b: Builder) => {
+        b.storeUint(proof.proofType, 8)
+        switch (proof.$$type) {
+            case "NoProof":
+                break
+            case "TEP89Proof":
+                break
+            case "StateInitProof":
+                b.storeMaybeRef(proof.code)
+                b.storeMaybeRef(proof.data)
+                break
+        }
+    }
+}
+
+export function createJettonVaultMessage(opcode: bigint, payload: Cell, proof: Proof) {
     return beginCell()
         .storeUint(0, 1) // Either bit
-        .storeMaybeRef(proofCode)
-        .storeMaybeRef(proofData)
         .storeUint(opcode, 32)
         .storeRef(payload)
+        .store(storeProof(proof))
         .endCell()
 }
 
@@ -67,8 +96,10 @@ export function createJettonVaultSwapRequest(
         SwapRequestOpcode,
         beginCell().store(storeSwapRequest(swapRequest)).endCell(),
         // This function does not specify proof code and data as there is no sense to swap anything without ever providing a liquidity.
-        undefined,
-        undefined,
+        {
+            $$type: "NoProof",
+            proofType: 0n,
+        },
     )
 }
 
@@ -81,6 +112,20 @@ export function createJettonVaultLiquidityDepositPayload(
     payloadOnSuccess: Cell | null = null,
     payloadOnFailure: Cell | null = null,
 ) {
+    let proof: Proof
+    if (proofCode && proofData) {
+        proof = {
+            $$type: "StateInitProof",
+            proofType: 2n,
+            code: proofCode,
+            data: proofData,
+        }
+    } else {
+        proof = {
+            $$type: "NoProof",
+            proofType: 0n,
+        }
+    }
     return createJettonVaultMessage(
         LPDepositPartOpcode,
         beginCell()
@@ -98,7 +143,6 @@ export function createJettonVaultLiquidityDepositPayload(
                 }),
             )
             .endCell(),
-        proofCode,
-        proofData,
+        proof,
     )
 }
