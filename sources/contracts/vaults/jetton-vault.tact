@@ -2,6 +2,9 @@ import "../core/amm-pool";
 import "../utils/calculate-jetton-wallet";
 import "../math";
 import "./vault-interface";
+import "../core/messages.tact";
+// for compilation
+import "./ton-vault.tact";
 
 struct JettonMasterState {
     jettonMasterCode: Cell?;
@@ -35,7 +38,7 @@ contract JettonVault(
     jettonMaster: Address,
     inited: Bool, // Should be deployed with false
     jettonWallet: Address?, // Should be deployed with null
-) {
+) with VaultInterface {
     receive(msg: JettonNotifyWithActionRequest) {
         if (!self.inited) {
             // Theoretically, data can be null, but I think it's not possible, so we won't accept such jettons
@@ -66,7 +69,7 @@ contract JettonVault(
 
     receive() {}
 
-    receive(msg: PayoutFromPool) {
+    override fun handlePayout(msg: PayoutFromPool) {
         require(self.inited, "JettonVault: Not inited");
 
         let sortedAddresses = sortAddresses(myAddress(), msg.otherVault);
