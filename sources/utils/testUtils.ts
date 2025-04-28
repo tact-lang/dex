@@ -113,7 +113,7 @@ export function createJettonVaultLiquidityDepositPayload(
     payloadOnFailure: Cell | null = null,
 ) {
     let proof: Proof
-    if (proofCode && proofData) {
+    if (proofCode !== undefined && proofData !== undefined) {
         proof = {
             $$type: "StateInitProof",
             proofType: 2n,

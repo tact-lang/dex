@@ -40,6 +40,7 @@ inline fun checkProof(jettonMaster: Address, proofType: Int, proof: Slice, msgCe
             }) == jettonMaster,
             "JettonVault: StateInit proof is invalid",
         );
+        return;
     } else if (proofType == 3) {
         require(false, "JettonVault: State proof is not supported");
         return;
