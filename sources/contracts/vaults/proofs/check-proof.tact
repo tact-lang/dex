@@ -2,7 +2,6 @@ import "./tep-89-proofer.tact";
 import "./tep-89-proofer";
 import "./calculate-jetton-wallet";
 
-
 struct JettonMasterState {
     jettonMasterCode: Cell?;
     jettonMasterData: Cell?;
@@ -21,27 +20,26 @@ inline fun checkProof(jettonMaster: Address, proofType: Int, proof: Slice, msgCe
         let prooferAddress = contractAddress(prooferStateInit);
         dump(sender());
         dump(prooferAddress);
-        if(sender() == prooferAddress) {
+        if (sender() == prooferAddress) {
             dump("Proof has been validated.");
             // Proof has been validated.
             return;
         }
         dump("Deploying proofer.");
-        deploy(DeployParameters{
+        deploy(DeployParameters {
             mode: SendRemainingValue,
             value: 0,
             // Doesn't really matter, so just for consistency - all internal protocol messages are not bounceable
             bounce: false,
             init: prooferStateInit,
-            body: TEP89ProofRequest{
+            body: TEP89ProofRequest {
                 jettonMaster,
                 possibleJettonWallet: sender(),
                 action: msgCell,
             }.toCell(),
         });
         throw(0);
-    }
-    else if (proofType == 2) {
+    } else if (proofType == 2) {
         let init = JettonMasterState.fromSlice(proof);
         let myJettonWallet = calculateJettonWallet(myAddress(), init.jettonMasterData, init.jettonMasterCode, jettonMaster);
         require(
@@ -52,12 +50,10 @@ inline fun checkProof(jettonMaster: Address, proofType: Int, proof: Slice, msgCe
             }) == jettonMaster,
             "JettonVault: StateInit proof is invalid",
         );
-    }
-    else if (proofType == 3) {
+    } else if (proofType == 3) {
         require(false, "JettonVault: State proof is not supported");
         return;
-    }
-    else if (proofType == 4) {
+    } else if (proofType == 4) {
         require(false, "JettonVault: Burn proof is not supported");
         return;
     }

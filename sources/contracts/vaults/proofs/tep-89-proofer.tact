@@ -8,7 +8,6 @@ message(0xb6a69dbc) TEP89ProofRequest {
     action: Cell; // Actually it is JettonNotifyWithActionRequest, but is cheaper to store it as Cell
 }
 
-
 contract TEP89Proofer(
     jettonMaster: Address,
     proofRequester: Address,
@@ -20,31 +19,31 @@ contract TEP89Proofer(
         self.action = msg.action;
         self.possibleJettonWallet = msg.possibleJettonWallet;
         self.jettonMaster = msg.jettonMaster;
-        message(MessageParameters{
+        message(MessageParameters {
             to: msg.jettonMaster,
             bounce: true, // So we can save some tons (we won't pay storage fees for JettonMaster)
             value: 0,
             mode: SendRemainingValue,
-            body: ProvideWalletAddress{
+            body: ProvideWalletAddress {
                 queryId: 0,
                 ownerAddress: self.proofRequester,
                 // We could ask to provide address, but it is cheaper to store it in data
-                includeAddress: false, 
+                includeAddress: false,
             }.toCell(),
-        })
+        });
     }
 
     receive(msg: TakeWalletAddress) {
         require(sender() == self.jettonMaster, "TEP89 proof: TakeWalletAddress must be sent by the jetton master");
         require(msg.walletAddress == self.possibleJettonWallet, "TEP89 proof: Wallet address does not match");
         // Jetton wallet is valid, we can send the action
-        message(MessageParameters{
+        message(MessageParameters {
             to: self.proofRequester,
             // We don't need to bounce, because we will destroy the contract after sending the message
             bounce: false,
             value: 0,
             mode: SendRemainingBalance + SendDestroyIfZero,
             body: self.action!!, // Send the action to the proof requester
-        })
+        });
     }
 }
