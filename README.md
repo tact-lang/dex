@@ -4,16 +4,16 @@ A decentralized exchange (DEX) on the TON blockchain providing efficient exchang
 
 ## Project Goals
 
-- Creating a flexible decentralized exchange for the TON blockchain
-- Providing an efficient and secure token exchange mechanism
+- Creating a state-of-the-art fully open-source decentralized exchange (DEX)
 - Minimizing commission costs through optimized architecture
+- Providing a real-world example of a complex system of smart contracts, written in Tact
+- Providing an example of safe and complex Jettons interaction
 
 ## Project Scope
 
 - Smart contracts for Vaults of various asset types
 - Automated Market Maker (AMM) Pool contracts
 - Contracts for secure liquidity addition
-- Implementation of interfaces for interaction between components
 
 ## DEX Architecture
 
@@ -242,6 +242,7 @@ graph LR
 
 ## Key Features
 
+- **Tact based**: Easy to read and understand code, with a focus on safety and security
 - **Asset Abstraction**: Vault is a contract, that stores any kind of an Asset (TON, Jetton, Extra Currency, etc.). All other contracts stores Vaults addresses.
 - **Cheap Cross-pool swaps**: This architecture allows to easily perform cross-pool swaps with very low network fees.
 - **AMM (Automated Market Maker)**: Using constant product formula for exchange rate determination
