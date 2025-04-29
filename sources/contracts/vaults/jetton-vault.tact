@@ -60,7 +60,7 @@ contract JettonVault(
             commit();
         }
         require(sender() == self.jettonWallet, "JettonVault: Sender must be jetton wallet");
-        vaultHandlerSelector(msg);
+        actionHandler(msg);
     }
 
     // We will receive this message only if TEP-89 proofer will successfully validate jettonWallet
@@ -68,7 +68,7 @@ contract JettonVault(
         let prooferStateInit = initOf TEP89Proofer(self.jettonMaster, myAddress(), msg.proofedJettonWallet, null);
         require(prooferStateInit.hasSameBasechainAddress(sender()), "JettonVault: Sender must be a valid proofer");
         self.jettonWallet = msg.proofedJettonWallet;
-        vaultHandlerSelector(JettonNotifyWithActionRequest.fromCell(msg.action));
+        actionHandler(JettonNotifyWithActionRequest.fromCell(msg.action));
     }
 
     receive() {}
@@ -105,7 +105,7 @@ contract JettonVault(
     }
 }
 
-inline fun vaultHandlerSelector(msg: JettonNotifyWithActionRequest) {
+inline fun actionHandler(msg: JettonNotifyWithActionRequest) {
     if (msg.actionOpcode == SwapRequestOpcode) {
         handleSwapRequest(msg, SwapRequest.fromCell(msg.actionPayload));
         return;
