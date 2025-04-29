@@ -51,13 +51,8 @@ describe("Liquidity deposit", () => {
 
         const blockchain = await Blockchain.create()
 
-        const {
-            ammPool,
-            vaultA,
-            vaultB,
-            liquidityDepositSetup,
-            isSwapped: isSwaped,
-        } = await createJettonAmmPool(blockchain)
+        const {ammPool, vaultA, vaultB, liquidityDepositSetup, isSwapped} =
+            await createJettonAmmPool(blockchain)
 
         const poolState = (await blockchain.getContract(ammPool.address)).accountState?.type
         expect(poolState === "uninit" || poolState === undefined).toBe(true)
@@ -92,7 +87,7 @@ describe("Liquidity deposit", () => {
         // add liquidity to vaultA
         const vaultALiquidityAddResult = await vaultA.addLiquidity(
             liqSetup.liquidityDeposit.address,
-            isSwaped ? amountB : amountA,
+            isSwapped ? amountB : amountA,
         )
 
         expect(vaultALiquidityAddResult.transactions).toHaveTransaction({
@@ -113,7 +108,7 @@ describe("Liquidity deposit", () => {
         // add liquidity to vaultB
         const vaultBLiquidityAddResult = await vaultB.addLiquidity(
             liqSetup.liquidityDeposit.address,
-            isSwaped ? amountA : amountB,
+            isSwapped ? amountA : amountB,
         )
 
         expect(vaultBLiquidityAddResult.transactions).toHaveTransaction({
@@ -144,8 +139,8 @@ describe("Liquidity deposit", () => {
         const sortedWithAmounts = sortAddresses(
             vaultA.vault.address,
             vaultB.vault.address,
-            isSwaped ? amountB : amountA,
-            isSwaped ? amountA : amountB,
+            isSwapped ? amountB : amountA,
+            isSwapped ? amountA : amountB,
         )
         expect(leftSide).toBe(sortedWithAmounts.leftAmount)
         expect(rightSide).toBe(sortedWithAmounts.rightAmount)
@@ -170,7 +165,7 @@ describe("Liquidity deposit", () => {
             ammPool,
             vaultA,
             vaultB,
-            isSwapped: isSwaped,
+            isSwapped,
             sorted,
             liquidityDepositSetup,
             initWithLiquidity,
@@ -208,7 +203,7 @@ describe("Liquidity deposit", () => {
         // both vaults are already deployed so we can just add next liquidity
         const vaultALiquidityAddResultBadRatio = await vaultA.addLiquidity(
             liqSetupBadRatio.liquidityDeposit.address,
-            isSwaped ? amountBBadRatio : amountABadRatio,
+            isSwapped ? amountBBadRatio : amountABadRatio,
         )
 
         expect(vaultALiquidityAddResultBadRatio.transactions).toHaveTransaction({
@@ -230,7 +225,7 @@ describe("Liquidity deposit", () => {
         // 5. More LP jettons are minted
         const vaultBLiquidityAddResultBadRatio = await vaultB.addLiquidity(
             liqSetupBadRatio.liquidityDeposit.address,
-            isSwaped ? amountABadRatio : amountBBadRatio,
+            isSwapped ? amountABadRatio : amountBBadRatio,
         )
 
         // it is tx #2

@@ -16,11 +16,11 @@ describe("Payloads", () => {
             vaultA: swappedVaultA,
             vaultB: swappedVaultB,
             initWithLiquidity,
-            isSwapped: isSwaped,
+            isSwapped,
             swap,
         } = await createJettonAmmPool(blockchain)
 
-        const {vaultA, vaultB} = isSwaped
+        const {vaultA, vaultB} = isSwapped
             ? {vaultA: swappedVaultB, vaultB: swappedVaultA}
             : {vaultA: swappedVaultA, vaultB: swappedVaultB}
 
@@ -89,11 +89,11 @@ describe("Payloads", () => {
             vaultA: swappedVaultA,
             vaultB: swappedVaultB,
             initWithLiquidity,
-            isSwapped: isSwaped,
+            isSwapped,
             swap,
         } = await createJettonAmmPool(blockchain)
 
-        const {vaultA, vaultB} = isSwaped
+        const {vaultA, vaultB} = isSwapped
             ? {vaultA: swappedVaultB, vaultB: swappedVaultA}
             : {vaultA: swappedVaultA, vaultB: swappedVaultB}
 
@@ -149,11 +149,11 @@ describe("Payloads", () => {
             vaultA: swappedVaultA,
             vaultB: swappedVaultB,
             initWithLiquidity,
-            isSwapped: isSwaped,
+            isSwapped,
             swap,
         } = await createJettonAmmPool(blockchain)
 
-        const {vaultA, vaultB} = isSwaped
+        const {vaultA, vaultB} = isSwapped
             ? {vaultA: swappedVaultB, vaultB: swappedVaultA}
             : {vaultA: swappedVaultA, vaultB: swappedVaultB}
 

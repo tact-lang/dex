@@ -15,10 +15,10 @@ describe("Amm pool", () => {
             vaultB: swappedVaultB,
             initWithLiquidity,
             swap,
-            isSwapped: isSwaped,
+            isSwapped,
         } = await createJettonAmmPool(blockchain)
 
-        const {vaultA, vaultB} = isSwaped
+        const {vaultA, vaultB} = isSwapped
             ? {vaultA: swappedVaultB, vaultB: swappedVaultA}
             : {vaultA: swappedVaultA, vaultB: swappedVaultB}
 
@@ -79,10 +79,10 @@ describe("Amm pool", () => {
             vaultB: swappedVaultB,
             initWithLiquidity,
             swap,
-            isSwapped: isSwaped,
+            isSwapped,
         } = await createJettonAmmPool(blockchain)
 
-        const {vaultA, vaultB} = isSwaped
+        const {vaultA, vaultB} = isSwapped
             ? {vaultA: swappedVaultB, vaultB: swappedVaultA}
             : {vaultA: swappedVaultA, vaultB: swappedVaultB}
 
