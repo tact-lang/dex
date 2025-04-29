@@ -291,18 +291,105 @@ describe("Liquidity deposit", () => {
     test("should correctly deposit liquidity from jetton vault and ton vault", async () => {
         const blockchain = await Blockchain.create()
 
-        const {vaultB, initWithLiquidity} = await createTonJettonAmmPool(blockchain)
+        const {ammPool, vaultA, vaultB, liquidityDepositSetup, isSwapped} =
+            await createTonJettonAmmPool(blockchain)
+
+        const poolState = (await blockchain.getContract(ammPool.address)).accountState?.type
+        expect(poolState === "uninit" || poolState === undefined).toBe(true)
 
         // deploy liquidity deposit contract
-        const initialRatio = 10n
-
-        const amountA = toNano(5)
-        const amountB = amountA * initialRatio // 1 a == 2 b ratio
+        const amountA = toNano(1)
+        const amountB = toNano(2) // 1 a == 2 b ratio
 
         const depositor = vaultB.treasury.walletOwner
-        const {depositorLpWallet} = await initWithLiquidity(depositor, amountA, amountB)
-        const lpBalanceAfterFirstLiq = await depositorLpWallet.getJettonBalance()
-        // check that liquidity deposit was successful
-        expect(lpBalanceAfterFirstLiq).toBeGreaterThan(0n)
+
+        const liqSetup = await liquidityDepositSetup(depositor, amountA, amountB)
+
+        const liqDepositDeployResult = await liqSetup.deploy()
+
+        expect(liqDepositDeployResult.transactions).toHaveTransaction({
+            success: true,
+            deploy: true,
+        })
+
+        // deploy vaultA
+        const vaultADeployResult = await vaultA.deploy()
+        // under the hood ?
+        expect(vaultADeployResult.transactions).toHaveTransaction({
+            success: true,
+            deploy: true,
+        })
+
+        // add liquidity to vaultA
+        const vaultALiquidityAddResult = await vaultA.addLiquidity(
+            liqSetup.liquidityDeposit.address,
+            isSwapped ? amountB : amountA,
+        )
+
+        expect(vaultALiquidityAddResult.transactions).toHaveTransaction({
+            from: vaultA.vault.address,
+            to: liqSetup.liquidityDeposit.address,
+            op: LiquidityDepositContract.opcodes.PartHasBeenDeposited,
+            success: true,
+        })
+        expect(await liqSetup.liquidityDeposit.getStatus()).toBeGreaterThan(0n)
+
+        // deploy vaultB
+        const vaultBDeployResult = await vaultB.deploy()
+        expect(vaultBDeployResult.transactions).toHaveTransaction({
+            success: true,
+            deploy: true,
+        })
+
+        // add liquidity to vaultB
+        const vaultBLiquidityAddResult = await vaultB.addLiquidity(
+            liqSetup.liquidityDeposit.address,
+            isSwapped ? amountA : amountB,
+        )
+
+        expect(vaultBLiquidityAddResult.transactions).toHaveTransaction({
+            from: vaultB.vault.address,
+            to: liqSetup.liquidityDeposit.address,
+            op: LiquidityDepositContract.opcodes.PartHasBeenDeposited,
+            success: true,
+        })
+
+        const contractState = (await blockchain.getContract(liqSetup.liquidityDeposit.address))
+            .accountState?.type
+        expect(contractState === "uninit" || contractState === undefined).toBe(true)
+
+        // check amm pool deploy and notification
+        expect(vaultBLiquidityAddResult.transactions).toHaveTransaction({
+            from: liqSetup.liquidityDeposit.address,
+            to: ammPool.address,
+            op: AmmPool.opcodes.LiquidityDeposit,
+            success: true,
+            deploy: true,
+        })
+
+        const leftSide = await ammPool.getGetLeftSide()
+        const rightSide = await ammPool.getGetRightSide()
+
+        // the correct liquidity amount was added
+        const sortedWithAmounts = sortAddresses(
+            vaultA.vault.address,
+            vaultB.vault.address,
+            isSwapped ? amountB : amountA,
+            isSwapped ? amountA : amountB,
+        )
+        expect(leftSide).toBe(sortedWithAmounts.leftAmount)
+        expect(rightSide).toBe(sortedWithAmounts.rightAmount)
+
+        // check LP token mint
+        expect(vaultBLiquidityAddResult.transactions).toHaveTransaction({
+            from: ammPool.address,
+            to: liqSetup.depositorLpWallet.address,
+            op: AmmPool.opcodes.MintViaJettonTransferInternal,
+            success: true,
+        })
+
+        const lpBalance = await liqSetup.depositorLpWallet.getJettonBalance()
+        // TODO: add off-chain precise balance calculations tests (with sqrt and separate cases)
+        expect(lpBalance).toBeGreaterThan(0n)
     })
 })
