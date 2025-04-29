@@ -14,7 +14,7 @@ require(false, "Liquidity provision failed due to timeout");
 
 **✅ Do:**
 
-```solidity
+```tact
 require(false, "Pool: Liquidity provision failed due to timeout");
 ```
 
