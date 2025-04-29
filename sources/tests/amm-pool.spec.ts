@@ -9,8 +9,18 @@ describe("Amm pool", () => {
     test("should swap exact amount of tokens", async () => {
         const blockchain = await Blockchain.create()
 
-        const {ammPool, vaultA, vaultB, initWithLiquidity, swap} =
-            await createJettonAmmPool(blockchain)
+        const {
+            ammPool,
+            vaultA: swappedVaultA,
+            vaultB: swappedVaultB,
+            initWithLiquidity,
+            swap,
+            isSwaped,
+        } = await createJettonAmmPool(blockchain)
+
+        const {vaultA, vaultB} = isSwaped
+            ? {vaultA: swappedVaultB, vaultB: swappedVaultA}
+            : {vaultA: swappedVaultA, vaultB: swappedVaultB}
 
         // deploy liquidity deposit contract
         const initialRatio = 2n
@@ -63,8 +73,18 @@ describe("Amm pool", () => {
     test("should revert swap with slippage", async () => {
         const blockchain = await Blockchain.create()
 
-        const {ammPool, vaultA, vaultB, initWithLiquidity, swap} =
-            await createJettonAmmPool(blockchain)
+        const {
+            ammPool,
+            vaultA: swappedVaultA,
+            vaultB: swappedVaultB,
+            initWithLiquidity,
+            swap,
+            isSwaped,
+        } = await createJettonAmmPool(blockchain)
+
+        const {vaultA, vaultB} = isSwaped
+            ? {vaultA: swappedVaultB, vaultB: swappedVaultA}
+            : {vaultA: swappedVaultA, vaultB: swappedVaultB}
 
         // deploy liquidity deposit contract
         const initialRatio = 2n

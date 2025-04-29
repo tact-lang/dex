@@ -392,8 +392,10 @@ const createAmmPool =
 
         return {
             ammPool,
-            vaultA,
-            vaultB,
+            vaultA: firstVault,
+            vaultB: secondVault,
+            sorted: sortedAddresses,
+            isSwaped: sortedAddresses.lower !== firstVault.vault.address,
             liquidityDepositSetup,
             swap,
             initWithLiquidity,

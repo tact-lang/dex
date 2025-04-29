@@ -9,8 +9,18 @@ import {SendDumpToDevWallet} from "@tondevwallet/traces"
 describe("Liquidity payloads", () => {
     test("should send both successful payloads via LP minting, and send no excesses on first deposit", async () => {
         const blockchain = await Blockchain.create()
-        const {ammPool, vaultA, vaultB, liquidityDepositSetup} =
-            await createJettonAmmPool(blockchain)
+        const {
+            ammPool,
+            vaultA: swappedVaultA,
+            vaultB: swappedVaultB,
+            liquidityDepositSetup,
+            isSwaped,
+        } = await createJettonAmmPool(blockchain)
+
+        const {vaultA, vaultB} = isSwaped
+            ? {vaultA: swappedVaultB, vaultB: swappedVaultA}
+            : {vaultA: swappedVaultA, vaultB: swappedVaultB}
+
         const poolState = (await blockchain.getContract(ammPool.address)).accountState?.type
         expect(poolState === "uninit" || poolState === undefined).toBe(true)
 
@@ -73,8 +83,18 @@ describe("Liquidity payloads", () => {
     test("Not-first liquidity deposit should send both successful payloads via LP minting, and one excess with success payload", async () => {
         const blockchain = await Blockchain.create()
 
-        const {ammPool, vaultA, vaultB, liquidityDepositSetup, initWithLiquidity} =
-            await createJettonAmmPool(blockchain)
+        const {
+            ammPool,
+            vaultA: swappedVaultA,
+            vaultB: swappedVaultB,
+            initWithLiquidity,
+            liquidityDepositSetup,
+            isSwaped,
+        } = await createJettonAmmPool(blockchain)
+
+        const {vaultA, vaultB} = isSwaped
+            ? {vaultA: swappedVaultB, vaultB: swappedVaultA}
+            : {vaultA: swappedVaultA, vaultB: swappedVaultB}
 
         const leftPayloadOnSuccess = beginCell().storeStringTail("SuccessLeft").endCell()
         const leftPayloadOnFailure = beginCell().storeStringTail("FailureLeft").endCell()
@@ -152,8 +172,18 @@ describe("Liquidity payloads", () => {
     test("should fail when slippage exceeded and return left payload via left vault and right via right", async () => {
         const blockchain = await Blockchain.create()
 
-        const {ammPool, vaultA, vaultB, liquidityDepositSetup, initWithLiquidity} =
-            await createJettonAmmPool(blockchain)
+        const {
+            ammPool,
+            vaultA: swappedVaultA,
+            vaultB: swappedVaultB,
+            initWithLiquidity,
+            liquidityDepositSetup,
+            isSwaped,
+        } = await createJettonAmmPool(blockchain)
+
+        const {vaultA, vaultB} = isSwaped
+            ? {vaultA: swappedVaultB, vaultB: swappedVaultA}
+            : {vaultA: swappedVaultA, vaultB: swappedVaultB}
 
         const leftPayloadOnSuccess = beginCell().storeStringTail("SuccessLeft").endCell()
         const leftPayloadOnFailure = beginCell().storeStringTail("FailureLeft").endCell()

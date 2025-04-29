@@ -11,8 +11,18 @@ describe("Payloads", () => {
     test("Successful swap should return success payload", async () => {
         const blockchain = await Blockchain.create()
 
-        const {ammPool, vaultA, vaultB, initWithLiquidity, swap} =
-            await createJettonAmmPool(blockchain)
+        const {
+            ammPool,
+            vaultA: swappedVaultA,
+            vaultB: swappedVaultB,
+            initWithLiquidity,
+            isSwaped,
+            swap,
+        } = await createJettonAmmPool(blockchain)
+
+        const {vaultA, vaultB} = isSwaped
+            ? {vaultA: swappedVaultB, vaultB: swappedVaultA}
+            : {vaultA: swappedVaultA, vaultB: swappedVaultB}
 
         // deploy liquidity deposit contract
         const initialRatio = 10n
@@ -74,8 +84,19 @@ describe("Payloads", () => {
 
     test("Swap failed due to slippage should return failure payload", async () => {
         const blockchain = await Blockchain.create()
-        const {ammPool, vaultA, vaultB, initWithLiquidity, swap} =
-            await createJettonAmmPool(blockchain)
+        const {
+            ammPool,
+            vaultA: swappedVaultA,
+            vaultB: swappedVaultB,
+            initWithLiquidity,
+            isSwaped,
+            swap,
+        } = await createJettonAmmPool(blockchain)
+
+        const {vaultA, vaultB} = isSwaped
+            ? {vaultA: swappedVaultB, vaultB: swappedVaultA}
+            : {vaultA: swappedVaultA, vaultB: swappedVaultB}
+
         // deploy liquidity deposit contract
         const initialRatio = 2n
         const amountA = toNano(1)
@@ -123,8 +144,19 @@ describe("Payloads", () => {
 
     test("Swap failed due to timeout should return failure payload", async () => {
         const blockchain = await Blockchain.create()
-        const {ammPool, vaultA, vaultB, initWithLiquidity, swap} =
-            await createJettonAmmPool(blockchain)
+        const {
+            ammPool,
+            vaultA: swappedVaultA,
+            vaultB: swappedVaultB,
+            initWithLiquidity,
+            isSwaped,
+            swap,
+        } = await createJettonAmmPool(blockchain)
+
+        const {vaultA, vaultB} = isSwaped
+            ? {vaultA: swappedVaultB, vaultB: swappedVaultA}
+            : {vaultA: swappedVaultA, vaultB: swappedVaultB}
+
         // deploy liquidity deposit contract
         const initialRatio = 2n
         const amountA = toNano(1)

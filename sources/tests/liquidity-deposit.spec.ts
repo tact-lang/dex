@@ -48,7 +48,7 @@ describe("Liquidity deposit", () => {
 
         const blockchain = await Blockchain.create()
 
-        const {ammPool, vaultA, vaultB, liquidityDepositSetup} =
+        const {ammPool, vaultA, vaultB, liquidityDepositSetup, isSwaped, sorted} =
             await createJettonAmmPool(blockchain)
 
         const poolState = (await blockchain.getContract(ammPool.address)).accountState?.type
@@ -84,7 +84,7 @@ describe("Liquidity deposit", () => {
         // add liquidity to vaultA
         const vaultALiquidityAddResult = await vaultA.addLiquidity(
             liqSetup.liquidityDeposit.address,
-            amountA,
+            isSwaped ? amountB : amountA,
         )
 
         expect(vaultALiquidityAddResult.transactions).toHaveTransaction({
@@ -105,7 +105,7 @@ describe("Liquidity deposit", () => {
         // add liquidity to vaultB
         const vaultBLiquidityAddResult = await vaultB.addLiquidity(
             liqSetup.liquidityDeposit.address,
-            amountB,
+            isSwaped ? amountA : amountB,
         )
 
         expect(vaultBLiquidityAddResult.transactions).toHaveTransaction({
@@ -133,9 +133,14 @@ describe("Liquidity deposit", () => {
         const rightSide = await ammPool.getGetRightSide()
 
         // the correct liquidity amount was added
-        const sorted = sortAddresses(vaultA.vault.address, vaultB.vault.address, amountA, amountB)
-        expect(leftSide).toBe(sorted.leftAmount)
-        expect(rightSide).toBe(sorted.rightAmount)
+        const sortedWithAmounts = sortAddresses(
+            vaultA.vault.address,
+            vaultB.vault.address,
+            isSwaped ? amountB : amountA,
+            isSwaped ? amountA : amountB,
+        )
+        expect(leftSide).toBe(sortedWithAmounts.leftAmount)
+        expect(rightSide).toBe(sortedWithAmounts.rightAmount)
 
         // check LP token mint
         expect(vaultBLiquidityAddResult.transactions).toHaveTransaction({
@@ -153,8 +158,15 @@ describe("Liquidity deposit", () => {
     test("should revert liquidity deposit with wrong ratio with both jetton vaults", async () => {
         const blockchain = await Blockchain.create()
 
-        const {ammPool, vaultA, vaultB, liquidityDepositSetup, initWithLiquidity} =
-            await createJettonAmmPool(blockchain)
+        const {
+            ammPool,
+            vaultA,
+            vaultB,
+            isSwaped,
+            sorted,
+            liquidityDepositSetup,
+            initWithLiquidity,
+        } = await createJettonAmmPool(blockchain)
 
         // deploy liquidity deposit contract
         const initialRatio = 2n
@@ -188,7 +200,7 @@ describe("Liquidity deposit", () => {
         // both vaults are already deployed so we can just add next liquidity
         const vaultALiquidityAddResultBadRatio = await vaultA.addLiquidity(
             liqSetupBadRatio.liquidityDeposit.address,
-            amountABadRatio,
+            isSwaped ? amountBBadRatio : amountABadRatio,
         )
 
         expect(vaultALiquidityAddResultBadRatio.transactions).toHaveTransaction({
@@ -210,7 +222,7 @@ describe("Liquidity deposit", () => {
         // 5. More LP jettons are minted
         const vaultBLiquidityAddResultBadRatio = await vaultB.addLiquidity(
             liqSetupBadRatio.liquidityDeposit.address,
-            amountBBadRatio,
+            isSwaped ? amountABadRatio : amountBBadRatio,
         )
 
         // it is tx #2
@@ -232,7 +244,7 @@ describe("Liquidity deposit", () => {
         // it is tx #4
         expect(vaultBLiquidityAddResultBadRatio.transactions).toHaveTransaction({
             from: ammPool.address,
-            to: vaultB.vault.address, // TODO: add dynamic test why we revert B here
+            to: sorted.higher, // TODO: add dynamic test why we revert B here
             op: AmmPool.opcodes.PayoutFromPool,
             success: true,
         })
