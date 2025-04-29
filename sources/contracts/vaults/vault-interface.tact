@@ -31,6 +31,12 @@ message(0x698cba08) SwapRequestTon {
     payloadOnFailure: Cell? = null;
 }
 
+message(0x1b434676) AddLiquidityPartTon {
+    liquidityDepositContract: Address;
+    amountIn: Int as coins;
+    additionalParams: AdditionalParams;
+}
+
 trait VaultInterface {
     receive(msg: PayoutFromPool) {
         self.handlePayout(msg);

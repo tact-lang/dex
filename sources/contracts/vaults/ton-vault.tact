@@ -1,6 +1,7 @@
 import "./vault-interface";
 import "../math";
 import "../core/messages.tact";
+import "../core/liquidity-deposit";
 
 contract TonVault(
     admin: Address,
@@ -43,5 +44,21 @@ contract TonVault(
         });
     }
 
-    receive(msg: ) {}
+    receive(msg: AddLiquidityPartTon) {
+        nativeReserve(0, ReserveExact + ReserveAddOriginalBalance);
+
+        message(MessageParameters {
+            to: msg.liquidityDepositContract,
+            value: msg.amountIn,
+            mode: SendBounceIfActionFail,
+            bounce: false,
+            body: PartHasBeenDeposited {
+                additionalParams: msg.additionalParams,
+                amount: msg.amountIn,
+                depositor: sender(),
+            }.toCell(),
+        });
+    }
+
+    receive() {}
 }
