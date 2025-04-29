@@ -6,6 +6,7 @@ import {
     storeLPDepositPart,
     LPDepositPartOpcode,
 } from "../output/DEX_AmmPool"
+import {storeAddLiquidityPartTon, storeSwapRequestTon} from "../output/DEX_TonVault"
 
 const fieldsToSave = ["blockchainLogs", "vmLogs", "debugLogs", "shard", "delay", "totalDelay"]
 
@@ -101,4 +102,55 @@ export function createJettonVaultLiquidityDepositPayload(
         proofCode,
         proofData,
     )
+}
+
+export function createTonVaultLiquidityDepositPayload(
+    liquidityDepositContractAddress: Address,
+    amount: bigint,
+    payloadOnSuccess: Cell | null = null,
+    payloadOnFailure: Cell | null = null,
+    minAmountToDeposit: bigint = 0n,
+    lpTimeout: bigint = BigInt(Math.ceil(Date.now() / 1000) + 5 * 60),
+) {
+    return beginCell()
+        .store(
+            storeAddLiquidityPartTon({
+                $$type: "AddLiquidityPartTon",
+                amountIn: amount,
+                liquidityDepositContract: liquidityDepositContractAddress,
+                additionalParams: {
+                    $$type: "AdditionalParams",
+                    minAmountToDeposit: minAmountToDeposit,
+                    lpTimeout: lpTimeout,
+                    payloadOnSuccess: payloadOnSuccess,
+                    payloadOnFailure: payloadOnFailure,
+                },
+            }),
+        )
+        .endCell()
+}
+
+export function createTonSwapRequest(
+    destinationVault: Address,
+    receiver: Address,
+    amountIn: bigint,
+    minAmountOut: bigint = 0n,
+    timeout: bigint = 0n,
+    payloadOnSuccess: Cell | null = null,
+    payloadOnFailure: Cell | null = null,
+) {
+    return beginCell()
+        .store(
+            storeSwapRequestTon({
+                $$type: "SwapRequestTon",
+                destinationVault: destinationVault,
+                minAmountOut,
+                payloadOnFailure,
+                payloadOnSuccess,
+                timeout,
+                amountIn,
+                receiver,
+            }),
+        )
+        .endCell()
 }

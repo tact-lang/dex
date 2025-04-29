@@ -3,7 +3,7 @@ import {Blockchain} from "@ton/sandbox"
 import {randomAddress} from "@ton/test-utils"
 import {AmmPool} from "../output/DEX_AmmPool"
 import {LiquidityDepositContract} from "../output/DEX_LiquidityDepositContract"
-import {createAmmPool, createJettonVault} from "../utils/environment"
+import {createJettonAmmPool, createJettonVault} from "../utils/environment"
 import {sortAddresses} from "../utils/deployUtils"
 // eslint-disable-next-line
 import {SendDumpToDevWallet} from "@tondevwallet/traces"
@@ -38,7 +38,7 @@ describe("Liquidity deposit", () => {
         expect(inited).toBe(true)
     })
 
-    test("should correctly deposit liquidity", async () => {
+    test("should correctly deposit liquidity from both jetton vaults", async () => {
         // create and deploy 2 vaults
         // deploy liquidity deposit contract
         // send jetton transfer to both vaults and check notifications
@@ -48,7 +48,8 @@ describe("Liquidity deposit", () => {
 
         const blockchain = await Blockchain.create()
 
-        const {ammPool, vaultA, vaultB, liquidityDepositSetup} = await createAmmPool(blockchain)
+        const {ammPool, vaultA, vaultB, liquidityDepositSetup} =
+            await createJettonAmmPool(blockchain)
 
         const poolState = (await blockchain.getContract(ammPool.address)).accountState?.type
         expect(poolState === "uninit" || poolState === undefined).toBe(true)
@@ -61,7 +62,7 @@ describe("Liquidity deposit", () => {
         // jettons to it, and use it as a parameter in all vaults methods too
         //
         // depositor should be the same for both vaults jettons transfers
-        const depositor = vaultA.jetton.walletOwner
+        const depositor = vaultA.treasury.walletOwner
 
         const liqSetup = await liquidityDepositSetup(depositor, amountA, amountB)
 
@@ -149,11 +150,11 @@ describe("Liquidity deposit", () => {
         expect(lpBalance).toBeGreaterThan(0n)
     })
 
-    test("should revert liquidity deposit with wrong ratio", async () => {
+    test("should revert liquidity deposit with wrong ratio with both jetton vaults", async () => {
         const blockchain = await Blockchain.create()
 
         const {ammPool, vaultA, vaultB, liquidityDepositSetup, initWithLiquidity} =
-            await createAmmPool(blockchain)
+            await createJettonAmmPool(blockchain)
 
         // deploy liquidity deposit contract
         const initialRatio = 2n
@@ -161,7 +162,7 @@ describe("Liquidity deposit", () => {
         const amountA = toNano(1)
         const amountB = amountA * initialRatio // 1 a == 2 b ratio
 
-        const depositor = vaultA.jetton.walletOwner
+        const depositor = vaultA.treasury.walletOwner
 
         const {depositorLpWallet} = await initWithLiquidity(depositor, amountA, amountB)
 
@@ -244,4 +245,6 @@ describe("Liquidity deposit", () => {
         // and we got more LP tokens
         expect(lpBalanceAfterSecond).toBeGreaterThan(lpBalanceAfterFirstLiq)
     })
+
+    test("should correctly deposit liquidity from jetton vault and ton vault", async () => {})
 })
