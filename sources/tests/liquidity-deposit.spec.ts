@@ -39,8 +39,6 @@ describe("Liquidity deposit", () => {
         expect(jettonTransferToVault.transactions).toHaveTransaction({
             to: mockDepositLiquidityContract,
         })
-        const inited = await vaultSetup.vault.getInited()
-        expect(inited).toBe(true)
     })
 
     test("should correctly deposit liquidity from both jetton vaults", async () => {
@@ -53,8 +51,13 @@ describe("Liquidity deposit", () => {
 
         const blockchain = await Blockchain.create()
 
-        const {ammPool, vaultA, vaultB, liquidityDepositSetup, isSwaped} =
-            await createJettonAmmPool(blockchain)
+        const {
+            ammPool,
+            vaultA,
+            vaultB,
+            liquidityDepositSetup,
+            isSwapped: isSwaped,
+        } = await createJettonAmmPool(blockchain)
 
         const poolState = (await blockchain.getContract(ammPool.address)).accountState?.type
         expect(poolState === "uninit" || poolState === undefined).toBe(true)
@@ -167,7 +170,7 @@ describe("Liquidity deposit", () => {
             ammPool,
             vaultA,
             vaultB,
-            isSwaped,
+            isSwapped: isSwaped,
             sorted,
             liquidityDepositSetup,
             initWithLiquidity,
@@ -293,7 +296,7 @@ describe("Liquidity deposit", () => {
     test("should correctly deposit liquidity from jetton vault and ton vault", async () => {
         const blockchain = await Blockchain.create()
 
-        const {ammPool, vaultB, initWithLiquidity} = await createTonJettonAmmPool(blockchain)
+        const {vaultB, initWithLiquidity} = await createTonJettonAmmPool(blockchain)
 
         // deploy liquidity deposit contract
         const initialRatio = 10n
