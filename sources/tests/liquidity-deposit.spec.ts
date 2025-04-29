@@ -3,7 +3,12 @@ import {Blockchain} from "@ton/sandbox"
 import {randomAddress} from "@ton/test-utils"
 import {AmmPool} from "../output/DEX_AmmPool"
 import {LiquidityDepositContract} from "../output/DEX_LiquidityDepositContract"
-import {createJettonAmmPool, createJettonVault} from "../utils/environment"
+import {
+    createJettonAmmPool,
+    createJettonVault,
+    createTonJettonAmmPool,
+    createTonVault,
+} from "../utils/environment"
 import {sortAddresses} from "../utils/deployUtils"
 // eslint-disable-next-line
 import {SendDumpToDevWallet} from "@tondevwallet/traces"
@@ -48,7 +53,7 @@ describe("Liquidity deposit", () => {
 
         const blockchain = await Blockchain.create()
 
-        const {ammPool, vaultA, vaultB, liquidityDepositSetup, isSwaped, sorted} =
+        const {ammPool, vaultA, vaultB, liquidityDepositSetup, isSwaped} =
             await createJettonAmmPool(blockchain)
 
         const poolState = (await blockchain.getContract(ammPool.address)).accountState?.type
@@ -258,5 +263,48 @@ describe("Liquidity deposit", () => {
         expect(lpBalanceAfterSecond).toBeGreaterThan(lpBalanceAfterFirstLiq)
     })
 
-    test("should correctly deposit liquidity from jetton vault and ton vault", async () => {})
+    test("should deploy ton vault", async () => {
+        const blockchain = await Blockchain.create()
+
+        const vaultSetup = await createTonVault(blockchain)
+
+        const vaultDeployResult = await vaultSetup.deploy()
+        expect(vaultDeployResult.transactions).toHaveTransaction({
+            success: true,
+            deploy: true,
+        })
+
+        const mockDepositLiquidityContract = randomAddress(0)
+
+        const tonTransferToVault = await vaultSetup.addLiquidity(
+            mockDepositLiquidityContract,
+            toNano(1),
+        )
+
+        expect(tonTransferToVault.transactions).toHaveTransaction({
+            success: true,
+        })
+
+        expect(tonTransferToVault.transactions).toHaveTransaction({
+            to: mockDepositLiquidityContract,
+        })
+    })
+
+    test("should correctly deposit liquidity from jetton vault and ton vault", async () => {
+        const blockchain = await Blockchain.create()
+
+        const {ammPool, vaultB, initWithLiquidity} = await createTonJettonAmmPool(blockchain)
+
+        // deploy liquidity deposit contract
+        const initialRatio = 10n
+
+        const amountA = toNano(5)
+        const amountB = amountA * initialRatio // 1 a == 2 b ratio
+
+        const depositor = vaultB.treasury.walletOwner
+        const {depositorLpWallet} = await initWithLiquidity(depositor, amountA, amountB)
+        const lpBalanceAfterFirstLiq = await depositorLpWallet.getJettonBalance()
+        // check that liquidity deposit was successful
+        expect(lpBalanceAfterFirstLiq).toBeGreaterThan(0n)
+    })
 })

@@ -126,7 +126,7 @@ export const createJettonVault = async (blockchain: Blockchain) => {
     }
 }
 
-const createTonVault: Create<VaultInterface<SandboxContract<TreasuryContract>>> = async (
+export const createTonVault: Create<VaultInterface<SandboxContract<TreasuryContract>>> = async (
     blockchain: Blockchain,
 ) => {
     const vaultOwner = await blockchain.treasury("vault-owner")
@@ -155,7 +155,7 @@ const createTonVault: Create<VaultInterface<SandboxContract<TreasuryContract>>> 
     ) => {
         return await wallet.send({
             to: vault.address,
-            value: amount,
+            value: amount + toNano(0.2), // fee
             bounce: true,
             body: createTonVaultLiquidityDepositPayload(
                 liquidityDepositContractAddress,

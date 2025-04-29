@@ -11,11 +11,11 @@ contract TonVault(
         let poolInit = initOf AmmPool(sortedAddresses.lower, sortedAddresses.higher, 0, 0, 0);
 
         require(poolInit.hasSameBasechainAddress(sender()), "TonVault: Sender must be pool");
-
+        // -> (fee) -> (ton vault) -> [(0.2) + amount 10 ton]
         message(MessageParameters {
             to: msg.receiver,
             value: msg.amount,
-            mode: SendPayFwdFeesSeparately,
+            mode: SendRemainingValue,
             bounce: false,
             body: msg.payloadToForward,
         });
