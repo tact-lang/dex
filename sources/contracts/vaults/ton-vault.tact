@@ -22,7 +22,7 @@ contract TonVault(
     }
 
     receive(msg: SwapRequestTon) {
-        nativeReserve(0, ReserveExact + ReserveAddOriginalBalance);
+        nativeReserve(0, ReserveExact | ReserveAddOriginalBalance);
 
         let otherVault = msg.destinationVault;
         let sortedAddresses = sortAddresses(myAddress(), otherVault);
@@ -45,12 +45,12 @@ contract TonVault(
     }
 
     receive(msg: AddLiquidityPartTon) {
-        nativeReserve(0, ReserveExact + ReserveAddOriginalBalance);
+        nativeReserve(msg.amountIn, ReserveExact | ReserveAddOriginalBalance);
 
         message(MessageParameters {
             to: msg.liquidityDepositContract,
-            value: msg.amountIn,
-            mode: SendBounceIfActionFail,
+            value: 0,
+            mode: SendBounceIfActionFail | SendRemainingBalance,
             bounce: false,
             body: PartHasBeenDeposited {
                 additionalParams: msg.additionalParams,
