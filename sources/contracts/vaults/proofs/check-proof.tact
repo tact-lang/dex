@@ -16,6 +16,7 @@ inline fun checkProof(jettonMaster: Address, proofType: Int, proof: Slice, msgCe
             sender(),
             null,
         );
+
         deploy(DeployParameters {
             mode: SendRemainingValue,
             value: 0,
@@ -28,7 +29,8 @@ inline fun checkProof(jettonMaster: Address, proofType: Int, proof: Slice, msgCe
                 action: msgCell,
             }.toCell(),
         });
-        throw(0);
+        // We don't need to save state init, so we just need to exit() quickly
+        exit();
     } else if (proofType == 2) {
         let init = JettonMasterState.fromSlice(proof);
         let myJettonWallet = calculateJettonWallet(myAddress(), init.jettonMasterData, init.jettonMasterCode, jettonMaster);
@@ -48,5 +50,6 @@ inline fun checkProof(jettonMaster: Address, proofType: Int, proof: Slice, msgCe
         require(false, "JettonVault: Burn proof is not supported");
         return;
     }
+
     require(false, "JettonVault: Invalid proof type");
 }

@@ -114,6 +114,7 @@ inline fun actionHandler(msg: JettonNotifyWithActionRequest) {
         handleLPDepositPart(msg, LPDepositPart.fromCell(msg.actionPayload));
         return;
     }
+
     require(false, "JettonVault: Invalid action opcode");
 }
 

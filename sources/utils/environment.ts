@@ -10,7 +10,7 @@ import {createJettonVaultLiquidityDepositPayload, createJettonVaultSwapRequest} 
 import {randomAddress} from "@ton/test-utils"
 
 // TODO: unify common prefix to structs on create setups
-const createJetton = async (blockchain: Blockchain) => {
+export const createJetton = async (blockchain: Blockchain) => {
     const minterOwner = await blockchain.treasury("jetton-owner")
     const walletOwner = await blockchain.treasury("wallet-owner")
     const mintAmount = toNano(100)
@@ -58,13 +58,11 @@ export const createJettonVault = async (blockchain: Blockchain) => {
     const vault = blockchain.openContract(await JettonVault.fromInit(jetton.minter.address, null))
 
     const deploy = async () => {
-        const vaultDeployResult = await vault.send(
+        return await vault.send(
             (await blockchain.treasury("any-user")).getSender(),
             {value: toNano(0.1), bounce: false},
             null,
         )
-
-        return vaultDeployResult
     }
 
     const addLiquidity = async (

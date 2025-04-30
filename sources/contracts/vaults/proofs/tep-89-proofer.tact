@@ -24,6 +24,7 @@ contract TEP89Proofer(
         self.action = msg.action;
         self.possibleJettonWallet = msg.possibleJettonWallet;
         self.jettonMaster = msg.jettonMaster;
+        
         message(MessageParameters {
             to: msg.jettonMaster,
             bounce: true, // So we can save some tons (we won't pay storage fees for JettonMaster)
@@ -47,7 +48,7 @@ contract TEP89Proofer(
             // We don't need to bounce, because we will destroy the contract after sending the message
             bounce: false,
             value: 0,
-            mode: SendRemainingBalance + SendDestroyIfZero,
+            mode: SendRemainingBalance | SendDestroyIfZero,
             body: TEP89ProofResponse {
                 proofedJettonWallet: msg.walletAddress,
                 action: self.action!!,
