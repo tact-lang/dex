@@ -375,9 +375,9 @@ const createAmmPool =
             payloadOnFailure: Cell | null = null,
         ) => {
             if (swapFrom === "vaultA") {
-                return await vaultA.sendSwapRequest(
+                return await firstVault.sendSwapRequest(
                     amountToSwap,
-                    vaultB.vault.address,
+                    secondVault.vault.address,
                     expectedOutput,
                     timeout,
                     payloadOnSuccess,
@@ -385,9 +385,9 @@ const createAmmPool =
                 )
             }
 
-            return await vaultB.sendSwapRequest(
+            return await secondVault.sendSwapRequest(
                 amountToSwap,
-                vaultA.vault.address,
+                firstVault.vault.address,
                 expectedOutput,
                 timeout,
                 payloadOnSuccess,
