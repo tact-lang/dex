@@ -6,7 +6,7 @@ import {AmmPool} from "../output/DEX_AmmPool"
 import {SendDumpToDevWallet} from "@tondevwallet/traces"
 
 describe("Amm pool", () => {
-    test("should swap exact amount of jetton to jetton", async () => {
+    test("should swap exact amount of tokens", async () => {
         const blockchain = await Blockchain.create()
 
         const {ammPool, vaultA, vaultB, initWithLiquidity, swap} =
