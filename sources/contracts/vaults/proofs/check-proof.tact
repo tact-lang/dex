@@ -7,9 +7,14 @@ struct JettonMasterState {
     jettonMasterData: Cell?;
 }
 
-// 0 - No proof attached, 1 - TEP-89, 2 - StateInit, 3 - State, 4 - Jetton Burn
+const PROOF_NO_PROOF_ATTACHED: Int = 0;
+const PROOF_TEP89: Int = 1;
+const PROOF_STATE_INIT: Int = 2;
+const PROOF_STATE_TO_THE_BLOCK: Int = 3;
+const PROOF_JETTON_BURN: Int = 4;
+
 inline fun checkProof(jettonMaster: Address, proofType: Int, proof: Slice, msgCell: Cell) {
-    if (proofType == 1) {
+    if (proofType == PROOF_TEP89) {
         let prooferStateInit = initOf TEP89Proofer(
             jettonMaster,
             myAddress(),
@@ -31,7 +36,7 @@ inline fun checkProof(jettonMaster: Address, proofType: Int, proof: Slice, msgCe
         });
         // We don't need to save state init, so we just need to exit() quickly
         exit();
-    } else if (proofType == 2) {
+    } else if (proofType == PROOF_STATE_INIT) {
         let init = JettonMasterState.fromSlice(proof);
         let myJettonWallet = calculateJettonWallet(myAddress(), init.jettonMasterData, init.jettonMasterCode, jettonMaster);
         require(
@@ -43,10 +48,10 @@ inline fun checkProof(jettonMaster: Address, proofType: Int, proof: Slice, msgCe
             "JettonVault: StateInit proof is invalid",
         );
         return;
-    } else if (proofType == 3) {
+    } else if (proofType == PROOF_STATE_TO_THE_BLOCK) {
         require(false, "JettonVault: State proof is not supported");
         return;
-    } else if (proofType == 4) {
+    } else if (proofType == PROOF_JETTON_BURN) {
         require(false, "JettonVault: Burn proof is not supported");
         return;
     }

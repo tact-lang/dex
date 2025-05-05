@@ -7,7 +7,7 @@ import {SendDumpToDevWallet} from "@tondevwallet/traces"
 import {createJettonVaultMessage} from "../utils/testUtils"
 import {JettonVault, storeLPDepositPart} from "../output/DEX_JettonVault"
 import {LPDepositPartOpcode} from "../output/DEX_LiquidityDepositContract"
-import {TEP89Proofer} from "../output/DEX_TEP89Proofer"
+import {PROOF_TEP89, TEP89Proofer} from "../output/DEX_TEP89Proofer"
 describe("Proofs", () => {
     test("TEP89 proof should correctly work for discoverable jettons", async () => {
         const blockchain = await Blockchain.create()
@@ -39,8 +39,7 @@ describe("Proofs", () => {
                 LPDepositPartOpcode,
                 mockPayload,
                 {
-                    $$type: "TEP89Proof",
-                    proofType: 1n,
+                    proofType: PROOF_TEP89,
                 },
             ),
         )
@@ -98,8 +97,7 @@ describe("Proofs", () => {
                 LPDepositPartOpcode,
                 mockPayload,
                 {
-                    $$type: "TEP89Proof",
-                    proofType: 1n,
+                    proofType: PROOF_TEP89,
                 },
             ),
         )

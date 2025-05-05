@@ -6,6 +6,7 @@ import {
     storeLPDepositPart,
     LPDepositPartOpcode,
 } from "../output/DEX_AmmPool"
+import {PROOF_NO_PROOF_ATTACHED, PROOF_TEP89, PROOF_STATE_INIT} from "../output/DEX_JettonVault"
 
 const fieldsToSave = ["blockchainLogs", "vmLogs", "debugLogs", "shard", "delay", "totalDelay"]
 
@@ -33,17 +34,14 @@ export function serializeTransactionsList(transactions: any[]): string {
 }
 
 export type NoProof = {
-    $$type: "NoProof"
     proofType: 0n
 }
 
 export type TEP89Proof = {
-    $$type: "TEP89Proof"
     proofType: 1n
 }
 
 export type StateInitProof = {
-    $$type: "StateInitProof"
     proofType: 2n
     code: Cell
     data: Cell
@@ -54,15 +52,17 @@ export type Proof = NoProof | TEP89Proof | StateInitProof
 function storeProof(proof: Proof) {
     return (b: Builder) => {
         b.storeUint(proof.proofType, 8)
-        switch (proof.$$type) {
-            case "NoProof":
+        switch (proof.proofType) {
+            case PROOF_NO_PROOF_ATTACHED:
                 break
-            case "TEP89Proof":
+            case PROOF_TEP89:
                 break
-            case "StateInitProof":
+            case PROOF_STATE_INIT:
                 b.storeMaybeRef(proof.code)
                 b.storeMaybeRef(proof.data)
                 break
+            default:
+                throw new Error("Unknown proof type")
         }
     }
 }
@@ -97,8 +97,7 @@ export function createJettonVaultSwapRequest(
         beginCell().store(storeSwapRequest(swapRequest)).endCell(),
         // This function does not specify proof code and data as there is no sense to swap anything without ever providing a liquidity.
         {
-            $$type: "NoProof",
-            proofType: 0n,
+            proofType: PROOF_NO_PROOF_ATTACHED,
         },
     )
 }
@@ -115,15 +114,13 @@ export function createJettonVaultLiquidityDepositPayload(
     let proof: Proof
     if (proofCode !== undefined && proofData !== undefined) {
         proof = {
-            $$type: "StateInitProof",
-            proofType: 2n,
+            proofType: PROOF_STATE_INIT,
             code: proofCode,
             data: proofData,
         }
     } else {
         proof = {
-            $$type: "NoProof",
-            proofType: 0n,
+            proofType: PROOF_NO_PROOF_ATTACHED,
         }
     }
     return createJettonVaultMessage(
