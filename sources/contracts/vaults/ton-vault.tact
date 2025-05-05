@@ -22,17 +22,18 @@ contract TonVault(
     }
 
     receive(msg: SwapRequestTon) {
-        nativeReserve(0, ReserveExact | ReserveAddOriginalBalance);
+        // TODO: exact tests for this
+        nativeReserve(msg.amountIn, ReserveExact | ReserveAddOriginalBalance);
 
         let otherVault = msg.destinationVault;
         let sortedAddresses = sortAddresses(myAddress(), otherVault);
 
         let poolAddress = contractAddress(initOf AmmPool(sortedAddresses.lower, sortedAddresses.higher, 0, 0, 0));
         message(MessageParameters {
-            value: msg.amountIn,
-            bounce: false,
-            mode: SendBounceIfActionFail,
             to: poolAddress,
+            value: 0,
+            mode: SendBounceIfActionFail | SendRemainingBalance,
+            bounce: false,
             body: SwapIn {
                 swapOutReceiver: msg.receiver,
                 amount: msg.amountIn,
@@ -45,6 +46,7 @@ contract TonVault(
     }
 
     receive(msg: AddLiquidityPartTon) {
+        // TODO: exact tests for this
         nativeReserve(msg.amountIn, ReserveExact | ReserveAddOriginalBalance);
 
         message(MessageParameters {

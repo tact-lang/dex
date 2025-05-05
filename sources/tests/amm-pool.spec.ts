@@ -1,6 +1,6 @@
 import {Blockchain} from "@ton/sandbox"
 import {createJettonAmmPool, createTonJettonAmmPool} from "../utils/environment"
-import {toNano} from "@ton/core"
+import {fromNano, toNano} from "@ton/core"
 import {AmmPool} from "../output/DEX_AmmPool"
 // eslint-disable-next-line
 import {SendDumpToDevWallet} from "@tondevwallet/traces"
@@ -212,7 +212,7 @@ describe("Amm pool", () => {
         expect(amountOfJettonBAfterSwap).toBe(amountBJettonBeforeSwap - amountToSwap)
     })
 
-    test.skip("should swap exact amount of ton to jetton", async () => {
+    test("should swap exact amount of ton to jetton", async () => {
         const blockchain = await Blockchain.create()
 
         const {ammPool, vaultA, vaultB, initWithLiquidity, swap} =
@@ -240,6 +240,9 @@ describe("Amm pool", () => {
         )
 
         const amountBJettonBeforeSwap = await vaultB.treasury.wallet.getJettonBalance()
+
+        const tonBal = await blockchain.provider(vaultA.vault.address).getState()
+        console.log(`vault a balance before`, fromNano(tonBal.balance))
 
         const swapResult = await swap(amountToSwapTon, "vaultA", expectedOutputJetton)
 
