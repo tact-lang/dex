@@ -241,9 +241,6 @@ describe("Amm pool", () => {
 
         const amountBJettonBeforeSwap = await vaultB.treasury.wallet.getJettonBalance()
 
-        const tonBal = await blockchain.provider(vaultA.vault.address).getState()
-        console.log(`vault a balance before`, fromNano(tonBal.balance))
-
         const swapResult = await swap(amountToSwapTon, "vaultA", expectedOutputJetton)
 
         // check that swap was successful

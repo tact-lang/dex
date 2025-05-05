@@ -31,7 +31,7 @@ describe("Proofs", () => {
             )
             .endCell()
 
-        const sendNotifyWithTep89Proof = await vaultSetup.jetton.transfer(
+        const sendNotifyWithTep89Proof = await vaultSetup.treasury.transfer(
             vaultSetup.vault.address,
             toNano(0.5),
             createJettonVaultMessage(
@@ -44,12 +44,12 @@ describe("Proofs", () => {
             ),
         )
         expect(sendNotifyWithTep89Proof.transactions).toHaveTransaction({
-            to: vaultSetup.jetton.minter.address,
+            to: vaultSetup.treasury.minter.address,
             op: JettonVault.opcodes.ProvideWalletAddress,
             success: true,
         })
         const replyWithWallet = findTransactionRequired(sendNotifyWithTep89Proof.transactions, {
-            from: vaultSetup.jetton.minter.address,
+            from: vaultSetup.treasury.minter.address,
             op: JettonVault.opcodes.TakeWalletAddress,
             success: true,
         })
@@ -61,7 +61,10 @@ describe("Proofs", () => {
             success: true,
             // However, probably there is not-null exit code, as we attached the incorrect payload
         })
-        expect(await vaultSetup.vault.getInited()).toBe(true)
+        const jettonVaultInstance = blockchain.openContract(
+            JettonVault.fromAddress(vaultSetup.vault.address),
+        )
+        expect(await jettonVaultInstance.getInited()).toBe(true)
     })
 
     test("TEP89 proof fails if wrong jetton sent", async () => {
@@ -102,9 +105,9 @@ describe("Proofs", () => {
             ),
         )
 
-        // Vault deployed proofer, that asked JettonMaster for wallet address
+        // Vault deployed proofer that asked JettonMaster for the wallet address
         expect(sendNotifyFromIncorrectWallet.transactions).toHaveTransaction({
-            to: vaultSetup.jetton.minter.address,
+            to: vaultSetup.treasury.minter.address,
             op: TEP89Proofer.opcodes.ProvideWalletAddress,
             success: true,
         })
@@ -112,7 +115,7 @@ describe("Proofs", () => {
         const replyWithWallet = findTransactionRequired(
             sendNotifyFromIncorrectWallet.transactions,
             {
-                from: vaultSetup.jetton.minter.address,
+                from: vaultSetup.treasury.minter.address,
                 op: JettonVault.opcodes.TakeWalletAddress,
                 success: false,
                 exitCode: TEP89Proofer.errors["TEP89 proof: Wallet address does not match"],
@@ -124,8 +127,11 @@ describe("Proofs", () => {
         // So no other transactions from the proofer should be present
         expect(sendNotifyFromIncorrectWallet.transactions).not.toHaveTransaction({
             from: prooferAddress,
-            to: to => to === undefined || !to.equals(vaultSetup.jetton.minter.address),
+            to: to => to === undefined || !to.equals(vaultSetup.treasury.minter.address),
         })
-        expect(await vaultSetup.vault.getInited()).toBe(false)
+        const jettonVaultInstance = blockchain.openContract(
+            JettonVault.fromAddress(vaultSetup.vault.address),
+        )
+        expect(await jettonVaultInstance.getInited()).toBe(false)
     })
 })
