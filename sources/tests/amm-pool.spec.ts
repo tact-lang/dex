@@ -1,6 +1,6 @@
 import {Blockchain} from "@ton/sandbox"
 import {createJettonAmmPool, createTonJettonAmmPool} from "../utils/environment"
-import {fromNano, toNano} from "@ton/core"
+import {toNano} from "@ton/core"
 import {AmmPool} from "../output/DEX_AmmPool"
 // eslint-disable-next-line
 import {SendDumpToDevWallet} from "@tondevwallet/traces"
