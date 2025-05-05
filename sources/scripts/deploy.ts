@@ -81,7 +81,7 @@ const main = async () => {
     // )
     console.log("Minted Token B")
 
-    const jettonVaultAContract = await JettonVault.fromInit(jettonMinterA.address, false, null)
+    const jettonVaultAContract = await JettonVault.fromInit(jettonMinterA.address, null)
     const jettonVaultA = client.open(jettonVaultAContract)
     console.log("Jetton Vault A deployed at", jettonVaultA.address)
 
@@ -91,7 +91,7 @@ const main = async () => {
     //     null
     // )
 
-    const jettonVaultBContract = await JettonVault.fromInit(jettonMinterB.address, false, null)
+    const jettonVaultBContract = await JettonVault.fromInit(jettonMinterB.address, null)
     const jettonVaultB = client.open(jettonVaultBContract)
     console.log("Jetton Vault B deployed at", jettonVaultB.address)
     // await jettonVaultB.send(
