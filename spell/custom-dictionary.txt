@@ -10,6 +10,7 @@ masterchain
 Merkle
 mintable
 misti
+nanoton
 nowarp
 Resolve
 seqno

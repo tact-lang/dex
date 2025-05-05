@@ -2,14 +2,25 @@ import {beginCell, toNano} from "@ton/core"
 import {Blockchain} from "@ton/sandbox"
 import {findTransactionRequired, flattenTransaction} from "@ton/test-utils"
 import {AmmPool, loadMintViaJettonTransferInternal, loadPayoutFromPool} from "../output/DEX_AmmPool"
-import {createAmmPool} from "../utils/environment"
+import {createJettonAmmPool} from "../utils/environment"
 // eslint-disable-next-line
 import {SendDumpToDevWallet} from "@tondevwallet/traces"
 
 describe("Liquidity payloads", () => {
     test("should send both successful payloads via LP minting, and send no excesses on first deposit", async () => {
         const blockchain = await Blockchain.create()
-        const {ammPool, vaultA, vaultB, liquidityDepositSetup} = await createAmmPool(blockchain)
+        const {
+            ammPool,
+            vaultA: swappedVaultA,
+            vaultB: swappedVaultB,
+            liquidityDepositSetup,
+            isSwapped,
+        } = await createJettonAmmPool(blockchain)
+
+        const {vaultA, vaultB} = isSwapped
+            ? {vaultA: swappedVaultB, vaultB: swappedVaultA}
+            : {vaultA: swappedVaultA, vaultB: swappedVaultB}
+
         const poolState = (await blockchain.getContract(ammPool.address)).accountState?.type
         expect(poolState === "uninit" || poolState === undefined).toBe(true)
 
@@ -22,7 +33,7 @@ describe("Liquidity payloads", () => {
         // deploy liquidity deposit contract
         const amountA = toNano(1)
         const amountB = toNano(2) // 1 a == 2 b ratio
-        const depositor = vaultA.jetton.walletOwner
+        const depositor = vaultA.treasury.walletOwner
         const liqSetup = await liquidityDepositSetup(depositor, amountA, amountB)
         await liqSetup.deploy()
         await vaultA.deploy()
@@ -72,8 +83,18 @@ describe("Liquidity payloads", () => {
     test("Not-first liquidity deposit should send both successful payloads via LP minting, and one excess with success payload", async () => {
         const blockchain = await Blockchain.create()
 
-        const {ammPool, vaultA, vaultB, liquidityDepositSetup, initWithLiquidity} =
-            await createAmmPool(blockchain)
+        const {
+            ammPool,
+            vaultA: swappedVaultA,
+            vaultB: swappedVaultB,
+            initWithLiquidity,
+            liquidityDepositSetup,
+            isSwapped,
+        } = await createJettonAmmPool(blockchain)
+
+        const {vaultA, vaultB} = isSwapped
+            ? {vaultA: swappedVaultB, vaultB: swappedVaultA}
+            : {vaultA: swappedVaultA, vaultB: swappedVaultB}
 
         const leftPayloadOnSuccess = beginCell().storeStringTail("SuccessLeft").endCell()
         const leftPayloadOnFailure = beginCell().storeStringTail("FailureLeft").endCell()
@@ -86,7 +107,7 @@ describe("Liquidity payloads", () => {
         const amountA = toNano(1)
         const amountB = amountA * initialRatio // 1 a == 2 b ratio
 
-        const depositor = vaultA.jetton.walletOwner
+        const depositor = vaultA.treasury.walletOwner
 
         const {depositorLpWallet} = await initWithLiquidity(depositor, amountA, amountB)
 
@@ -151,8 +172,18 @@ describe("Liquidity payloads", () => {
     test("should fail when slippage exceeded and return left payload via left vault and right via right", async () => {
         const blockchain = await Blockchain.create()
 
-        const {ammPool, vaultA, vaultB, liquidityDepositSetup, initWithLiquidity} =
-            await createAmmPool(blockchain)
+        const {
+            ammPool,
+            vaultA: swappedVaultA,
+            vaultB: swappedVaultB,
+            initWithLiquidity,
+            liquidityDepositSetup,
+            isSwapped,
+        } = await createJettonAmmPool(blockchain)
+
+        const {vaultA, vaultB} = isSwapped
+            ? {vaultA: swappedVaultB, vaultB: swappedVaultA}
+            : {vaultA: swappedVaultA, vaultB: swappedVaultB}
 
         const leftPayloadOnSuccess = beginCell().storeStringTail("SuccessLeft").endCell()
         const leftPayloadOnFailure = beginCell().storeStringTail("FailureLeft").endCell()
@@ -166,7 +197,7 @@ describe("Liquidity payloads", () => {
         const amountA = toNano(1)
         const amountB = amountA * initialRatio // 1 a == 2 b ratio
 
-        const depositor = vaultA.jetton.walletOwner
+        const depositor = vaultA.treasury.walletOwner
 
         // Initialize the pool with initial liquidity
         const {depositorLpWallet} = await initWithLiquidity(depositor, amountA, amountB)
@@ -311,7 +342,7 @@ describe("Liquidity payloads", () => {
     test("should return withdrawal payload on both jettons", async () => {
         const blockchain = await Blockchain.create()
 
-        const {ammPool, vaultA, vaultB, initWithLiquidity} = await createAmmPool(blockchain)
+        const {ammPool, vaultA, vaultB, initWithLiquidity} = await createJettonAmmPool(blockchain)
 
         const successfulPayloadOnWithdraw = beginCell()
             .storeStringTail("SuccessWithdrawPayload")
@@ -323,7 +354,7 @@ describe("Liquidity payloads", () => {
         const amountA = toNano(1)
         const amountB = amountA * initialRatio // 1 a == 2 b ratio
 
-        const depositor = vaultA.jetton.walletOwner
+        const depositor = vaultA.treasury.walletOwner
 
         const {depositorLpWallet, withdrawLiquidity} = await initWithLiquidity(
             depositor,

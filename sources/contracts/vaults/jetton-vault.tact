@@ -1,6 +1,9 @@
 import "../core/amm-pool";
 import "../math";
 import "./vault-interface";
+import "../core/messages.tact";
+// for compilation
+import "./ton-vault.tact";
 import "./proofs/check-proof";
 import "./proofs/tep-89-proofer";
 
@@ -46,7 +49,7 @@ asm fun saveState(jettonWallet: Address?, jettonMaster: Address) {
 contract JettonVault(
     jettonMaster: Address,
     jettonWallet: Address?, // Should be deployed with null
-) {
+) with VaultInterface {
     receive(msg: JettonNotifyWithActionRequest) {
         if (self.jettonWallet == null) {
             // This function proofs that jetton wallet is valid
@@ -73,7 +76,7 @@ contract JettonVault(
 
     receive() {}
 
-    receive(msg: PayoutFromPool) {
+    override fun handlePayout(msg: PayoutFromPool) {
         let sortedAddresses = sortAddresses(myAddress(), msg.otherVault);
         let poolInit = initOf AmmPool(sortedAddresses.lower, sortedAddresses.higher, 0, 0, 0);
 

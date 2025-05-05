@@ -1,5 +1,5 @@
 import {Blockchain} from "@ton/sandbox"
-import {createAmmPool} from "../utils/environment"
+import {createJettonAmmPool} from "../utils/environment"
 import {beginCell, toNano} from "@ton/core"
 import {AmmPool, loadPayoutFromPool, loadSendViaJettonTransfer} from "../output/DEX_AmmPool"
 // eslint-disable-next-line
@@ -11,13 +11,14 @@ describe("Payloads", () => {
     test("Successful swap should return success payload", async () => {
         const blockchain = await Blockchain.create()
 
-        const {ammPool, vaultA, vaultB, initWithLiquidity, swap} = await createAmmPool(blockchain)
+        const {ammPool, vaultA, vaultB, initWithLiquidity, swap} =
+            await createJettonAmmPool(blockchain)
 
         // deploy liquidity deposit contract
         const initialRatio = 10n
         const amountA = toNano(5)
         const amountB = amountA * initialRatio // 1 a == 2 b ratio
-        const depositor = vaultA.jetton.walletOwner
+        const depositor = vaultA.treasury.walletOwner
         const {depositorLpWallet} = await initWithLiquidity(depositor, amountA, amountB)
         const lpBalanceAfterFirstLiq = await depositorLpWallet.getJettonBalance()
         // check that liquidity deposit was successful
@@ -27,7 +28,7 @@ describe("Payloads", () => {
 
         const amountToSwap = toNano(0.05)
         const expectedOutput = await ammPool.getExpectedOut(vaultA.vault.address, amountToSwap)
-        const amountBJettonBeforeSwap = await vaultB.jetton.wallet.getJettonBalance()
+        const amountBJettonBeforeSwap = await vaultB.treasury.wallet.getJettonBalance()
 
         const swapResult = await swap(amountToSwap, "vaultA", expectedOutput, 0n, payloadOnSuccess)
 
@@ -67,18 +68,20 @@ describe("Payloads", () => {
             beginCell().storeMaybeRef(payloadOnSuccess).endCell(),
         )
 
-        const amountOfJettonBAfterSwap = await vaultB.jetton.wallet.getJettonBalance()
+        const amountOfJettonBAfterSwap = await vaultB.treasury.wallet.getJettonBalance()
         expect(amountOfJettonBAfterSwap).toBeGreaterThan(amountBJettonBeforeSwap)
     })
 
     test("Swap failed due to slippage should return failure payload", async () => {
         const blockchain = await Blockchain.create()
-        const {ammPool, vaultA, vaultB, initWithLiquidity, swap} = await createAmmPool(blockchain)
+        const {ammPool, vaultA, vaultB, initWithLiquidity, swap} =
+            await createJettonAmmPool(blockchain)
+
         // deploy liquidity deposit contract
         const initialRatio = 2n
         const amountA = toNano(1)
         const amountB = amountA * initialRatio // 1 a == 2 b ratio
-        const depositor = vaultA.jetton.walletOwner
+        const depositor = vaultA.treasury.walletOwner
         const _ = await initWithLiquidity(depositor, amountA, amountB)
 
         const payloadOnFailure = beginCell().storeStringTail("Failure").endCell()
@@ -121,12 +124,14 @@ describe("Payloads", () => {
 
     test("Swap failed due to timeout should return failure payload", async () => {
         const blockchain = await Blockchain.create()
-        const {ammPool, vaultA, vaultB, initWithLiquidity, swap} = await createAmmPool(blockchain)
+        const {ammPool, vaultA, vaultB, initWithLiquidity, swap} =
+            await createJettonAmmPool(blockchain)
+
         // deploy liquidity deposit contract
         const initialRatio = 2n
         const amountA = toNano(1)
         const amountB = amountA * initialRatio // 1 a == 2 b ratio
-        const depositor = vaultA.jetton.walletOwner
+        const depositor = vaultA.treasury.walletOwner
         const _ = await initWithLiquidity(depositor, amountA, amountB)
 
         const payloadOnFailure = beginCell().storeStringTail("Failure").endCell()

@@ -1,4 +1,5 @@
 import "../core/liquidity-deposit.tact";
+import "../core/messages.tact";
 
 const SwapRequestOpcode: Int = 0xbfa68001;
 struct SwapRequest {
@@ -18,4 +19,28 @@ struct LPDepositPart {
     // TODO: We should add an option to deploy liquidity deposit contract here
     liquidityDepositContract: Address;
     additionalParams: AdditionalParams;
+}
+
+message(0x698cba08) SwapRequestTon {
+    destinationVault: Address;
+    receiver: Address;
+    minAmountOut: Int as coins;
+    amountIn: Int as coins;
+    timeout: Int as uint32;
+    payloadOnSuccess: Cell? = null;
+    payloadOnFailure: Cell? = null;
+}
+
+message(0x1b434676) AddLiquidityPartTon {
+    liquidityDepositContract: Address;
+    amountIn: Int as coins;
+    additionalParams: AdditionalParams;
+}
+
+trait VaultInterface {
+    receive(msg: PayoutFromPool) {
+        self.handlePayout(msg);
+    }
+
+    abstract fun handlePayout(msg: PayoutFromPool);
 }

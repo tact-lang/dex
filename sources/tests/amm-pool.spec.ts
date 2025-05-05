@@ -1,15 +1,16 @@
 import {Blockchain} from "@ton/sandbox"
-import {createAmmPool} from "../utils/environment"
+import {createJettonAmmPool, createTonJettonAmmPool} from "../utils/environment"
 import {toNano} from "@ton/core"
 import {AmmPool} from "../output/DEX_AmmPool"
 // eslint-disable-next-line
 import {SendDumpToDevWallet} from "@tondevwallet/traces"
 
 describe("Amm pool", () => {
-    test("should swap exact amount of tokens", async () => {
+    test("should swap exact amount of jetton to jetton", async () => {
         const blockchain = await Blockchain.create()
 
-        const {ammPool, vaultA, vaultB, initWithLiquidity, swap} = await createAmmPool(blockchain)
+        const {ammPool, vaultA, vaultB, initWithLiquidity, swap} =
+            await createJettonAmmPool(blockchain)
 
         // deploy liquidity deposit contract
         const initialRatio = 2n
@@ -17,7 +18,7 @@ describe("Amm pool", () => {
         const amountA = toNano(1)
         const amountB = amountA * initialRatio // 1 a == 2 b ratio
 
-        const depositor = vaultA.jetton.walletOwner
+        const depositor = vaultA.treasury.walletOwner
 
         const {depositorLpWallet} = await initWithLiquidity(depositor, amountA, amountB)
 
@@ -28,7 +29,7 @@ describe("Amm pool", () => {
         const amountToSwap = 10n
         const expectedOutput = await ammPool.getExpectedOut(vaultA.vault.address, amountToSwap)
 
-        const amountBJettonBeforeSwap = await vaultB.jetton.wallet.getJettonBalance()
+        const amountBJettonBeforeSwap = await vaultB.treasury.wallet.getJettonBalance()
 
         const swapResult = await swap(amountToSwap, "vaultA", expectedOutput)
 
@@ -49,12 +50,12 @@ describe("Amm pool", () => {
 
         expect(swapResult.transactions).toHaveTransaction({
             // TODO: from: vaultB.jettonWallet
-            to: vaultB.jetton.wallet.address,
+            to: vaultB.treasury.wallet.address,
             op: AmmPool.opcodes.JettonTransferInternal,
             success: true,
         })
 
-        const amountOfJettonBAfterSwap = await vaultB.jetton.wallet.getJettonBalance()
+        const amountOfJettonBAfterSwap = await vaultB.treasury.wallet.getJettonBalance()
         // TODO: calculate precise expected amount of token B off-chain
         expect(amountOfJettonBAfterSwap).toBeGreaterThan(amountBJettonBeforeSwap)
     })
@@ -62,7 +63,8 @@ describe("Amm pool", () => {
     test("should revert swap with slippage", async () => {
         const blockchain = await Blockchain.create()
 
-        const {ammPool, vaultA, vaultB, initWithLiquidity, swap} = await createAmmPool(blockchain)
+        const {ammPool, vaultA, vaultB, initWithLiquidity, swap} =
+            await createJettonAmmPool(blockchain)
 
         // deploy liquidity deposit contract
         const initialRatio = 2n
@@ -70,7 +72,7 @@ describe("Amm pool", () => {
         const amountA = toNano(1)
         const amountB = amountA * initialRatio // 1 a == 2 b ratio
 
-        const depositor = vaultA.jetton.walletOwner
+        const depositor = vaultA.treasury.walletOwner
 
         const {depositorLpWallet} = await initWithLiquidity(depositor, amountA, amountB)
 
@@ -81,8 +83,8 @@ describe("Amm pool", () => {
         const amountToSwap = 10n
         const expectedOutput = await ammPool.getExpectedOut(vaultA.vault.address, amountToSwap)
 
-        const amountBJettonBeforeSwap = await vaultB.jetton.wallet.getJettonBalance()
-        const amountAJettonBeforeSwap = await vaultA.jetton.wallet.getJettonBalance()
+        const amountBJettonBeforeSwap = await vaultB.treasury.wallet.getJettonBalance()
+        const amountAJettonBeforeSwap = await vaultA.treasury.wallet.getJettonBalance()
 
         const swapResult = await swap(amountToSwap, "vaultA", expectedOutput + 1n) // slippage
 
@@ -93,8 +95,8 @@ describe("Amm pool", () => {
             success: true, // That is what happens when throw after commit(), exit code is non-zero, success is true
         })
 
-        const amountAJettonAfterSwap = await vaultA.jetton.wallet.getJettonBalance()
-        const amountBJettonAfterSwap = await vaultB.jetton.wallet.getJettonBalance()
+        const amountAJettonAfterSwap = await vaultA.treasury.wallet.getJettonBalance()
+        const amountBJettonAfterSwap = await vaultB.treasury.wallet.getJettonBalance()
 
         // check that swap was reverted and jettons are not moved
         expect(amountAJettonBeforeSwap).toEqual(amountAJettonAfterSwap)
@@ -104,7 +106,7 @@ describe("Amm pool", () => {
     test("should withdraw liquidity with lp burn", async () => {
         const blockchain = await Blockchain.create()
 
-        const {ammPool, vaultA, vaultB, initWithLiquidity} = await createAmmPool(blockchain)
+        const {ammPool, vaultA, vaultB, initWithLiquidity} = await createJettonAmmPool(blockchain)
 
         // deploy liquidity deposit contract
         const initialRatio = 2n
@@ -112,7 +114,7 @@ describe("Amm pool", () => {
         const amountA = toNano(1)
         const amountB = amountA * initialRatio // 1 a == 2 b ratio
 
-        const depositor = vaultA.jetton.walletOwner
+        const depositor = vaultA.treasury.walletOwner
 
         const {depositorLpWallet, withdrawLiquidity} = await initWithLiquidity(
             depositor,
@@ -124,8 +126,8 @@ describe("Amm pool", () => {
         // check that liquidity deposit was successful
         expect(lpBalanceAfterFirstLiq).toBeGreaterThan(0n)
 
-        const amountBJettonBefore = await vaultB.jetton.wallet.getJettonBalance()
-        const amountAJettonBefore = await vaultA.jetton.wallet.getJettonBalance()
+        const amountBJettonBefore = await vaultB.treasury.wallet.getJettonBalance()
+        const amountAJettonBefore = await vaultA.treasury.wallet.getJettonBalance()
 
         const withdrawResult = await withdrawLiquidity(lpBalanceAfterFirstLiq, null)
 
@@ -148,11 +150,121 @@ describe("Amm pool", () => {
             success: true,
         })
 
-        const amountBJettonAfter = await vaultB.jetton.wallet.getJettonBalance()
-        const amountAJettonAfter = await vaultA.jetton.wallet.getJettonBalance()
+        const amountBJettonAfter = await vaultB.treasury.wallet.getJettonBalance()
+        const amountAJettonAfter = await vaultA.treasury.wallet.getJettonBalance()
 
         // TODO: add off-chain precise checks here
         expect(amountAJettonAfter).toBeGreaterThan(amountAJettonBefore)
         expect(amountBJettonAfter).toBeGreaterThan(amountBJettonBefore)
+    })
+
+    test("should swap exact amount of jetton to ton", async () => {
+        const blockchain = await Blockchain.create()
+
+        const {ammPool, vaultA, vaultB, initWithLiquidity, swap} =
+            await createTonJettonAmmPool(blockchain)
+
+        // deploy liquidity deposit contract
+        const initialRatio = 2n
+
+        const amountA = toNano(1)
+        const amountB = amountA * initialRatio // 1 a == 2 b ratio
+
+        const depositor = vaultB.treasury.walletOwner
+
+        const {depositorLpWallet} = await initWithLiquidity(depositor, amountA, amountB)
+
+        const lpBalanceAfterFirstLiq = await depositorLpWallet.getJettonBalance()
+        // check that liquidity deposit was successful
+        expect(lpBalanceAfterFirstLiq).toBeGreaterThan(0n)
+
+        // swap 10 jettons for ton
+        const amountToSwap = 10n
+        const expectedOutputTon = await ammPool.getExpectedOut(vaultB.vault.address, amountToSwap)
+
+        const amountBJettonBeforeSwap = await vaultB.treasury.wallet.getJettonBalance()
+
+        const swapResult = await swap(amountToSwap, "vaultB", expectedOutputTon)
+
+        // check that swap was successful
+        expect(swapResult.transactions).toHaveTransaction({
+            from: vaultB.vault.address,
+            to: ammPool.address,
+            op: AmmPool.opcodes.SwapIn,
+            success: true,
+        })
+
+        expect(swapResult.transactions).toHaveTransaction({
+            from: ammPool.address,
+            to: vaultA.vault.address,
+            op: AmmPool.opcodes.PayoutFromPool,
+            success: true,
+        })
+
+        expect(swapResult.transactions).toHaveTransaction({
+            to: vaultB.treasury.walletOwner.address,
+            // TODO: add precise ton calculations (a lot of different fees)
+            // value: expectedOutputTon,
+            success: true,
+        })
+
+        const amountOfJettonBAfterSwap = await vaultB.treasury.wallet.getJettonBalance()
+        expect(amountOfJettonBAfterSwap).toBe(amountBJettonBeforeSwap - amountToSwap)
+    })
+
+    test("should swap exact amount of ton to jetton", async () => {
+        const blockchain = await Blockchain.create()
+
+        const {ammPool, vaultA, vaultB, initWithLiquidity, swap} =
+            await createTonJettonAmmPool(blockchain)
+
+        // deploy liquidity deposit contract
+        const initialRatio = 2n
+
+        const amountA = toNano(1)
+        const amountB = amountA * initialRatio // 1 a == 2 b ratio
+
+        const depositor = vaultB.treasury.walletOwner
+
+        const {depositorLpWallet} = await initWithLiquidity(depositor, amountA, amountB)
+
+        const lpBalanceAfterFirstLiq = await depositorLpWallet.getJettonBalance()
+        // check that liquidity deposit was successful
+        expect(lpBalanceAfterFirstLiq).toBeGreaterThan(0n)
+
+        // swap 5 nanoton for jetton
+        const amountToSwapTon = 5n
+        const expectedOutputJetton = await ammPool.getExpectedOut(
+            vaultA.vault.address,
+            amountToSwapTon,
+        )
+
+        const amountBJettonBeforeSwap = await vaultB.treasury.wallet.getJettonBalance()
+
+        const swapResult = await swap(amountToSwapTon, "vaultA", expectedOutputJetton)
+
+        // check that swap was successful
+        expect(swapResult.transactions).toHaveTransaction({
+            from: vaultA.vault.address,
+            to: ammPool.address,
+            op: AmmPool.opcodes.SwapIn,
+            success: true,
+        })
+
+        expect(swapResult.transactions).toHaveTransaction({
+            from: ammPool.address,
+            to: vaultB.vault.address,
+            op: AmmPool.opcodes.PayoutFromPool,
+            success: true,
+        })
+
+        expect(swapResult.transactions).toHaveTransaction({
+            to: vaultB.treasury.wallet.address,
+            op: AmmPool.opcodes.JettonTransferInternal,
+            success: true,
+        })
+
+        const amountOfJettonBAfterSwap = await vaultB.treasury.wallet.getJettonBalance()
+        expect(amountOfJettonBAfterSwap).toBe(amountBJettonBeforeSwap + expectedOutputJetton)
     })
 })
