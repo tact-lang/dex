@@ -1,10 +1,25 @@
+import "../vaults/vault-interface";
+import "./liquidity-deposit";
+
 message(0xac2f5a38) SwapIn {
     amount: Int as coins;
-    minAmountOut: Int as coins;
+    // false - exactIn type. True - exactOut type.
+    swapType: Bool;
+    limit: Int as coins;
     timeout: Int as uint32; // Absolute unix timestamp
     swapOutReceiver: Address;
     payloadOnSuccess: Cell? = null;
     payloadOnFailure: Cell? = null;
+    nextStep: SwapStep? = null;
+
+    // For multihop swaps
+    multihopInfo: MultihopInfo? = null;
+}
+
+struct MultihopInfo {
+    leftVault: Address;
+    rightVault: Address;
+    outVault: Address;
 }
 
 message(0x74f7a60) PayoutFromPool {

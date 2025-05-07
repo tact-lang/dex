@@ -1,38 +1,14 @@
-import {Address, beginCell, Builder, Cell, storeTransaction, Transaction} from "@ton/core"
+import {Address, beginCell, Builder, Cell} from "@ton/core"
 import {
     SwapRequest,
     storeSwapRequest,
     SwapRequestOpcode,
     storeLPDepositPart,
     LPDepositPartOpcode,
+    SwapStep,
 } from "../output/DEX_AmmPool"
 import {PROOF_NO_PROOF_ATTACHED, PROOF_TEP89, PROOF_STATE_INIT} from "../output/DEX_JettonVault"
 import {storeAddLiquidityPartTon, storeSwapRequestTon} from "../output/DEX_TonVault"
-
-const fieldsToSave = ["blockchainLogs", "vmLogs", "debugLogs", "shard", "delay", "totalDelay"]
-
-export function serializeTransactionsList(transactions: any[]): string {
-    const dump = {
-        transactions: transactions.map(t => {
-            const tx = beginCell()
-                .store(storeTransaction(t as Transaction))
-                .endCell()
-                .toBoc()
-                .toString("base64")
-
-            return {
-                transaction: tx,
-                fields: fieldsToSave.reduce((acc: any, f) => {
-                    acc[f] = t[f]
-                    return acc
-                }, {}),
-                parentId: t.parent?.lt.toString(),
-                childrenIds: t.children?.map((c: any) => c?.lt?.toString()),
-            }
-        }),
-    }
-    return JSON.stringify(dump, null, 2)
-}
 
 export type NoProof = {
     proofType: 0n
@@ -78,19 +54,25 @@ export function createJettonVaultMessage(opcode: bigint, payload: Cell, proof: P
 }
 
 export function createJettonVaultSwapRequest(
-    destinationVault: Address,
-    minAmountOut: bigint = 0n,
+    destinationPool: Address,
+    swapType: boolean = false,
+    // Default is exactIn
+    limit: bigint = 0n,
     timeout: bigint = 0n,
     payloadOnSuccess: Cell | null = null,
     payloadOnFailure: Cell | null = null,
+    nextStep: SwapStep | null = null,
 ) {
     const swapRequest: SwapRequest = {
         $$type: "SwapRequest",
-        destinationVault: destinationVault,
-        minAmountOut: minAmountOut,
+        pool: destinationPool,
+        receiver: null,
+        swapType: swapType,
+        limit: limit,
         timeout: timeout,
         payloadOnSuccess: payloadOnSuccess,
         payloadOnFailure: payloadOnFailure,
+        nextStep: nextStep,
     }
 
     return createJettonVaultMessage(
@@ -172,25 +154,31 @@ export function createTonVaultLiquidityDepositPayload(
 }
 
 export function createTonSwapRequest(
-    destinationVault: Address,
+    pool: Address,
     receiver: Address,
     amountIn: bigint,
     minAmountOut: bigint = 0n,
     timeout: bigint = 0n,
     payloadOnSuccess: Cell | null = null,
     payloadOnFailure: Cell | null = null,
+    nextStep: SwapStep | null = null,
 ) {
     return beginCell()
         .store(
             storeSwapRequestTon({
                 $$type: "SwapRequestTon",
-                destinationVault: destinationVault,
-                minAmountOut,
-                payloadOnFailure,
-                payloadOnSuccess,
-                timeout,
-                amountIn,
-                receiver,
+                amount: amountIn,
+                action: {
+                    $$type: "SwapRequest",
+                    pool: pool,
+                    swapType: false,
+                    limit: minAmountOut,
+                    payloadOnFailure: payloadOnFailure,
+                    payloadOnSuccess: payloadOnSuccess,
+                    timeout: timeout,
+                    receiver: receiver,
+                    nextStep: nextStep,
+                },
             }),
         )
         .endCell()

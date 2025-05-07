@@ -6,6 +6,7 @@ import "../core/messages.tact";
 import "./ton-vault.tact";
 import "./proofs/check-proof";
 import "./proofs/tep-89-proofer";
+import "../core/liquidity-deposit";
 
 // There are 4 kinds of proof of jettonWallet:
 // 1) TEP-89 proof (discoverable)
@@ -122,22 +123,21 @@ inline fun actionHandler(msg: JettonNotifyWithActionRequest) {
 }
 
 inline fun handleSwapRequest(msg: JettonNotifyWithActionRequest, action: SwapRequest) {
-    let otherVault = action.destinationVault;
-    let sortedAddresses = sortAddresses(myAddress(), otherVault);
-
-    let poolAddress = contractAddress(initOf AmmPool(sortedAddresses.lower, sortedAddresses.higher, 0, 0, 0));
     message(MessageParameters {
         value: 0,
         bounce: false,
         mode: SendRemainingValue,
-        to: poolAddress,
+        to: action.pool,
         body: SwapIn {
-            swapOutReceiver: msg.sender,
+            // If receiver is not specified, then it will be the sender of TONs or Jettons
+            swapOutReceiver: action.receiver != null ? action.receiver!! : msg.sender,
             amount: msg.amount,
-            minAmountOut: action.minAmountOut,
+            swapType: action.swapType,
+            limit: action.limit,
             timeout: action.timeout,
             payloadOnSuccess: action.payloadOnSuccess,
             payloadOnFailure: action.payloadOnFailure,
+            nextStep: action.nextStep,
         }.toCell(),
     });
 }
