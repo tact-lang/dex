@@ -4,7 +4,7 @@ import {ExtendedJettonWallet as JettonWallet} from "../wrappers/ExtendedJettonWa
 import {Address, beginCell, Cell, SendMode, toNano} from "@ton/core"
 import {JettonVault} from "../output/DEX_JettonVault"
 import {sortAddresses} from "./deployUtils"
-import {AmmPool} from "../output/DEX_AmmPool"
+import {AmmPool, SwapStep} from "../output/DEX_AmmPool"
 import {LiquidityDepositContract} from "../output/DEX_LiquidityDepositContract"
 import {
     createJettonVaultLiquidityDepositPayload,
@@ -83,11 +83,13 @@ type VaultInterface<T> = {
     ) => Promise<SandboxSendResult>
     sendSwapRequest: (
         amountToSwap: bigint,
-        destinationVault: Address,
-        expectedOutput: bigint,
+        destinationPool: Address,
+        type: boolean,
+        limit: bigint,
         timeout: bigint,
         payloadOnSuccess: Cell | null,
         payloadOnFailure: Cell | null,
+        nextStep: SwapStep | null,
     ) => Promise<SandboxSendResult>
 }
 
@@ -131,18 +133,22 @@ export const createJettonVault: Create<VaultInterface<JettonTreasury>> = async (
 
     const sendSwapRequest = async (
         amountToSwap: bigint,
-        destinationVault: Address,
-        expectedOutput: bigint,
+        destinationPool: Address,
+        type: boolean,
+        limit: bigint,
         timeout: bigint,
         payloadOnSuccess: Cell | null,
         payloadOnFailure: Cell | null,
+        nextStep?: SwapStep | null,
     ) => {
         const swapRequest = createJettonVaultSwapRequest(
-            destinationVault,
-            expectedOutput,
+            destinationPool,
+            type,
+            limit,
             timeout,
             payloadOnSuccess,
             payloadOnFailure,
+            nextStep,
         )
 
         return await jetton.transfer(vault.address, amountToSwap, swapRequest)
@@ -167,13 +173,11 @@ export const createTonVault: Create<VaultInterface<TonTreasury>> = async (
     const wallet = await blockchain.treasury("wallet-owner")
 
     const deploy = async () => {
-        const vaultDeployResult = await vault.send(
+        return await vault.send(
             (await blockchain.treasury("any-user-3")).getSender(),
             {value: toNano(0.1), bounce: false},
             null,
         )
-
-        return vaultDeployResult
     }
 
     const addLiquidity = async (
@@ -201,20 +205,23 @@ export const createTonVault: Create<VaultInterface<TonTreasury>> = async (
 
     const sendSwapRequest = async (
         amountToSwap: bigint,
-        destinationVault: Address,
-        expectedOutput: bigint,
+        destinationPool: Address,
+        type: boolean,
+        limit: bigint,
         timeout: bigint,
         payloadOnSuccess: Cell | null,
         payloadOnFailure: Cell | null,
+        nextStep?: SwapStep | null,
     ) => {
         const swapRequest = createTonSwapRequest(
-            destinationVault,
+            destinationPool,
             wallet.address,
             amountToSwap,
-            expectedOutput,
+            limit,
             timeout,
             payloadOnSuccess,
             payloadOnFailure,
+            nextStep,
         )
 
         return await wallet.send({
@@ -242,7 +249,7 @@ const createLiquidityDepositSetup = (
 ) => {
     const depositorIds: Map<string, bigint> = new Map()
 
-    const setup = async (
+    return async (
         depositorContract: SandboxContract<TreasuryContract>,
         amountLeft: bigint,
         amountRight: bigint,
@@ -306,8 +313,6 @@ const createLiquidityDepositSetup = (
             withdrawLiquidity,
         }
     }
-
-    return setup
 }
 
 const createAmmPool =
@@ -369,25 +374,30 @@ const createAmmPool =
             timeout: bigint = 0n,
             payloadOnSuccess: Cell | null = null,
             payloadOnFailure: Cell | null = null,
+            nextSwapStep: SwapStep | null = null,
         ) => {
             if (swapFrom === "vaultA") {
                 return await firstVault.sendSwapRequest(
                     amountToSwap,
-                    secondVault.vault.address,
+                    ammPool.address,
+                    false,
                     expectedOutput,
                     timeout,
                     payloadOnSuccess,
                     payloadOnFailure,
+                    nextSwapStep,
                 )
             }
 
             return await secondVault.sendSwapRequest(
                 amountToSwap,
-                firstVault.vault.address,
+                ammPool.address,
+                false,
                 expectedOutput,
                 timeout,
                 payloadOnSuccess,
                 payloadOnFailure,
+                nextSwapStep,
             )
         }
 
