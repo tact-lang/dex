@@ -132,7 +132,7 @@ inline fun handleSwapRequest(msg: JettonNotifyWithActionRequest, action: SwapReq
             // If receiver is not specified, then it will be the sender of TONs or Jettons
             swapOutReceiver: action.receiver != null ? action.receiver!! : msg.sender,
             amount: msg.amount,
-            swapType: action.swapType,
+            isExactOutType: action.isExactOutType,
             limit: action.limit,
             timeout: action.timeout,
             payloadOnSuccess: action.payloadOnSuccess,

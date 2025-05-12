@@ -55,7 +55,7 @@ export function createJettonVaultMessage(opcode: bigint, payload: Cell, proof: P
 
 export function createJettonVaultSwapRequest(
     destinationPool: Address,
-    swapType: boolean = false,
+    isExactOutType: boolean = false,
     // Default is exactIn
     limit: bigint = 0n,
     timeout: bigint = 0n,
@@ -67,7 +67,7 @@ export function createJettonVaultSwapRequest(
         $$type: "SwapRequest",
         pool: destinationPool,
         receiver: null,
-        swapType: swapType,
+        isExactOutType: isExactOutType,
         limit: limit,
         timeout: timeout,
         payloadOnSuccess: payloadOnSuccess,
@@ -171,7 +171,7 @@ export function createTonSwapRequest(
                 action: {
                     $$type: "SwapRequest",
                     pool: pool,
-                    swapType: false,
+                    isExactOutType: false,
                     limit: minAmountOut,
                     payloadOnFailure: payloadOnFailure,
                     payloadOnSuccess: payloadOnSuccess,

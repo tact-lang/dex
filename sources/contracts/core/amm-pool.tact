@@ -230,7 +230,7 @@ contract AmmPool(
         let newAmountIn = -1;
         let newAmountOut = -1;
         // ExactIn swap (default one)
-        if(!msg.swapType) {
+        if(!msg.isExactOutType) {
             // TODO: Test, that muldiv for msg.amount >= 0, 1000 - self.PoolFee >= 0 does not produce negative result
             // I couldn't check that in sources, cause there is very shitty c++ code that is impossible to read
             // So we just need to kinda fuzz it with corner cases
@@ -252,7 +252,7 @@ contract AmmPool(
                         swapOutReceiver: msg.swapOutReceiver,
                         amount: amountToPay,
                         // Swap type for multi-hop swaps is always exactIn
-                        swapType: false,
+                        isExactOutType: false,
                         limit: msg.nextStep!!.minAmountOut,
                         timeout: msg.timeout,
                         payloadOnSuccess: msg.payloadOnSuccess,

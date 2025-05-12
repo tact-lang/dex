@@ -17,7 +17,7 @@ struct SwapRequest {
     receiver: Address?;
     // false - exactIn type. True - exactOut type.
     // Note, that exactOut type doesn't support multihop swaps.
-    swapType: Bool;
+    isExactOutType: Bool;
     // If swapType is exactIn, then limit is minAmountOut
     // If swapType is exactOut, then limit is maxAmountIn
     limit: Int as coins;

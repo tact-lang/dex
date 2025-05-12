@@ -4,7 +4,7 @@ import "./liquidity-deposit";
 message(0xac2f5a38) SwapIn {
     amount: Int as coins;
     // false - exactIn type. True - exactOut type.
-    swapType: Bool;
+    isExactOutType: Bool;
     limit: Int as coins;
     timeout: Int as uint32; // Absolute unix timestamp
     swapOutReceiver: Address;

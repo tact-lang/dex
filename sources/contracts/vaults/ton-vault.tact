@@ -33,7 +33,7 @@ contract TonVault(
             body: SwapIn {
                 swapOutReceiver: msg.action.receiver != null ? msg.action.receiver!! : sender(),
                 amount: msg.amount,
-                swapType: msg.action.swapType,
+                isExactOutType: msg.action.isExactOutType,
                 limit: msg.action.limit,
                 timeout: msg.action.timeout,
                 payloadOnSuccess: msg.action.payloadOnSuccess,
