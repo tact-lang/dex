@@ -72,6 +72,7 @@ export function createJettonVaultSwapRequest(
         timeout: timeout,
         payloadOnSuccess: payloadOnSuccess,
         payloadOnFailure: payloadOnFailure,
+        // Field for specifying the next step in the swap (for cross-pool swaps)
         nextStep: nextStep,
     }
 
@@ -177,6 +178,7 @@ export function createTonSwapRequest(
                     payloadOnSuccess: payloadOnSuccess,
                     timeout: timeout,
                     receiver: receiver,
+                    // Field for specifying the next step in the swap (for cross-pool swaps)
                     nextStep: nextStep,
                 },
             }),
