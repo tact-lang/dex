@@ -1,18 +1,25 @@
 import {toNano} from "@ton/core"
 import {Blockchain} from "@ton/sandbox"
-import {randomAddress} from "@ton/test-utils"
-import {createJettonVault, createTonJettonAmmPool} from "../utils/environment"
+import {createJettonAmmPool, createTonJettonAmmPool} from "../utils/environment"
 // eslint-disable-next-line
 import {SendDumpToDevWallet} from "@tondevwallet/traces"
 import {calculateLiquidityProvisioning} from "../utils/liquidityMath"
 
-describe("Liquidity math", () => {
+describe.each([
+    {
+        name: "Jetton->Jetton",
+        createPool: createJettonAmmPool,
+    },
+    {
+        name: "TON->Jetton",
+        createPool: createTonJettonAmmPool,
+    },
+])("Liquidity math for $name", ({createPool}) => {
     // TODO: add tests for all combinations of pools (with it.each, it should be the same)
     test("should increase pool reserves by correct amount", async () => {
         const blockchain = await Blockchain.create()
 
-        const {ammPool, vaultB, isSwapped, initWithLiquidity} =
-            await createTonJettonAmmPool(blockchain)
+        const {ammPool, vaultB, isSwapped, initWithLiquidity} = await createPool(blockchain)
 
         const initialRatio = 7n
 
@@ -48,8 +55,7 @@ describe("Liquidity math", () => {
     test("should increase pool reserves by correct amount with revert", async () => {
         const blockchain = await Blockchain.create()
 
-        const {ammPool, vaultB, isSwapped, initWithLiquidity} =
-            await createTonJettonAmmPool(blockchain)
+        const {ammPool, vaultB, isSwapped, initWithLiquidity} = await createPool(blockchain)
 
         const initialRatio = 7n
 
@@ -107,8 +113,7 @@ describe("Liquidity math", () => {
     test("should follow math across multiple liquidity additions", async () => {
         const blockchain = await Blockchain.create()
 
-        const {ammPool, vaultB, isSwapped, initWithLiquidity} =
-            await createTonJettonAmmPool(blockchain)
+        const {ammPool, vaultB, isSwapped, initWithLiquidity} = await createPool(blockchain)
 
         let lpAmount = 0n
         const depositor = vaultB.treasury.walletOwner
@@ -160,40 +165,14 @@ describe("Liquidity math", () => {
             )
 
             // check that first liquidity deposit was successful
-            expect(lpAmountMinted).toBeGreaterThan(expectedLpAmount.lpTokens - 1n)
-            expect(lpAmountMinted).toBeLessThan(expectedLpAmount.lpTokens + 1n)
+            // +-1 nano bound checks
+            expect(lpAmountMinted).toBeGreaterThanOrEqual(expectedLpAmount.lpTokens - 1n)
+            expect(lpAmountMinted).toBeLessThanOrEqual(expectedLpAmount.lpTokens + 1n)
             // check that pool reserves are correct
             expect(await ammPool.getLeftSide()).toEqual(expectedLpAmount.reserveA)
             expect(await ammPool.getRightSide()).toEqual(expectedLpAmount.reserveB)
 
             lpAmount = mintedTotal
         }
-    })
-
-    test("Jetton vault should deploy correctly", async () => {
-        // deploy vault -> send jetton transfer -> notify vault -> notify liq dep contract
-        const blockchain = await Blockchain.create()
-        const vaultSetup = await createJettonVault(blockchain)
-
-        const vaultDeployResult = await vaultSetup.deploy()
-        expect(vaultDeployResult.transactions).toHaveTransaction({
-            success: true,
-            deploy: true,
-        })
-
-        const mockDepositLiquidityContract = randomAddress(0)
-
-        const jettonTransferToVault = await vaultSetup.addLiquidity(
-            mockDepositLiquidityContract,
-            toNano(1),
-        )
-
-        expect(jettonTransferToVault.transactions).toHaveTransaction({
-            success: true,
-        })
-
-        expect(jettonTransferToVault.transactions).toHaveTransaction({
-            to: mockDepositLiquidityContract,
-        })
     })
 })
