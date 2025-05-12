@@ -38,6 +38,7 @@ contract TonVault(
                 timeout: msg.action.timeout,
                 payloadOnSuccess: msg.action.payloadOnSuccess,
                 payloadOnFailure: msg.action.payloadOnFailure,
+                nextStep: msg.action.nextStep,
             }.toCell(),
         });
     }

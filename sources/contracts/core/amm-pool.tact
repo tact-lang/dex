@@ -192,6 +192,7 @@ contract AmmPool(
             let init = initOf AmmPool(msg.multihopInfo!!.leftVault, msg.multihopInfo!!.rightVault, 0, 0, 0);
             // We use require if situations that should never be possible unless someone is trying to hack the contract
             require(init.hasSameBasechainAddress(sender()), "Pool: Sender must be pool if multihopInfo is specified");
+            require(msg.multihopInfo!!.outVault == self.leftVault || msg.multihopInfo!!.outVault == self.rightVault, "Pool: Out vault on a previous step must be one of the pool vaults");
             // Their out vault is our in vault
             incomingVault = msg.multihopInfo!!.outVault;
         }
@@ -200,6 +201,7 @@ contract AmmPool(
             require(incomingVault == self.leftVault || incomingVault == self.rightVault, "Pool: Sender must be a vault");
         }
 
+        // TODO: This if statement can be optimized. Just need to set default values for inVault, outVault, inBalance and outBalance as for leftVault
         if (incomingVault == self.leftVault) {
             inVault = self.leftVault;
             outVault = self.rightVault;
@@ -296,15 +298,35 @@ contract AmmPool(
             self.rightSideReserve = newAmountOut;
         }
     }
+    get fun leftVault(): Address {
+        return self.leftVault;
+    }
 
-    get fun getLeftSide(): Int {
+    get fun rightVault(): Address {
+        return self.rightVault;
+    }
+
+    get fun leftSide(): Int {
         return self.leftSideReserve;
     }
 
-    get fun getRightSide(): Int {
+    get fun rightSide(): Int {
         return self.rightSideReserve;
     }
 
+    get fun reserveForVault(vaultAddress: Address): Int {
+        if (vaultAddress == self.leftVault) {
+            return self.leftSideReserve;
+        } else if (vaultAddress == self.rightVault) {
+            return self.rightSideReserve;
+        }
+        else {
+            require(false, "Pool: argument of `reserveForVault` must be one of the vaults");
+            return 0; // This line will never be reached, but we need to return something to satisfy the compiler
+        }
+    }
+
+    // For TEP-74 compatibility
     get fun get_wallet_address(ownerAddress: Address): Address {
         return getJettonWalletByOwner(ownerAddress);
     }
