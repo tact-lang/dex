@@ -101,7 +101,7 @@ describe.each([
         // since we have same depositor
         const lpAmountMinted = lpBalanceAfterSecondLiq - lpBalanceAfterFirstLiq
 
-        // smthing was minted
+        // something was minted
         expect(lpAmountMinted).toBeGreaterThan(0n)
         expect(lpAmountMinted).toEqual(expectedLpAmountSecondTime.lpTokens)
 
