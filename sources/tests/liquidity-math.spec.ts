@@ -132,9 +132,6 @@ describe.each([
             }
         }
 
-        const seed = Math.floor(Math.random() * 1000000)
-        console.log(`Debug Seed: ${seed}`)
-
         const random = (min: number, max: number) =>
             Math.floor(Math.random() * (max - min + 1)) + min
 
