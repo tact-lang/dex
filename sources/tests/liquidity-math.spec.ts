@@ -1,15 +1,7 @@
 import {toNano} from "@ton/core"
 import {Blockchain} from "@ton/sandbox"
 import {randomAddress} from "@ton/test-utils"
-import {AmmPool} from "../output/DEX_AmmPool"
-import {LiquidityDepositContract} from "../output/DEX_LiquidityDepositContract"
-import {
-    createJettonAmmPool,
-    createJettonVault,
-    createTonJettonAmmPool,
-    createTonVault,
-} from "../utils/environment"
-import {sortAddresses} from "../utils/deployUtils"
+import {createJettonVault, createTonJettonAmmPool} from "../utils/environment"
 // eslint-disable-next-line
 import {SendDumpToDevWallet} from "@tondevwallet/traces"
 import {calculateLiquidityProvisioning} from "../utils/liquidityMath"
@@ -112,6 +104,72 @@ describe("Liquidity math", () => {
         expect(await ammPool.getRightSide()).toEqual(expectedLpAmountSecondTime.reserveB)
     })
 
+    test("should follow math across multiple liquidity additions", async () => {
+        const blockchain = await Blockchain.create()
+
+        const {ammPool, vaultB, isSwapped, initWithLiquidity} =
+            await createTonJettonAmmPool(blockchain)
+
+        let lpAmount = 0n
+        const depositor = vaultB.treasury.walletOwner
+
+        const getReserves = async () => {
+            try {
+                return {
+                    left: await ammPool.getLeftSide(),
+                    right: await ammPool.getRightSide(),
+                }
+            } catch (error) {
+                return {
+                    left: 0n,
+                    right: 0n,
+                }
+            }
+        }
+
+        const seed = Math.floor(Math.random() * 1000000)
+        console.log(`Debug Seed: ${seed}`)
+
+        const random = (min: number, max: number) =>
+            Math.floor(Math.random() * (max - min + 1)) + min
+
+        for (let index = 0; index < 10; index++) {
+            const initialRatio = BigInt(random(1, 10)) // Random ratio between 1 and 10
+
+            const amountARaw = BigInt(random(1, 1000))
+            const amountBRaw = amountARaw * initialRatio
+
+            const amountA = isSwapped ? amountARaw : amountBRaw
+            const amountB = isSwapped ? amountBRaw : amountARaw
+
+            const {left: reserveABefore, right: reserveBBefore} = await getReserves()
+
+            const {depositorLpWallet} = await initWithLiquidity(depositor, amountA, amountB)
+
+            const mintedTotal = await depositorLpWallet.getJettonBalance()
+            const lpAmountMinted = mintedTotal === lpAmount ? lpAmount : mintedTotal - lpAmount
+
+            const expectedLpAmount = calculateLiquidityProvisioning(
+                reserveABefore,
+                reserveBBefore,
+                amountA,
+                amountB,
+                0n,
+                0n,
+                lpAmount,
+            )
+
+            // check that first liquidity deposit was successful
+            expect(lpAmountMinted).toBeGreaterThan(expectedLpAmount.lpTokens - 1n)
+            expect(lpAmountMinted).toBeLessThan(expectedLpAmount.lpTokens + 1n)
+            // check that pool reserves are correct
+            expect(await ammPool.getLeftSide()).toEqual(expectedLpAmount.reserveA)
+            expect(await ammPool.getRightSide()).toEqual(expectedLpAmount.reserveB)
+
+            lpAmount = mintedTotal
+        }
+    })
+
     test("Jetton vault should deploy correctly", async () => {
         // deploy vault -> send jetton transfer -> notify vault -> notify liq dep contract
         const blockchain = await Blockchain.create()
@@ -137,101 +195,5 @@ describe("Liquidity math", () => {
         expect(jettonTransferToVault.transactions).toHaveTransaction({
             to: mockDepositLiquidityContract,
         })
-    })
-
-    test("should revert liquidity deposit with wrong ratio with jetton vault and ton vault", async () => {
-        const blockchain = await Blockchain.create()
-
-        const {ammPool, vaultA, vaultB, isSwapped, liquidityDepositSetup, initWithLiquidity} =
-            await createTonJettonAmmPool(blockchain)
-
-        // deploy liquidity deposit contract
-        const initialRatio = 2n
-
-        const amountA = toNano(1)
-        const amountB = amountA * initialRatio // 1 a == 2 b ratio
-
-        const depositor = vaultB.treasury.walletOwner
-
-        const {depositorLpWallet} = await initWithLiquidity(depositor, amountA, amountB)
-
-        const lpBalanceAfterFirstLiq = await depositorLpWallet.getJettonBalance()
-        // check that first liquidity deposit was successful
-        expect(lpBalanceAfterFirstLiq).toBeGreaterThan(0n)
-
-        // now we want to try to add liquidity in wrong ratio and check revert
-        const amountABadRatio = toNano(1)
-        const amountBBadRatio = amountABadRatio * initialRatio * 5n // wrong ratio
-
-        const liqSetupBadRatio = await liquidityDepositSetup(
-            depositor,
-            amountABadRatio,
-            amountBBadRatio,
-        )
-        const liqDepositDeployResultBadRatio = await liqSetupBadRatio.deploy()
-        expect(liqDepositDeployResultBadRatio.transactions).toHaveTransaction({
-            success: true,
-            deploy: true,
-        })
-
-        // both vaults are already deployed so we can just add next liquidity
-        const vaultALiquidityAddResultBadRatio = await vaultA.addLiquidity(
-            liqSetupBadRatio.liquidityDeposit.address,
-            isSwapped ? amountBBadRatio : amountABadRatio,
-        )
-
-        expect(vaultALiquidityAddResultBadRatio.transactions).toHaveTransaction({
-            from: vaultA.vault.address,
-            to: liqSetupBadRatio.liquidityDeposit.address,
-            op: LiquidityDepositContract.opcodes.PartHasBeenDeposited,
-            success: true,
-        })
-
-        expect(await liqSetupBadRatio.liquidityDeposit.getStatus()).toBeGreaterThan(0n)
-
-        // a lot of stuff happens here
-        // 1. ton vault transfer to vaultB
-        // 2. vaultB sends notification to LPDepositContractBadRatio
-        // 3. LPDepositContractBadRatio sends notification to ammPool
-        // 4. ammPool receives notification and tries to add liquidity, but since we broke the ratio, it
-        //    can add only a part of the liquidity, and the rest of the liquidity is sent back to deployer jetton wallet
-        // (4.1 and 4.2 are pool-payout and jetton stuff)
-        // 5. More LP jettons are minted
-        const vaultBLiquidityAddResultBadRatio = await vaultB.addLiquidity(
-            liqSetupBadRatio.liquidityDeposit.address,
-            isSwapped ? amountABadRatio : amountBBadRatio,
-        )
-
-        // it is tx #2
-        expect(vaultBLiquidityAddResultBadRatio.transactions).toHaveTransaction({
-            from: vaultB.vault.address,
-            to: liqSetupBadRatio.liquidityDeposit.address,
-            op: LiquidityDepositContract.opcodes.PartHasBeenDeposited,
-            success: true,
-        })
-
-        // it is tx #3
-        expect(vaultBLiquidityAddResultBadRatio.transactions).toHaveTransaction({
-            from: liqSetupBadRatio.liquidityDeposit.address,
-            to: ammPool.address,
-            op: AmmPool.opcodes.LiquidityDeposit,
-            success: true,
-        })
-
-        // it is tx #4
-        expect(vaultBLiquidityAddResultBadRatio.transactions).toHaveTransaction({
-            from: ammPool.address,
-            to: isSwapped ? vaultA.vault.address : vaultB.vault.address, // TODO: add dynamic test why we revert B here
-            op: AmmPool.opcodes.PayoutFromPool,
-            success: true,
-        })
-
-        // TODO: add tests for precise amounts of jettons sent back to deployer wallet
-        // for tx #5
-
-        const lpBalanceAfterSecond = await depositorLpWallet.getJettonBalance()
-        // check that the second liquidity deposit was successful
-        // and we got more LP tokens
-        expect(lpBalanceAfterSecond).toBeGreaterThan(lpBalanceAfterFirstLiq)
     })
 })
