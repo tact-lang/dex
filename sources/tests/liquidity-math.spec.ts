@@ -53,6 +53,65 @@ describe("Liquidity math", () => {
         expect(await ammPool.getRightSide()).toEqual(expectedLpAmount.reserveB)
     })
 
+    test("should increase pool reserves by correct amount with revert", async () => {
+        const blockchain = await Blockchain.create()
+
+        const {ammPool, vaultB, isSwapped, initWithLiquidity} =
+            await createTonJettonAmmPool(blockchain)
+
+        const initialRatio = 7n
+
+        const amountARaw = toNano(1)
+        const amountBRaw = amountARaw * initialRatio // 1 a == 2 b ratio
+
+        const amountA = isSwapped ? amountARaw : amountBRaw
+        const amountB = isSwapped ? amountBRaw : amountARaw
+
+        const depositor = vaultB.treasury.walletOwner
+
+        const {depositorLpWallet} = await initWithLiquidity(depositor, amountA, amountB)
+
+        const lpBalanceAfterFirstLiq = await depositorLpWallet.getJettonBalance()
+        // check that first liquidity deposit was successful
+        expect(lpBalanceAfterFirstLiq).toBeGreaterThan(0n)
+
+        const reserveABefore = await ammPool.getLeftSide()
+        const reserveBBefore = await ammPool.getRightSide()
+
+        // change value a little so it won't be equal to reserveA
+        const amountABadRatioRaw = toNano(1.1)
+        const amountBBadRatioRaw = amountABadRatioRaw * initialRatio * 5n // wrong ratio
+
+        const amountABadRatio = isSwapped ? amountABadRatioRaw : amountBBadRatioRaw
+        const amountBBadRatio = isSwapped ? amountBBadRatioRaw : amountABadRatioRaw
+
+        // second add
+        await initWithLiquidity(depositor, amountABadRatio, amountBBadRatio)
+
+        const lpBalanceAfterSecondLiq = await depositorLpWallet.getJettonBalance()
+
+        const expectedLpAmountSecondTime = calculateLiquidityProvisioning(
+            reserveABefore,
+            reserveBBefore,
+            amountABadRatio,
+            amountBBadRatio,
+            0n,
+            0n,
+            lpBalanceAfterFirstLiq,
+        )
+
+        // since we have same depositor
+        const lpAmountMinted = lpBalanceAfterSecondLiq - lpBalanceAfterFirstLiq
+
+        // smthing was minted
+        expect(lpAmountMinted).toBeGreaterThan(0n)
+        expect(lpAmountMinted).toEqual(expectedLpAmountSecondTime.lpTokens)
+
+        // check that pool reserves are correct
+        expect(await ammPool.getLeftSide()).toEqual(expectedLpAmountSecondTime.reserveA)
+        expect(await ammPool.getRightSide()).toEqual(expectedLpAmountSecondTime.reserveB)
+    })
+
     test("Jetton vault should deploy correctly", async () => {
         // deploy vault -> send jetton transfer -> notify vault -> notify liq dep contract
         const blockchain = await Blockchain.create()
