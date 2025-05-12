@@ -84,7 +84,7 @@ export type VaultInterface<T> = {
     sendSwapRequest: (
         amountToSwap: bigint,
         destinationPool: Address,
-        type: boolean,
+        isExactOutType: boolean,
         limit: bigint,
         timeout: bigint,
         payloadOnSuccess: Cell | null,
