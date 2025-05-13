@@ -5,6 +5,8 @@ message(0xac2f5a38) SwapIn {
     amount: Int as coins;
     // false - exactIn type. True - exactOut type.
     isExactOutType: Bool;
+    // If swapType is exactIn, then limit is minAmountOut
+    // If swapType is exactOut, then limit is maxAmountIn
     limit: Int as coins;
     timeout: Int as uint32; // Absolute unix timestamp
     swapOutReceiver: Address;
