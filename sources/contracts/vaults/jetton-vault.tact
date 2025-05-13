@@ -6,6 +6,7 @@ import "../core/messages.tact";
 import "./ton-vault.tact";
 import "./proofs/check-proof";
 import "./proofs/tep-89-proofer";
+import "./proofs/jetton-burn-proofer";
 
 // There are 4 kinds of proof of jettonWallet:
 // 1) TEP-89 proof (discoverable)
@@ -69,6 +70,32 @@ contract JettonVault(
     // We will receive this message only if TEP-89 proofer will successfully validate jettonWallet
     receive(msg: TEP89ProofResponse) {
         let prooferStateInit = initOf TEP89Proofer(self.jettonMaster, myAddress(), msg.proofedJettonWallet, null);
+        require(prooferStateInit.hasSameBasechainAddress(sender()), "JettonVault: Sender must be a valid proofer");
+        self.jettonWallet = msg.proofedJettonWallet;
+        actionHandler(JettonNotifyWithActionRequest.fromCell(msg.action));
+    }
+
+    receive(msg: JettonBurnRequest) {
+        let prooferStateInit = initOf JettonBurnProofer(self.jettonMaster, myAddress(), msg.possibleJettonWallet, null);
+        require(prooferStateInit.hasSameBasechainAddress(sender()), "JettonVault: Sender must be a valid proofer");
+        message(MessageParameters {
+            to: msg.possibleJettonWallet,
+            // Doesn't really matter, so just for consistency - all internal protocol messages are not bounceable
+            bounce: false,
+            value: 0,
+            mode: SendRemainingValue,
+            body: JettonBurn {
+                queryId: 0,
+                amount: 0,
+                responseDestination: sender(),
+                customPayload: null,
+            }.toCell(),
+        });
+    }
+
+    // We will receive this message only if jetton burn proofer will successfully validate jettonWallet
+    receive(msg: JettonBurnProofResponse) {
+        let prooferStateInit = initOf JettonBurnProofer(self.jettonMaster, myAddress(), msg.proofedJettonWallet, null);
         require(prooferStateInit.hasSameBasechainAddress(sender()), "JettonVault: Sender must be a valid proofer");
         self.jettonWallet = msg.proofedJettonWallet;
         actionHandler(JettonNotifyWithActionRequest.fromCell(msg.action));
