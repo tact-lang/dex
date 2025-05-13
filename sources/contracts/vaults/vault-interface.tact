@@ -9,7 +9,6 @@ struct SwapStep {
     nextStep: Cell? = null;
 }
 
-
 const SwapRequestOpcode: Int = 0xbfa68001;
 struct SwapRequest {
     pool: Address;
