@@ -78,7 +78,7 @@ contract JettonVault(
 
     override fun handlePayout(msg: PayoutFromPool) {
         let sortedAddresses = sortAddresses(myAddress(), msg.otherVault);
-        let poolInit = initOf AmmPool(sortedAddresses.lower, sortedAddresses.higher, 0, 0, 0);
+        let poolInit = initOf AmmPool(sortedAddresses.lower, sortedAddresses.higher, 0, 0, 0, null);
 
         require(poolInit.hasSameBasechainAddress(sender()), "JettonVault: Sender must be pool");
 
@@ -125,7 +125,7 @@ inline fun handleSwapRequest(msg: JettonNotifyWithActionRequest, action: SwapReq
     let otherVault = action.destinationVault;
     let sortedAddresses = sortAddresses(myAddress(), otherVault);
 
-    let poolAddress = contractAddress(initOf AmmPool(sortedAddresses.lower, sortedAddresses.higher, 0, 0, 0));
+    let poolAddress = contractAddress(initOf AmmPool(sortedAddresses.lower, sortedAddresses.higher, 0, 0, 0, null));
     message(MessageParameters {
         value: 0,
         bounce: false,

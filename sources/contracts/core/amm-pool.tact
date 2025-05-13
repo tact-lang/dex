@@ -1,7 +1,9 @@
 import "./liquidity-deposit";
 import "./messages";
 import "../utils/utils";
-import "../jettons/utils";
+import "./LP-jettons/constants";
+import "./LP-jettons/utils";
+import "./LP-jettons/LP-jetton-minter";
 
 contract AmmPool(
     leftVault: Address,
@@ -12,7 +14,8 @@ contract AmmPool(
     rightSideReserve: Int as coins, // Should be deployed with 0
     // LP tokens-related field
     totalSupply: Int as coins, // Should be deployed with 0
-) {
+    jettonContent: Cell?,
+) with LPJettonMinter {
     receive() {}
 
     receive(msg: LiquidityDeposit) {
@@ -174,8 +177,6 @@ contract AmmPool(
         });
     }
 
-    // TODO: Add TEP-89 Discoverable functionality
-
     const PoolFee: Int = 3; // 0.3%
 
     receive(msg: SwapIn) {
@@ -256,10 +257,6 @@ contract AmmPool(
 
     get fun getRightSide(): Int {
         return self.rightSideReserve;
-    }
-
-    get fun get_wallet_address(ownerAddress: Address): Address {
-        return getJettonWalletByOwner(ownerAddress);
     }
 
     get fun expectedOut(vaultAddress: Address, amountIn: Int): Int {

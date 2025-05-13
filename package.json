@@ -2,7 +2,7 @@
     "private": true,
     "scripts": {
         "build:dex": "tact --config ./tact.config.json --project DEX",
-        "build:jettons": "tact --config ./tact.config.json --project Jettons",
+        "build:jetton": "tact --config ./tact.config.json --project Jetton",
         "build": "rm -rf sources/output/* && tact --config ./tact.config.json",
         "lint": "tact-fmt --check ./sources && yarn misti ./tact.config.json",
         "test": "jest sources/tests",
@@ -19,9 +19,9 @@
     },
     "dependencies": {
         "@aws-crypto/sha256-js": "^5.2.0",
-        "@nowarp/misti": "~0.7.1",
+        "@nowarp/misti": "0.8.3",
         "@orbs-network/ton-access": "^2.3.3",
-        "@tact-lang/compiler": "^1.6.6",
+        "@tact-lang/compiler": "1.6.7",
         "@tact-lang/ton-jest": "^0.0.4",
         "@ton/core": "^0.60.1",
         "@ton/crypto": "^3.2.0",

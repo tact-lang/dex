@@ -1,7 +1,8 @@
 import "./messages";
 import "./constants";
+import "./utils";
 
-contract LPJettonWallet(
+contract JettonWallet(
     balance: Int as coins,
     owner: Address,
     minter: Address,
@@ -36,15 +37,15 @@ contract LPJettonWallet(
                 forwardTonAmount: msg.forwardTonAmount,
                 forwardPayload: msg.forwardPayload,
             }.toCell(),
-            init: initOf LPJettonWallet(0, msg.destination, self.minter),
+            init: initOf JettonWallet(0, msg.destination, self.minter),
         });
     }
 
     receive(msg: JettonTransferInternal) {
         self.balance += msg.amount;
 
-        // This message should come only from master, or from other LPJettonWallet
-        let wallet: StateInit = initOf LPJettonWallet(0, msg.sender, self.minter);
+        // This message should come only from master, or from other JettonWallet
+        let wallet: StateInit = initOf JettonWallet(0, msg.sender, self.minter);
         if (!wallet.hasSameBasechainAddress(sender())) {
             require(self.minter == sender(), "Incorrect sender");
         }
@@ -125,7 +126,6 @@ contract LPJettonWallet(
                 amount: msg.amount,
                 sender: self.owner,
                 responseDestination: msg.responseDestination,
-                forwardPayload: msg.customPayload,
             }.toCell(),
         });
     }

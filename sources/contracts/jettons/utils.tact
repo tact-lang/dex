@@ -1,16 +1,23 @@
 import "./messages";
-import "./LP-jetton-wallet";
 
-inline fun checkEitherForwardPayload(forwardPayload: Slice) {
-    if (forwardPayload.preloadUint(1) == 1) {
-        let bitsAndRefs = calculateSliceBitsAndRefs(forwardPayload);
-        require(bitsAndRefs.refs == 1 && bitsAndRefs.bits == 1, "Invalid forward payload in message");
-    }
+asm fun checkEitherForwardPayload(forwardPayload: Slice) {
+    LDDICT // Throws 9 if Either bit = 1 and ref is not present
+    SWAP
+    ISNULL
+    <{
+        DROP
+    }> PUSHCONT
+    <{
+        ENDS // Also throws 9 if slice is not empty
+    }> PUSHCONT
+    IFELSE
 }
+
+asm fun emptyAddress(): Address { b{00} PUSHSLICE }
 
 inline fun makeTakeWalletAddressMsg(targetJettonWallet: BasechainAddress, msg: ProvideWalletAddress): Cell {
     return beginCell()
-        .storeUint(TakeWalletAddressOpcode, 32)
+        .storeUint(TakeWalletAddress.opcode(), 32)
         .storeUint(msg.queryId, 64)
         .storeBasechainAddress(targetJettonWallet)
         .storeMaybeRef(msg.includeAddress ? beginCell().storeAddress(msg.ownerAddress).endCell() : null)
@@ -24,16 +31,4 @@ struct SliceBitsAndRefs {
 
 asm fun calculateSliceBitsAndRefs(slice: Slice): SliceBitsAndRefs {
     SBITREFS
-}
-
-inline fun getJettonWalletInit(address: Address): StateInit {
-    return initOf LPJettonWallet(0, address, myAddress());
-}
-
-inline fun getJettonWalletByOwner(jettonWalletOwner: Address): Address {
-    return contractAddress(getJettonWalletInit(jettonWalletOwner));
-}
-
-inline fun getJettonBasechainWalletByOwner(jettonWalletOwner: Address): BasechainAddress {
-    return contractBasechainAddress(getJettonWalletInit(jettonWalletOwner));
 }

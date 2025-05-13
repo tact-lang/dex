@@ -1,4 +1,4 @@
-import "./LP-jetton-wallet";
+import "./jetton-wallet";
 import "./messages";
 import "./constants";
 import "./utils";
@@ -53,9 +53,9 @@ contract JettonMinter(
     receive(msg: ProvideWalletAddress) {
         let ownerWorkchain: Int = parseStdAddress(msg.ownerAddress.asSlice()).workchain;
 
-        // If owner is basechain address, we can calculate LPJettonWallet
+        // If owner is basechain address, we can calculate jettonWallet
         let targetJettonWallet: BasechainAddress = (ownerWorkchain == Basechain)
-            ? contractBasechainAddress(initOf LPJettonWallet(0, msg.ownerAddress, myAddress()))
+            ? contractBasechainAddress(getJettonWalletInit(msg.ownerAddress))
             : emptyBasechainAddress();
 
         message(MessageParameters {
@@ -125,11 +125,23 @@ contract JettonMinter(
             mintable: self.mintable,
             adminAddress: self.owner,
             jettonContent: self.jettonContent,
-            jettonWalletCode: codeOf LPJettonWallet,
+            jettonWalletCode: codeOf JettonWallet,
         };
     }
 
     get fun get_wallet_address(ownerAddress: Address): Address {
         return getJettonWalletByOwner(ownerAddress);
     }
+}
+
+inline fun getJettonWalletInit(address: Address): StateInit {
+    return initOf JettonWallet(0, address, myAddress());
+}
+
+inline fun getJettonWalletByOwner(jettonWalletOwner: Address): Address {
+    return contractAddress(getJettonWalletInit(jettonWalletOwner));
+}
+
+inline fun getJettonBasechainWalletByOwner(jettonWalletOwner: Address): BasechainAddress {
+    return contractBasechainAddress(getJettonWalletInit(jettonWalletOwner));
 }

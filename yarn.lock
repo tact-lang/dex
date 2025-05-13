@@ -1106,13 +1106,13 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
-"@nowarp/misti@~0.7.1":
-  version "0.7.1"
-  resolved "https://registry.yarnpkg.com/@nowarp/misti/-/misti-0.7.1.tgz#f78b13db27854199a1a3743e78a16bba78d9da2a"
-  integrity sha512-cgVq1p8ASFH4GTn1/h7ECn/bR5x0e/2L0zuTE9nUTjXsEJNaqXa2xfM24IlhI6D1O+EsDSOG2cqGbCIohIu3qw==
+"@nowarp/misti@0.7.2":
+  version "0.8.3"
+  resolved "https://registry.yarnpkg.com/@nowarp/misti/-/misti-0.8.3.tgz#85390a029c4c40dd5616962cf3d46acaa6c678f6"
+  integrity sha512-+1HttfF/ww1rgu9BcqVqTvJXTTNivjwb63uSHyAEmymN2OP7STViNrl3wqvaU4aLw6PAO98SR9VFmQQMWGhOow==
   dependencies:
     "@nowarp/souffle" "^0.1.2"
-    "@tact-lang/compiler" "~1.6.1"
+    "@tact-lang/compiler" "~1.6.7"
     "@types/benchmark" "^2.1.5"
     "@types/fs-extra" "^11.0.4"
     "@types/json-bigint" "^1.0.4"
@@ -1242,15 +1242,15 @@
     "@smithy/util-buffer-from" "^2.2.0"
     tslib "^2.6.2"
 
-"@tact-lang/compiler@^1.6.6", "@tact-lang/compiler@~1.6.1":
-  version "1.6.6"
-  resolved "https://registry.yarnpkg.com/@tact-lang/compiler/-/compiler-1.6.6.tgz#e6b2dad0ac8f9b5a7de089307ba9b642a1d75492"
-  integrity sha512-uBjUjlrDbB2NTPkMAtg/xhG0Ar5Uhnu09GVEkHoVkakgJHAO+ScMaRnPK69wGjEn9qCKKSPYjCyDflXFvi5DkQ==
+"@tact-lang/compiler@1.6.7", "@tact-lang/compiler@~1.6.7":
+  version "1.6.7"
+  resolved "https://registry.yarnpkg.com/@tact-lang/compiler/-/compiler-1.6.7.tgz#5c4c134f4c765d59ede61124504226a04f443e3a"
+  integrity sha512-SOAg0xnjobbA1KStH56faiZknczpqKtFp+IHcsKwwbPuYLUVdaygt8Wp++NYYYETSrRW5ysMPb96HPSqWY/tYg==
   dependencies:
     "@tact-lang/opcode" "^0.3.0"
     "@ton/core" "0.60.1"
     "@ton/crypto" "^3.2.0"
-    "@tonstudio/parser-runtime" "^0.0.1"
+    "@tonstudio/parser-runtime" "0.0.1"
     blockstore-core "1.0.5"
     ipfs-unixfs-importer "9.0.10"
     path-normalize "^6.0.13"
@@ -1320,7 +1320,7 @@
   resolved "https://registry.yarnpkg.com/@tondevwallet/traces/-/traces-0.1.6.tgz#716ee5923c51ee8fd83b68f629d8773347e55cd4"
   integrity sha512-/aOwNLBUCtgweNzHzRQ1cm1kweXn3Kv5/pUYKYDiyOyV9GPKCBdWp1lwc4t9hgr6WrzUOrbovJkqxH1hG2Mhcw==
 
-"@tonstudio/parser-runtime@^0.0.1":
+"@tonstudio/parser-runtime@0.0.1":
   version "0.0.1"
   resolved "https://registry.yarnpkg.com/@tonstudio/parser-runtime/-/parser-runtime-0.0.1.tgz#469955fb7ea354d4fadaa5964359b11fd17f926b"
   integrity sha512-5s4fLkXWxa4SAd7QGGvJXe13GakEo0J3VF5dUI/i3A//bGZxMwCp1FcnbErpNs3y0LcAZoXE5FCUnDowDQptqw==

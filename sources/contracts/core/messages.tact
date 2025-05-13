@@ -1,3 +1,5 @@
+import "./liquidity-deposit";
+
 message(0xac2f5a38) SwapIn {
     amount: Int as coins;
     minAmountOut: Int as coins;
