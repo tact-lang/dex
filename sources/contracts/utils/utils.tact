@@ -13,9 +13,9 @@ inline fun returnFunds(receiver: Address, otherVault: Address, amount: Int, payl
         bounce: false,
         mode: SendRemainingValue,
         body: PayoutFromPool {
-            otherVault: otherVault,
-            amount: amount,
-            receiver: receiver,
+            otherVault,
+            amount,
+            receiver,
             payloadToForward: payloadOnFailure,
         }.toCell(),
     });

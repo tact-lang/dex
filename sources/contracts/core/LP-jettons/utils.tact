@@ -31,11 +31,11 @@ inline fun getJettonBasechainWalletByOwner(jettonWalletOwner: Address): Basechai
 
 inline fun makeTakeWalletAddressMsg(targetJettonWallet: BasechainAddress, msg: ProvideWalletAddress): Cell {
     return beginCell()
-    .storeUint(TakeWalletAddress.opcode(), 32)
-    .storeUint(msg.queryId, 64)
-    .storeBasechainAddress(targetJettonWallet)
-    .storeMaybeRef(msg.includeAddress ? beginCell().storeAddress(msg.ownerAddress).endCell() : null)
-    .endCell();
+        .storeUint(TakeWalletAddress.opcode(), 32)
+        .storeUint(msg.queryId, 64)
+        .storeBasechainAddress(targetJettonWallet)
+        .storeMaybeRef(msg.includeAddress ? beginCell().storeAddress(msg.ownerAddress).endCell() : null)
+        .endCell();
 }
 
 // Very inefficient implementation but we don't care because this function is only called in getter, where the gas is free

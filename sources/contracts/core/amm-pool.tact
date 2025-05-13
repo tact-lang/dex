@@ -131,7 +131,7 @@ contract AmmPool(
                 sender: myAddress(),
                 responseDestination: msg.depositor,
                 forwardTonAmount: 1, // TODO: We should maximize forwardTonAmount
-                forwardPayload: forwardPayload,
+                forwardPayload,
             }.toCell(),
         });
     }

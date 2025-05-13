@@ -14,7 +14,6 @@ struct JettonMinterState {
     jettonWalletCode: Cell;
 }
 
-
 struct JettonWalletData {
     balance: Int;
     owner: Address;

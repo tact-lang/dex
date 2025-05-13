@@ -13,8 +13,8 @@ trait LPJettonMinter {
 
         // If owner is basechain address, we can calculate LPJettonWallet
         let targetJettonWallet: BasechainAddress = (ownerWorkchain == Basechain)
-        ? contractBasechainAddress(initOf LPJettonWallet(0, msg.ownerAddress, myAddress()))
-        : emptyBasechainAddress();
+            ? contractBasechainAddress(initOf LPJettonWallet(0, msg.ownerAddress, myAddress()))
+            : emptyBasechainAddress();
 
         message(MessageParameters {
             body: makeTakeWalletAddressMsg(targetJettonWallet, msg),
