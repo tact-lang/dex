@@ -6,13 +6,14 @@ import "../core/messages.tact";
 import "./ton-vault.tact";
 import "./proofs/check-proof";
 import "./proofs/tep-89-proofer";
+import "./proofs/jetton-burn-proofer";
 
 // There are 4 kinds of proof of jettonWallet:
 // 1) TEP-89 proof (discoverable)
 // 2) StateInit proof (for non-vanity jettons)
 // 3) State proof for vanity jettons (Proof for block)
 // 4) Jetton Burn proof (We try to burn 0 jettons and wait for excess from JettonMaster)
-
+//
 // TEP-74 JettonNotify, but with forwardPayload serialized as expected fields
 message(0x7362d09c) JettonNotifyWithActionRequest {
     queryId: Int as uint64;
@@ -74,6 +75,32 @@ contract JettonVault(
         actionHandler(JettonNotifyWithActionRequest.fromCell(msg.action));
     }
 
+    receive(msg: JettonBurnRequest) {
+        let prooferStateInit = initOf JettonBurnProofer(self.jettonMaster, myAddress(), msg.possibleJettonWallet, null);
+        require(prooferStateInit.hasSameBasechainAddress(sender()), "JettonVault: Sender must be a valid proofer");
+        message(MessageParameters {
+            to: msg.possibleJettonWallet,
+            // Doesn't really matter, so just for consistency - all internal protocol messages are not bounceable
+            bounce: false,
+            value: 0,
+            mode: SendRemainingValue,
+            body: JettonBurn {
+                queryId: 0,
+                amount: 0,
+                responseDestination: sender(),
+                customPayload: null,
+            }.toCell(),
+        });
+    }
+
+    // We will receive this message only if jetton burn proofer will successfully validate jettonWallet
+    receive(msg: JettonBurnProofResponse) {
+        let prooferStateInit = initOf JettonBurnProofer(self.jettonMaster, myAddress(), msg.proofedJettonWallet, null);
+        require(prooferStateInit.hasSameBasechainAddress(sender()), "JettonVault: Sender must be a valid proofer");
+        self.jettonWallet = msg.proofedJettonWallet;
+        actionHandler(JettonNotifyWithActionRequest.fromCell(msg.action));
+    }
+
     receive() {}
 
     override fun handlePayout(msg: PayoutFromPool) {
@@ -112,8 +139,7 @@ inline fun actionHandler(msg: JettonNotifyWithActionRequest) {
     if (msg.actionOpcode == SwapRequestOpcode) {
         handleSwapRequest(msg, SwapRequest.fromCell(msg.actionPayload));
         return;
-    }
-    else if (msg.actionOpcode == LPDepositPartOpcode) {
+    } else if (msg.actionOpcode == LPDepositPartOpcode) {
         handleLPDepositPart(msg, LPDepositPart.fromCell(msg.actionPayload));
         return;
     }

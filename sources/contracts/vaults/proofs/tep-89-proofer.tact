@@ -24,7 +24,7 @@ contract TEP89Proofer(
         self.action = msg.action;
         self.possibleJettonWallet = msg.possibleJettonWallet;
         self.jettonMaster = msg.jettonMaster;
-        
+
         message(MessageParameters {
             to: msg.jettonMaster,
             bounce: true, // So we can save some tons (we won't pay storage fees for JettonMaster)

@@ -1,5 +1,7 @@
-import "./tep-89-proofer.tact";
+import "../../utils/utils";
+import "../../jettons/messages";
 import "./tep-89-proofer";
+import "./jetton-burn-proofer";
 import "./calculate-jetton-wallet";
 
 struct JettonMasterState {
@@ -52,8 +54,27 @@ inline fun checkProof(jettonMaster: Address, proofType: Int, proof: Slice, msgCe
         require(false, "JettonVault: State proof is not supported");
         return;
     } else if (proofType == PROOF_JETTON_BURN) {
-        require(false, "JettonVault: Burn proof is not supported");
-        return;
+        let prooferStateInit = initOf JettonBurnProofer(
+            jettonMaster,
+            myAddress(),
+            sender(),
+            null,
+        );
+
+        deploy(DeployParameters {
+            mode: SendRemainingValue,
+            value: 0,
+            // Doesn't really matter, so just for consistency - all internal protocol messages are not bounceable
+            bounce: false,
+            init: prooferStateInit,
+            body: JettonBurnProofRequest {
+                jettonMaster,
+                possibleJettonWallet: sender(),
+                action: msgCell,
+            }.toCell(),
+        });
+        // We don't need to save state init, so we just need to exit() quickly
+        exit();
     }
 
     require(false, "JettonVault: Invalid proof type");

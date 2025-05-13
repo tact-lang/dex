@@ -6,7 +6,12 @@ import {
     storeLPDepositPart,
     LPDepositPartOpcode,
 } from "../output/DEX_AmmPool"
-import {PROOF_NO_PROOF_ATTACHED, PROOF_TEP89, PROOF_STATE_INIT} from "../output/DEX_JettonVault"
+import {
+    PROOF_NO_PROOF_ATTACHED,
+    PROOF_TEP89,
+    PROOF_STATE_INIT,
+    PROOF_JETTON_BURN,
+} from "../output/DEX_JettonVault"
 import {storeAddLiquidityPartTon, storeSwapRequestTon} from "../output/DEX_TonVault"
 
 const fieldsToSave = ["blockchainLogs", "vmLogs", "debugLogs", "shard", "delay", "totalDelay"]
@@ -48,15 +53,19 @@ export type StateInitProof = {
     data: Cell
 }
 
-export type Proof = NoProof | TEP89Proof | StateInitProof
+export type JettonBurnProof = {
+    proofType: 4n
+}
+
+export type Proof = NoProof | TEP89Proof | StateInitProof | JettonBurnProof
 
 function storeProof(proof: Proof) {
     return (b: Builder) => {
         b.storeUint(proof.proofType, 8)
         switch (proof.proofType) {
             case PROOF_NO_PROOF_ATTACHED:
-                break
             case PROOF_TEP89:
+            case PROOF_JETTON_BURN:
                 break
             case PROOF_STATE_INIT:
                 b.storeMaybeRef(proof.code)
