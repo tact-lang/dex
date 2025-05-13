@@ -3,6 +3,7 @@ import "./messages";
 import "../utils/utils";
 import "../jettons/utils";
 import "../vaults/vault-interface";
+import "../jettons/constants";
 
 contract AmmPool(
     leftVault: Address,
@@ -188,15 +189,14 @@ contract AmmPool(
         let vaultOrderSwap = false;
 
         // Check if the sender is another pool
-        if(msg.multihopInfo != null) {
+        if (msg.multihopInfo != null) {
             let init = initOf AmmPool(msg.multihopInfo!!.leftVault, msg.multihopInfo!!.rightVault, 0, 0, 0);
             // We use require if situations that should never be possible unless someone is trying to hack the contract
             require(init.hasSameBasechainAddress(sender()), "Pool: Sender must be pool if multihopInfo is specified");
             require(msg.multihopInfo!!.outVault == self.leftVault || msg.multihopInfo!!.outVault == self.rightVault, "Pool: Out vault on a previous step must be one of the pool vaults");
             // Their out vault is our in vault
             incomingVault = msg.multihopInfo!!.outVault;
-        }
-        else {
+        } else {
             incomingVault = sender();
             require(incomingVault == self.leftVault || incomingVault == self.rightVault, "Pool: Sender must be a vault");
         }
@@ -215,22 +215,21 @@ contract AmmPool(
             vaultOrderSwap = true;
         }
 
-
         // TODO: Need to add block functionality (for exact-time listings)
 
         if (inBalance == 0 || outBalance == 0) {
-            returnFunds(msg.swapOutReceiver, outVault, msg.amount, msg.payloadOnFailure);
+            returnFunds(incomingVault, msg.swapOutReceiver, outVault, msg.amount, msg.payloadOnFailure);
             require(false, "Pool: No liquidity in pool");
         }
 
         if (msg.timeout > 0 && now() > msg.timeout) {
-            returnFunds(msg.swapOutReceiver, outVault, msg.amount, msg.payloadOnFailure);
+            returnFunds(incomingVault, msg.swapOutReceiver, outVault, msg.amount, msg.payloadOnFailure);
             require(false, "Pool: Swap timeout");
         }
         let newAmountIn = -1;
         let newAmountOut = -1;
         // ExactIn swap (default one)
-        if(!msg.isExactOutType) {
+        if (!msg.isExactOutType) {
             // TODO: Test, that muldiv for msg.amount >= 0, 1000 - self.PoolFee >= 0 does not produce negative result
             // I couldn't check that in sources, cause there is very shitty c++ code that is impossible to read
             // So we just need to kinda fuzz it with corner cases
@@ -241,11 +240,12 @@ contract AmmPool(
             let amountToPay = outBalance - newAmountOut;
 
             if (amountToPay < msg.limit) {
-                returnFunds(msg.swapOutReceiver, outVault, msg.amount, msg.payloadOnFailure);
+                returnFunds(incomingVault, msg.swapOutReceiver, outVault, msg.amount, msg.payloadOnFailure);
                 require(false, "Pool: Amount out is less than minAmountOut");
             }
+
             // So we have one more swap step
-            if(msg.nextStep != null) {
+            if (msg.nextStep != null) {
                 message(MessageParameters {
                     mode: SendRemainingValue,
                     body: SwapIn {
@@ -263,15 +263,14 @@ contract AmmPool(
                             leftVault: self.leftVault,
                             rightVault: self.rightVault,
                             outVault: outVault,
-                        }
+                        },
                     }.toCell(),
                     value: 0,
                     to: msg.nextStep!!.pool,
                     // All internal protocol messages are sent with bounce = false
                     bounce: false,
-                })
-            }
-            else {
+                });
+            } else {
                 message(MessageParameters {
                     value: 0,
                     mode: SendRemainingValue,
@@ -284,8 +283,7 @@ contract AmmPool(
                     }.toCell(),
                 });
             }
-        }
-        else {
+        } else {
             // TODO: Implement exactOut swap
             require(false, "Pool: ExactOut swap is not supported yet");
         }
@@ -298,6 +296,7 @@ contract AmmPool(
             self.rightSideReserve = newAmountOut;
         }
     }
+
     get fun leftVault(): Address {
         return self.leftVault;
     }
@@ -319,8 +318,7 @@ contract AmmPool(
             return self.leftSideReserve;
         } else if (vaultAddress == self.rightVault) {
             return self.rightSideReserve;
-        }
-        else {
+        } else {
             require(false, "Pool: argument of `reserveForVault` must be one of the vaults");
             return 0; // This line will never be reached, but we need to return something to satisfy the compiler
         }
@@ -385,4 +383,20 @@ contract AmmPool(
         });
         commit();
     }
+}
+
+inline fun returnFunds(viaVault: Address, receiver: Address, otherVault: Address, amount: Int, payloadOnFailure: Cell?) {
+    message(MessageParameters {
+        to: viaVault,
+        value: 0,
+        bounce: false,
+        mode: SendRemainingValue,
+        body: PayoutFromPool {
+            otherVault: otherVault,
+            amount: amount,
+            receiver: receiver,
+            payloadToForward: payloadOnFailure,
+        }.toCell(),
+    });
+    commit();
 }

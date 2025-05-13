@@ -62,11 +62,12 @@ export function createJettonVaultSwapRequest(
     payloadOnSuccess: Cell | null = null,
     payloadOnFailure: Cell | null = null,
     nextStep: SwapStep | null = null,
+    receiver: Address | null = null,
 ) {
     const swapRequest: SwapRequest = {
         $$type: "SwapRequest",
         pool: destinationPool,
-        receiver: null,
+        receiver: receiver,
         isExactOutType: isExactOutType,
         limit: limit,
         timeout: timeout,
@@ -156,7 +157,7 @@ export function createTonVaultLiquidityDepositPayload(
 
 export function createTonSwapRequest(
     pool: Address,
-    receiver: Address,
+    receiver: Address | null,
     amountIn: bigint,
     minAmountOut: bigint = 0n,
     timeout: bigint = 0n,
