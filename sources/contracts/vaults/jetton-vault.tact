@@ -13,7 +13,7 @@ import "./proofs/jetton-burn-proofer";
 // 2) StateInit proof (for non-vanity jettons)
 // 3) State proof for vanity jettons (Proof for block)
 // 4) Jetton Burn proof (We try to burn 0 jettons and wait for excess from JettonMaster)
-
+//
 // TEP-74 JettonNotify, but with forwardPayload serialized as expected fields
 message(0x7362d09c) JettonNotifyWithActionRequest {
     queryId: Int as uint64;
@@ -139,8 +139,7 @@ inline fun actionHandler(msg: JettonNotifyWithActionRequest) {
     if (msg.actionOpcode == SwapRequestOpcode) {
         handleSwapRequest(msg, SwapRequest.fromCell(msg.actionPayload));
         return;
-    }
-    else if (msg.actionOpcode == LPDepositPartOpcode) {
+    } else if (msg.actionOpcode == LPDepositPartOpcode) {
         handleLPDepositPart(msg, LPDepositPart.fromCell(msg.actionPayload));
         return;
     }
