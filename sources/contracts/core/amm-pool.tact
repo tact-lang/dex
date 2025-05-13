@@ -157,8 +157,16 @@ contract AmmPool(
         // Workchain 0 is basechain
         require(sender.workchain == Basechain && sender.address == wallet.hash!!, "Pool: Invalid sender of JettonBurn notification");
 
+        let action = LiquidityWithdrawParameters.fromCell(msg.forwardPayload!!);
+
+        require(action.timeout == 0 || now() <= action.timeout, "Pool: Expired timeout on liqudity withdrawal");
+
         let amountOfLeftToPay = muldiv(msg.amount, self.leftSideReserve, self.totalSupply);
         let amountOfRightToPay = muldiv(msg.amount, self.rightSideReserve, self.totalSupply);
+
+        // it will bounce back and sender's jetton wallet will handle burn bounce
+        require(amountOfLeftToPay >= action.leftAmountMin, "Pool: Couldn't pay left more than asked");
+        require(amountOfRightToPay >= action.rightAmountMin, "Pool: Couldn't pay right more than asked");
 
         self.totalSupply -= msg.amount;
         let halfOfMsgValue = context().value / 2;
@@ -173,8 +181,8 @@ contract AmmPool(
             body: PayoutFromPool {
                 otherVault: self.rightVault,
                 amount: amountOfLeftToPay,
-                receiver: msg.sender,
-                payloadToForward: msg.forwardPayload,
+                receiver: action.receiver,
+                payloadToForward: action.liquidityWithdrawPayload,
             }.toCell(),
         });
 
@@ -185,8 +193,8 @@ contract AmmPool(
             body: PayoutFromPool {
                 otherVault: self.leftVault,
                 amount: amountOfRightToPay,
-                receiver: msg.sender,
-                payloadToForward: msg.forwardPayload,
+                receiver: action.receiver,
+                payloadToForward: action.liquidityWithdrawPayload,
             }.toCell(),
         });
     }
