@@ -49,7 +49,8 @@ message(0xe7a3475f) PartHasBeenDeposited {
 ### Proofing (Jetton Vault)
 
 There are four kinds of proof of `jettonWallet`:
-1) **TEP-89 proof** (discoverable)
-2) **StateInit proof** (for non-vanity jettons)
-3) **State proof for vanity jettons** (Proof for block)
-4) **Jetton Burn proof** (We try to burn zero jettons and wait for excess from `JettonMaster`)
+
+1. **TEP-89 proof** (discoverable)
+2. **StateInit proof** (for non-vanity jettons)
+3. **State proof for vanity jettons** (Proof for block)
+4. **Jetton Burn proof** (We try to burn zero jettons and wait for excess from `JettonMaster`)
