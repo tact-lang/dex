@@ -160,7 +160,7 @@ contract AmmPool(
 
         let action = LiquidityWithdrawParameters.fromCell(msg.forwardPayload!!);
 
-        require(action.timeout == 0 || now() <= action.timeout, "Pool: Expired timeout on liqudity withdrawal");
+        require(action.timeout == 0 || now() <= action.timeout, "Pool: Expired timeout on liquidity withdrawal");
 
         let amountOfLeftToPay = muldiv(msg.amount, self.leftSideReserve, self.totalSupply);
         let amountOfRightToPay = muldiv(msg.amount, self.rightSideReserve, self.totalSupply);

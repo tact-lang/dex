@@ -174,7 +174,7 @@ describe.each([
         }
     })
 
-    test("should withdraw correct liqudity amount", async () => {
+    test("should withdraw correct liquidity amount", async () => {
         const blockchain = await Blockchain.create()
 
         const {ammPool, vaultB, isSwapped, initWithLiquidity} = await createPool(blockchain)
