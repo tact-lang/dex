@@ -3,7 +3,8 @@ import {Blockchain} from "@ton/sandbox"
 import {createJettonAmmPool, createTonJettonAmmPool} from "../utils/environment"
 // eslint-disable-next-line
 import {SendDumpToDevWallet} from "@tondevwallet/traces"
-import {calculateLiquidityProvisioning} from "../utils/liquidityMath"
+import {calculateLiquidityProvisioning, calculateLiquidityWithdraw} from "../utils/liquidityMath"
+import {AmmPool} from "../output/DEX_AmmPool"
 
 describe.each([
     {
@@ -206,12 +207,102 @@ describe.each([
             0n,
         )
 
-        // check that first liquidity deposit was successful
-        expect(lpBalanceAfterFirstLiq).toEqual(expectedLpAmount.lpTokens)
-        // check that pool reserves are correct
+        // send burn and check that amount is correct
+        await withdrawLiquidity(lpBalanceAfterFirstLiq, 0n, 0n, 0n, null)
+
+        const expectedBurnResult = calculateLiquidityWithdraw(
+            expectedLpAmount.reserveA,
+            expectedLpAmount.reserveB,
+            lpBalanceAfterFirstLiq,
+            0n,
+            0n,
+            lpBalanceAfterFirstLiq,
+        )
+
+        expect(await ammPool.getLeftSide()).toEqual(expectedBurnResult.reserveA)
+        expect(await ammPool.getRightSide()).toEqual(expectedBurnResult.reserveB)
+
+        const lpBalanceAfterWithdraw = await depositorLpWallet.getJettonBalance()
+        expect(lpBalanceAfterWithdraw).toEqual(0n)
+    })
+
+    test("should reject withdraw if amount is less then min", async () => {
+        const blockchain = await Blockchain.create()
+
+        const {ammPool, vaultB, isSwapped, initWithLiquidity} = await createPool(blockchain)
+
+        const initialRatio = 7n
+
+        const amountARaw = toNano(1)
+        const amountBRaw = amountARaw * initialRatio // 1 a == 2 b ratio
+
+        const amountA = isSwapped ? amountARaw : amountBRaw
+        const amountB = isSwapped ? amountBRaw : amountARaw
+
+        const depositor = vaultB.treasury.walletOwner
+
+        const {depositorLpWallet, withdrawLiquidity} = await initWithLiquidity(
+            depositor,
+            amountA,
+            amountB,
+        )
+
+        const lpBalanceAfterFirstLiq = await depositorLpWallet.getJettonBalance()
+
+        const expectedLpAmount = calculateLiquidityProvisioning(
+            0n,
+            0n,
+            amountA,
+            amountB,
+            0n,
+            0n,
+            0n,
+        )
+
+        const expectedBurnResultSuccess = calculateLiquidityWithdraw(
+            expectedLpAmount.reserveA,
+            expectedLpAmount.reserveB,
+            lpBalanceAfterFirstLiq,
+            0n,
+            0n,
+            lpBalanceAfterFirstLiq,
+        )
+
+        // send burn with value more than min, it should fail
+        const result = await withdrawLiquidity(
+            lpBalanceAfterFirstLiq,
+            expectedBurnResultSuccess.amountA + 1n,
+            expectedBurnResultSuccess.amountB + 1n,
+            0n,
+            null,
+        )
+
+        const burnResultThatShouldFail = () =>
+            calculateLiquidityWithdraw(
+                expectedLpAmount.reserveA,
+                expectedLpAmount.reserveB,
+                lpBalanceAfterFirstLiq,
+                expectedBurnResultSuccess.amountA + 1n,
+                expectedBurnResultSuccess.amountB + 1n,
+                lpBalanceAfterFirstLiq,
+            )
+
+        expect(burnResultThatShouldFail).toThrow("Insufficient A token amount")
+
+        expect(result.transactions).toHaveTransaction({
+            from: depositorLpWallet.address,
+            to: ammPool.address,
+            op: AmmPool.opcodes.LiquidityWithdrawViaBurnNotification,
+            success: false,
+            exitCode: AmmPool.errors["Pool: Couldn't pay left more than asked"],
+        })
+
+        // same as before
         expect(await ammPool.getLeftSide()).toEqual(expectedLpAmount.reserveA)
         expect(await ammPool.getRightSide()).toEqual(expectedLpAmount.reserveB)
 
-        // send burn and check that amount is correct
+        // bounces
+        const lpBalanceAfterWithdraw = await depositorLpWallet.getJettonBalance()
+        expect(lpBalanceAfterWithdraw).toEqual(lpBalanceAfterFirstLiq)
     })
 })

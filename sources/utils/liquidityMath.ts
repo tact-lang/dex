@@ -100,4 +100,12 @@ export const calculateLiquidityWithdraw = (
     if (amountB < amountBMin) {
         throw new Error("Insufficient B token amount")
     }
+
+    return {
+        reserveA: tokenAReserveBefore - amountA,
+        reserveB: tokenBReserveBefore - amountB,
+        amountA,
+        amountB,
+        totalSupply: mintedLpTokenTotalSupply - burnAmount,
+    }
 }

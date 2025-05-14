@@ -172,6 +172,9 @@ contract AmmPool(
         self.totalSupply -= msg.amount;
         let halfOfMsgValue = context().value / 2;
 
+        self.leftSideReserve -= amountOfLeftToPay;
+        self.rightSideReserve -= amountOfRightToPay;
+
         // Preserve original balance (more, if we have storage debt)
         nativeReserve(myStorageDue(), ReserveAddOriginalBalance | ReserveExact);
 
