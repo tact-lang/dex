@@ -172,4 +172,46 @@ describe.each([
             lpAmount = mintedTotal
         }
     })
+
+    test("should withdraw correct liqudity amount", async () => {
+        const blockchain = await Blockchain.create()
+
+        const {ammPool, vaultB, isSwapped, initWithLiquidity} = await createPool(blockchain)
+
+        const initialRatio = 7n
+
+        const amountARaw = toNano(1)
+        const amountBRaw = amountARaw * initialRatio // 1 a == 2 b ratio
+
+        const amountA = isSwapped ? amountARaw : amountBRaw
+        const amountB = isSwapped ? amountBRaw : amountARaw
+
+        const depositor = vaultB.treasury.walletOwner
+
+        const {depositorLpWallet, withdrawLiquidity} = await initWithLiquidity(
+            depositor,
+            amountA,
+            amountB,
+        )
+
+        const lpBalanceAfterFirstLiq = await depositorLpWallet.getJettonBalance()
+
+        const expectedLpAmount = calculateLiquidityProvisioning(
+            0n,
+            0n,
+            amountA,
+            amountB,
+            0n,
+            0n,
+            0n,
+        )
+
+        // check that first liquidity deposit was successful
+        expect(lpBalanceAfterFirstLiq).toEqual(expectedLpAmount.lpTokens)
+        // check that pool reserves are correct
+        expect(await ammPool.getLeftSide()).toEqual(expectedLpAmount.reserveA)
+        expect(await ammPool.getRightSide()).toEqual(expectedLpAmount.reserveB)
+
+        // send burn and check that amount is correct
+    })
 })

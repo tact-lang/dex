@@ -81,3 +81,23 @@ export const calculateLiquidityProvisioning = (
         reserveB: amountB + tokenBReserveBefore,
     }
 }
+
+export const calculateLiquidityWithdraw = (
+    tokenAReserveBefore: bigint,
+    tokenBReserveBefore: bigint,
+    burnAmount: bigint,
+    amountAMin: bigint,
+    amountBMin: bigint,
+    mintedLpTokenTotalSupply: bigint,
+) => {
+    const amountA = (tokenAReserveBefore * burnAmount) / mintedLpTokenTotalSupply
+    const amountB = (tokenBReserveBefore * burnAmount) / mintedLpTokenTotalSupply
+
+    if (amountA < amountAMin) {
+        throw new Error("Insufficient A token amount")
+    }
+
+    if (amountB < amountBMin) {
+        throw new Error("Insufficient B token amount")
+    }
+}
