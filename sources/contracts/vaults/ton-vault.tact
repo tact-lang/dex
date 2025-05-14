@@ -23,24 +23,22 @@ contract TonVault(
 
     receive(msg: SwapRequestTon) {
         // TODO: exact tests for this
-        nativeReserve(msg.amountIn, ReserveExact | ReserveAddOriginalBalance);
+        nativeReserve(msg.amount, ReserveExact | ReserveAddOriginalBalance);
 
-        let otherVault = msg.destinationVault;
-        let sortedAddresses = sortAddresses(myAddress(), otherVault);
-
-        let poolAddress = contractAddress(initOf AmmPool(sortedAddresses.lower, sortedAddresses.higher, 0, 0, 0));
         message(MessageParameters {
-            to: poolAddress,
+            to: msg.action.pool,
             value: 0,
             mode: SendBounceIfActionFail | SendRemainingBalance,
             bounce: false,
             body: SwapIn {
-                swapOutReceiver: msg.receiver,
-                amount: msg.amountIn,
-                minAmountOut: msg.minAmountOut,
-                timeout: msg.timeout,
-                payloadOnSuccess: msg.payloadOnSuccess,
-                payloadOnFailure: msg.payloadOnFailure,
+                swapOutReceiver: msg.action.receiver != null ? msg.action.receiver!! : sender(),
+                amount: msg.amount,
+                isExactOutType: msg.action.isExactOutType,
+                limit: msg.action.limit,
+                timeout: msg.action.timeout,
+                payloadOnSuccess: msg.action.payloadOnSuccess,
+                payloadOnFailure: msg.action.payloadOnFailure,
+                nextStep: msg.action.nextStep,
             }.toCell(),
         });
     }

@@ -132,8 +132,8 @@ describe("Liquidity deposit", () => {
             deploy: true,
         })
 
-        const leftSide = await ammPool.getGetLeftSide()
-        const rightSide = await ammPool.getGetRightSide()
+        const leftSide = await ammPool.getLeftSide()
+        const rightSide = await ammPool.getRightSide()
 
         // the correct liquidity amount was added
         const sortedWithAmounts = sortAddresses(
@@ -367,8 +367,8 @@ describe("Liquidity deposit", () => {
             deploy: true,
         })
 
-        const leftSide = await ammPool.getGetLeftSide()
-        const rightSide = await ammPool.getGetRightSide()
+        const leftSide = await ammPool.getLeftSide()
+        const rightSide = await ammPool.getRightSide()
 
         // the correct liquidity amount was added
         const sortedWithAmounts = sortAddresses(
