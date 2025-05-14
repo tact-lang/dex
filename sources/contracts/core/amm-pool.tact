@@ -3,6 +3,7 @@ import "./messages";
 import "../utils/utils";
 import "../jettons/utils";
 import "../vaults/vault-interface";
+import "../jettons/constants";
 
 contract AmmPool(
     leftVault: Address,
@@ -241,12 +242,12 @@ contract AmmPool(
         // TODO: Need to add block functionality (for exact-time listings)
 
         if (inBalance == 0 || outBalance == 0) {
-            returnFunds(msg.swapOutReceiver, outVault, msg.amount, msg.payloadOnFailure);
+            returnFunds(incomingVault, msg.swapOutReceiver, outVault, msg.amount, msg.payloadOnFailure);
             require(false, "Pool: No liquidity in pool");
         }
 
         if (msg.timeout > 0 && now() > msg.timeout) {
-            returnFunds(msg.swapOutReceiver, outVault, msg.amount, msg.payloadOnFailure);
+            returnFunds(incomingVault, msg.swapOutReceiver, outVault, msg.amount, msg.payloadOnFailure);
             require(false, "Pool: Swap timeout");
         }
         let newAmountIn = -1;
@@ -263,9 +264,10 @@ contract AmmPool(
             let amountToPay = outBalance - newAmountOut;
 
             if (amountToPay < msg.limit) {
-                returnFunds(msg.swapOutReceiver, outVault, msg.amount, msg.payloadOnFailure);
+                returnFunds(incomingVault, msg.swapOutReceiver, outVault, msg.amount, msg.payloadOnFailure);
                 require(false, "Pool: Amount out is less than minAmountOut");
             }
+
             // So we have one more swap step
             if (msg.nextStep != null) {
                 message(MessageParameters {
@@ -405,4 +407,20 @@ contract AmmPool(
         });
         commit();
     }
+}
+
+inline fun returnFunds(viaVault: Address, receiver: Address, otherVault: Address, amount: Int, payloadOnFailure: Cell?) {
+    message(MessageParameters {
+        to: viaVault,
+        value: 0,
+        bounce: false,
+        mode: SendRemainingValue,
+        body: PayoutFromPool {
+            otherVault: otherVault,
+            amount: amount,
+            receiver: receiver,
+            payloadToForward: payloadOnFailure,
+        }.toCell(),
+    });
+    commit();
 }

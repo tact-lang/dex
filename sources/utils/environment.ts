@@ -91,6 +91,7 @@ export type VaultInterface<T> = {
         payloadOnSuccess: Cell | null,
         payloadOnFailure: Cell | null,
         nextStep: SwapStep | null,
+        receiver: Address | null,
     ) => Promise<SandboxSendResult>
 }
 
@@ -141,6 +142,7 @@ export const createJettonVault: Create<VaultInterface<JettonTreasury>> = async (
         payloadOnSuccess: Cell | null,
         payloadOnFailure: Cell | null,
         nextStep?: SwapStep | null,
+        receiver: Address | null = null,
     ) => {
         const swapRequest = createJettonVaultSwapRequest(
             destinationPool,
@@ -150,6 +152,7 @@ export const createJettonVault: Create<VaultInterface<JettonTreasury>> = async (
             payloadOnSuccess,
             payloadOnFailure,
             nextStep,
+            receiver,
         )
 
         return await jetton.transfer(vault.address, amountToSwap, swapRequest)
@@ -212,11 +215,12 @@ export const createTonVault: Create<VaultInterface<TonTreasury>> = async (
         timeout: bigint,
         payloadOnSuccess: Cell | null,
         payloadOnFailure: Cell | null,
-        nextStep?: SwapStep | null,
+        nextStep: SwapStep | null,
+        receiver: Address | null = null,
     ) => {
         const swapRequest = createTonSwapRequest(
             destinationPool,
-            wallet.address,
+            receiver,
             amountToSwap,
             limit,
             timeout,
@@ -390,6 +394,7 @@ export const createAmmPool = async <T, U>(
         payloadOnSuccess: Cell | null = null,
         payloadOnFailure: Cell | null = null,
         nextSwapStep: SwapStep | null = null,
+        receiver: Address | null = null,
     ) => {
         if (swapFrom === "vaultA") {
             return await firstVault.sendSwapRequest(
@@ -401,6 +406,7 @@ export const createAmmPool = async <T, U>(
                 payloadOnSuccess,
                 payloadOnFailure,
                 nextSwapStep,
+                receiver,
             )
         }
 
@@ -413,6 +419,7 @@ export const createAmmPool = async <T, U>(
             payloadOnSuccess,
             payloadOnFailure,
             nextSwapStep,
+            receiver,
         )
     }
 

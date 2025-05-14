@@ -8,12 +8,6 @@ import "./proofs/check-proof";
 import "./proofs/tep-89-proofer";
 import "../core/liquidity-deposit";
 
-// There are 4 kinds of proof of jettonWallet:
-// 1) TEP-89 proof (discoverable)
-// 2) StateInit proof (for non-vanity jettons)
-// 3) State proof for vanity jettons (Proof for block)
-// 4) Jetton Burn proof (We try to burn 0 jettons and wait for excess from JettonMaster)
-
 // TEP-74 JettonNotify, but with forwardPayload serialized as expected fields
 message(0x7362d09c) JettonNotifyWithActionRequest {
     queryId: Int as uint64;
@@ -113,8 +107,7 @@ inline fun actionHandler(msg: JettonNotifyWithActionRequest) {
     if (msg.actionOpcode == SwapRequestOpcode) {
         handleSwapRequest(msg, SwapRequest.fromCell(msg.actionPayload));
         return;
-    }
-    else if (msg.actionOpcode == LPDepositPartOpcode) {
+    } else if (msg.actionOpcode == LPDepositPartOpcode) {
         handleLPDepositPart(msg, LPDepositPart.fromCell(msg.actionPayload));
         return;
     }
