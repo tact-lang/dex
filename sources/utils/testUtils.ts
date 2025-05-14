@@ -191,3 +191,24 @@ export function createTonSwapRequest(
         )
         .endCell()
 }
+
+export function createWithdrawLiquidityBody(
+    minAmountLeft: bigint,
+    minAmountRight: bigint,
+    timeout: bigint,
+    receiver: Address,
+    successfulPayload: Cell | null,
+) {
+    return beginCell()
+        .store(
+            storeLiquidityWithdrawParameters({
+                $$type: "LiquidityWithdrawParameters",
+                leftAmountMin: minAmountLeft,
+                rightAmountMin: minAmountRight,
+                receiver,
+                timeout,
+                liquidityWithdrawPayload: successfulPayload,
+            }),
+        )
+        .endCell()
+}
