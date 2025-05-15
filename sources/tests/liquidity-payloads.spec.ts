@@ -368,6 +368,9 @@ describe("Liquidity payloads", () => {
 
         const withdrawResultWithPayloads = await withdrawLiquidity(
             lpBalanceAfterFirstLiq,
+            0n,
+            0n,
+            0n,
             successfulPayloadOnWithdraw,
         )
 

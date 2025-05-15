@@ -11,6 +11,7 @@ import {
     createJettonVaultSwapRequest,
     createTonSwapRequest,
     createTonVaultLiquidityDepositPayload,
+    createWithdrawLiquidityBody,
 } from "./testUtils"
 import {randomAddress} from "@ton/test-utils"
 import {TonVault} from "../output/DEX_TonVault"
@@ -298,13 +299,25 @@ const createLiquidityDepositSetup = (
             await JettonWallet.fromInit(0n, depositor, ammPool.address),
         )
 
-        const withdrawLiquidity = async (amount: bigint, successfulPayload: Cell | null) => {
+        const withdrawLiquidity = async (
+            amount: bigint,
+            minAmountLeft: bigint,
+            minAmountRight: bigint,
+            timeout: bigint,
+            successfulPayload: Cell | null,
+        ) => {
             const withdrawResult = await depositorLpWallet.sendBurn(
                 depositorContract.getSender(),
                 toNano(2),
                 amount,
                 depositor,
-                successfulPayload,
+                createWithdrawLiquidityBody(
+                    minAmountLeft,
+                    minAmountRight,
+                    timeout,
+                    depositor,
+                    successfulPayload,
+                ),
             )
 
             return withdrawResult

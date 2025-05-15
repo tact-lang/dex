@@ -42,14 +42,27 @@ message(0x642b7d07) LiquidityDeposit {
     rightAdditionalParams: AdditionalParams;
 }
 
+// https://docs.uniswap.org/contracts/v2/reference/smart-contracts/router-02#removeliquidity
+struct LiquidityWithdrawParameters {
+    /// Minimal amount of left asset to receive
+    leftAmountMin: Int as coins;
+    /// Minimal amount of right asset to receive
+    rightAmountMin: Int as coins;
+    /// Absolute unix timestamp
+    timeout: Int as uint32;
+    /// Receiver of withdrawn jettons
+    receiver: Address;
+    /// Payload to forward with withdrawn tokens
+    liquidityWithdrawPayload: Cell?;
+}
+
 // JettonBurnNotification
 message(0x7bdd97de) LiquidityWithdrawViaBurnNotification {
     queryId: Int as uint64;
     amount: Int as coins;
     sender: Address;
     responseDestination: Address?;
-    // Payload to forward with withdrawn tokens
-    forwardPayload: Cell?;
+    forwardPayload: LiquidityWithdrawParameters;
 }
 
 // For LP tokens minting

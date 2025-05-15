@@ -7,7 +7,12 @@ import {
     LPDepositPartOpcode,
     SwapStep,
 } from "../output/DEX_AmmPool"
-import {PROOF_NO_PROOF_ATTACHED, PROOF_TEP89, PROOF_STATE_INIT} from "../output/DEX_JettonVault"
+import {
+    PROOF_NO_PROOF_ATTACHED,
+    PROOF_TEP89,
+    PROOF_STATE_INIT,
+    storeLiquidityWithdrawParameters,
+} from "../output/DEX_JettonVault"
 import {storeAddLiquidityPartTon, storeSwapRequestTon} from "../output/DEX_TonVault"
 
 export type NoProof = {
@@ -182,6 +187,27 @@ export function createTonSwapRequest(
                     // Field for specifying the next step in the swap (for cross-pool swaps)
                     nextStep: nextStep,
                 },
+            }),
+        )
+        .endCell()
+}
+
+export function createWithdrawLiquidityBody(
+    minAmountLeft: bigint,
+    minAmountRight: bigint,
+    timeout: bigint,
+    receiver: Address,
+    successfulPayload: Cell | null,
+) {
+    return beginCell()
+        .store(
+            storeLiquidityWithdrawParameters({
+                $$type: "LiquidityWithdrawParameters",
+                leftAmountMin: minAmountLeft,
+                rightAmountMin: minAmountRight,
+                receiver,
+                timeout,
+                liquidityWithdrawPayload: successfulPayload,
             }),
         )
         .endCell()
