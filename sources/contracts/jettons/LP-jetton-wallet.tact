@@ -1,4 +1,5 @@
 import "./messages";
+import "../core/messages.tact";
 import "./constants";
 
 contract LPJettonWallet(
@@ -120,12 +121,12 @@ contract LPJettonWallet(
             value: 0,
             mode: SendRemainingValue,
             bounce: true,
-            body: JettonBurnNotification {
+            body: LiquidityWithdrawViaBurnNotification {
                 queryId: msg.queryId,
                 amount: msg.amount,
                 sender: self.owner,
                 responseDestination: msg.responseDestination,
-                forwardPayload: msg.customPayload,
+                forwardPayload: LiquidityWithdrawParameters.fromCell(msg.customPayload!!),
             }.toCell(),
         });
     }

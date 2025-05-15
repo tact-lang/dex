@@ -62,8 +62,7 @@ message(0x7bdd97de) LiquidityWithdrawViaBurnNotification {
     amount: Int as coins;
     sender: Address;
     responseDestination: Address?;
-    /// Should deserialize as LiquidityWithdrawParameters
-    forwardPayload: Cell?;
+    forwardPayload: LiquidityWithdrawParameters;
 }
 
 // For LP tokens minting

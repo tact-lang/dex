@@ -158,7 +158,7 @@ contract AmmPool(
         // Workchain 0 is basechain
         require(sender.workchain == Basechain && sender.address == wallet.hash!!, "Pool: Invalid sender of JettonBurn notification");
 
-        let action = LiquidityWithdrawParameters.fromCell(msg.forwardPayload!!);
+        let action = msg.forwardPayload;
 
         require(action.timeout == 0 || now() <= action.timeout, "Pool: Expired timeout on liquidity withdrawal");
 
