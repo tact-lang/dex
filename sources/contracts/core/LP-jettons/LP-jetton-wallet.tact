@@ -121,12 +121,12 @@ contract LPJettonWallet(
             value: 0,
             mode: SendRemainingValue,
             bounce: true,
-            body: LPWithdrawNotification {
+            body: LiquidityWithdrawViaBurnNotification {
                 queryId: msg.queryId,
                 amount: msg.amount,
                 sender: self.owner,
                 responseDestination: msg.responseDestination,
-                forwardPayload: msg.customPayload,
+                forwardPayload: LiquidityWithdrawParameters.fromCell(msg.customPayload!!),
             }.toCell(),
         });
     }
@@ -147,7 +147,7 @@ contract LPJettonWallet(
         self.balance += msg.amount;
     }
 
-    bounced(msg: bounced<LPWithdrawNotification>) {
+    bounced(msg: bounced<LiquidityWithdrawViaBurnNotification>) {
         self.balance += msg.amount;
     }
 

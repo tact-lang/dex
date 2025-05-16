@@ -207,8 +207,8 @@ describe("Liquidity payloads", () => {
         expect(lpBalanceAfterFirstLiq).toBeGreaterThan(0n)
 
         // Get current reserves from the pool
-        const leftReserve = await ammPool.getGetLeftSide()
-        const rightReserve = await ammPool.getGetRightSide()
+        const leftReserve = await ammPool.getLeftSide()
+        const rightReserve = await ammPool.getRightSide()
 
         // For the next deposit, calculate the minimum necessary amount using the formula from AMM Pool
         const amountASecond = toNano(2) // Add more of token A
@@ -368,6 +368,9 @@ describe("Liquidity payloads", () => {
 
         const withdrawResultWithPayloads = await withdrawLiquidity(
             lpBalanceAfterFirstLiq,
+            0n,
+            0n,
+            0n,
             successfulPayloadOnWithdraw,
         )
 

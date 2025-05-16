@@ -1,12 +1,27 @@
+import "../vaults/vault-interface";
 import "./liquidity-deposit";
 
 message(0xac2f5a38) SwapIn {
     amount: Int as coins;
-    minAmountOut: Int as coins;
+    // false - exactIn type. True - exactOut type.
+    isExactOutType: Bool;
+    // If swapType is exactIn, then limit is minAmountOut
+    // If swapType is exactOut, then limit is maxAmountIn
+    limit: Int as coins;
     timeout: Int as uint32; // Absolute unix timestamp
     swapOutReceiver: Address;
     payloadOnSuccess: Cell? = null;
     payloadOnFailure: Cell? = null;
+    nextStep: SwapStep? = null;
+
+    // For multihop swaps
+    multihopInfo: MultihopInfo? = null;
+}
+
+struct MultihopInfo {
+    leftVault: Address;
+    rightVault: Address;
+    outVault: Address;
 }
 
 message(0x74f7a60) PayoutFromPool {
@@ -27,14 +42,27 @@ message(0x642b7d07) LiquidityDeposit {
     rightAdditionalParams: AdditionalParams;
 }
 
+// https://docs.uniswap.org/contracts/v2/reference/smart-contracts/router-02#removeliquidity
+struct LiquidityWithdrawParameters {
+    /// Minimal amount of left asset to receive
+    leftAmountMin: Int as coins;
+    /// Minimal amount of right asset to receive
+    rightAmountMin: Int as coins;
+    /// Absolute unix timestamp
+    timeout: Int as uint32;
+    /// Receiver of withdrawn jettons
+    receiver: Address;
+    /// Payload to forward with withdrawn tokens
+    liquidityWithdrawPayload: Cell?;
+}
+
 // JettonBurnNotification
 message(0x7bdd97de) LiquidityWithdrawViaBurnNotification {
     queryId: Int as uint64;
     amount: Int as coins;
     sender: Address;
     responseDestination: Address?;
-    // Payload to forward with withdrawn tokens
-    forwardPayload: Cell?;
+    forwardPayload: LiquidityWithdrawParameters;
 }
 
 // For LP tokens minting

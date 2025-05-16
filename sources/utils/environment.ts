@@ -4,13 +4,14 @@ import {ExtendedJettonWallet as JettonWallet} from "../wrappers/ExtendedJettonWa
 import {Address, beginCell, Cell, SendMode, toNano} from "@ton/core"
 import {JettonVault} from "../output/DEX_JettonVault"
 import {sortAddresses} from "./deployUtils"
-import {AmmPool} from "../output/DEX_AmmPool"
+import {AmmPool, SwapStep} from "../output/DEX_AmmPool"
 import {LiquidityDepositContract} from "../output/DEX_LiquidityDepositContract"
 import {
     createJettonVaultLiquidityDepositPayload,
     createJettonVaultSwapRequest,
     createTonSwapRequest,
     createTonVaultLiquidityDepositPayload,
+    createWithdrawLiquidityBody,
 } from "./testUtils"
 import {randomAddress} from "@ton/test-utils"
 import {TonVault} from "../output/DEX_TonVault"
@@ -59,16 +60,16 @@ export const createJetton = async (blockchain: Blockchain) => {
     }
 }
 
-type JettonTreasury = Awaited<ReturnType<typeof createJetton>>
-type TonTreasury = SandboxContract<TreasuryContract>
+export type JettonTreasury = Awaited<ReturnType<typeof createJetton>>
+export type TonTreasury = SandboxContract<TreasuryContract>
 
-type Create<T> = (blockchain: Blockchain) => Promise<T>
+export type Create<T> = (blockchain: Blockchain) => Promise<T>
 
 type SandboxSendResult = SendMessageResult & {
     result: void
 }
 
-type VaultInterface<T> = {
+export type VaultInterface<T> = {
     vault: {
         address: Address
     }
@@ -84,11 +85,14 @@ type VaultInterface<T> = {
     ) => Promise<SandboxSendResult>
     sendSwapRequest: (
         amountToSwap: bigint,
-        destinationVault: Address,
-        expectedOutput: bigint,
+        destinationPool: Address,
+        isExactOutType: boolean,
+        limit: bigint,
         timeout: bigint,
         payloadOnSuccess: Cell | null,
         payloadOnFailure: Cell | null,
+        nextStep: SwapStep | null,
+        receiver: Address | null,
     ) => Promise<SandboxSendResult>
 }
 
@@ -132,18 +136,24 @@ export const createJettonVault: Create<VaultInterface<JettonTreasury>> = async (
 
     const sendSwapRequest = async (
         amountToSwap: bigint,
-        destinationVault: Address,
-        expectedOutput: bigint,
+        destinationPool: Address,
+        type: boolean,
+        limit: bigint,
         timeout: bigint,
         payloadOnSuccess: Cell | null,
         payloadOnFailure: Cell | null,
+        nextStep?: SwapStep | null,
+        receiver: Address | null = null,
     ) => {
         const swapRequest = createJettonVaultSwapRequest(
-            destinationVault,
-            expectedOutput,
+            destinationPool,
+            type,
+            limit,
             timeout,
             payloadOnSuccess,
             payloadOnFailure,
+            nextStep,
+            receiver,
         )
 
         return await jetton.transfer(vault.address, amountToSwap, swapRequest)
@@ -168,13 +178,11 @@ export const createTonVault: Create<VaultInterface<TonTreasury>> = async (
     const wallet = await blockchain.treasury("wallet-owner")
 
     const deploy = async () => {
-        const vaultDeployResult = await vault.send(
+        return await vault.send(
             (await blockchain.treasury("any-user-3")).getSender(),
             {value: toNano(0.1), bounce: false},
             null,
         )
-
-        return vaultDeployResult
     }
 
     const addLiquidity = async (
@@ -202,20 +210,24 @@ export const createTonVault: Create<VaultInterface<TonTreasury>> = async (
 
     const sendSwapRequest = async (
         amountToSwap: bigint,
-        destinationVault: Address,
-        expectedOutput: bigint,
+        destinationPool: Address,
+        type: boolean,
+        limit: bigint,
         timeout: bigint,
         payloadOnSuccess: Cell | null,
         payloadOnFailure: Cell | null,
+        nextStep: SwapStep | null,
+        receiver: Address | null = null,
     ) => {
         const swapRequest = createTonSwapRequest(
-            destinationVault,
-            wallet.address,
+            destinationPool,
+            receiver,
             amountToSwap,
-            expectedOutput,
+            limit,
             timeout,
             payloadOnSuccess,
             payloadOnFailure,
+            nextStep,
         )
 
         return await wallet.send({
@@ -230,7 +242,7 @@ export const createTonVault: Create<VaultInterface<TonTreasury>> = async (
     return {
         deploy,
         vault,
-        treasury: vaultOwner,
+        treasury: wallet,
         addLiquidity,
         sendSwapRequest,
     }
@@ -243,7 +255,7 @@ const createLiquidityDepositSetup = (
 ) => {
     const depositorIds: Map<string, bigint> = new Map()
 
-    const setup = async (
+    return async (
         depositorContract: SandboxContract<TreasuryContract>,
         amountLeft: bigint,
         amountRight: bigint,
@@ -288,13 +300,25 @@ const createLiquidityDepositSetup = (
             await ExtendedLPJettonWallet.fromInit(0n, depositor, ammPool.address),
         )
 
-        const withdrawLiquidity = async (amount: bigint, successfulPayload: Cell | null) => {
+        const withdrawLiquidity = async (
+            amount: bigint,
+            minAmountLeft: bigint,
+            minAmountRight: bigint,
+            timeout: bigint,
+            successfulPayload: Cell | null,
+        ) => {
             const withdrawResult = await depositorLpWallet.sendBurn(
                 depositorContract.getSender(),
                 toNano(2),
                 amount,
                 depositor,
-                successfulPayload,
+                createWithdrawLiquidityBody(
+                    minAmountLeft,
+                    minAmountRight,
+                    timeout,
+                    depositor,
+                    successfulPayload,
+                ),
             )
 
             return withdrawResult
@@ -307,109 +331,117 @@ const createLiquidityDepositSetup = (
             withdrawLiquidity,
         }
     }
-
-    return setup
 }
 
-const createAmmPool =
+export const createAmmPoolFromCreators =
     <T, U>(createLeft: Create<VaultInterface<T>>, createRight: Create<VaultInterface<U>>) =>
     async (blockchain: Blockchain) => {
         const firstVault = await createLeft(blockchain)
         const secondVault = await createRight(blockchain)
+        return createAmmPool(firstVault, secondVault, blockchain)
+    }
 
-        const sortedVaults = sortAddresses(
-            firstVault.vault.address,
-            secondVault.vault.address,
-            0n,
-            0n,
-        )
+export const createAmmPool = async <T, U>(
+    firstVault: VaultInterface<T>,
+    secondVault: VaultInterface<U>,
+    blockchain: Blockchain,
+) => {
+    const sortedVaults = sortAddresses(firstVault.vault.address, secondVault.vault.address, 0n, 0n)
 
-        const vaultA = sortedVaults.lower === firstVault.vault.address ? firstVault : secondVault
-        const vaultB = sortedVaults.lower === firstVault.vault.address ? secondVault : firstVault
+    const vaultA = sortedVaults.lower === firstVault.vault.address ? firstVault : secondVault
+    const vaultB = sortedVaults.lower === firstVault.vault.address ? secondVault : firstVault
 
-        const sortedAddresses = sortAddresses(vaultA.vault.address, vaultB.vault.address, 0n, 0n)
+    const sortedAddresses = sortAddresses(vaultA.vault.address, vaultB.vault.address, 0n, 0n)
 
-        const ammPool = blockchain.openContract(
-            await AmmPool.fromInit(vaultA.vault.address, vaultB.vault.address, 0n, 0n, 0n, null),
-        )
+    const ammPool = blockchain.openContract(
+        await AmmPool.fromInit(vaultA.vault.address, vaultB.vault.address, 0n, 0n, 0n, null),
+    )
 
-        const liquidityDepositSetup = createLiquidityDepositSetup(
-            blockchain,
-            sortedAddresses.lower,
-            sortedAddresses.higher,
-        )
+    const liquidityDepositSetup = createLiquidityDepositSetup(
+        blockchain,
+        sortedAddresses.lower,
+        sortedAddresses.higher,
+    )
 
-        // for later stage setup do everything by obtaining the address of the liq deposit here
-        //
-        // - deploy vaults
-        // - deploy liq deposit
-        // - add liq to vaults
-        const initWithLiquidity = async (
-            depositor: SandboxContract<TreasuryContract>,
-            amountLeft: bigint,
-            amountRight: bigint,
-        ) => {
-            await vaultA.deploy()
-            await vaultB.deploy()
-            const liqSetup = await liquidityDepositSetup(depositor, amountLeft, amountRight)
+    // for later stage setup do everything by obtaining the address of the liq deposit here
+    //
+    // - deploy vaults
+    // - deploy liq deposit
+    // - add liq to vaults
+    const initWithLiquidity = async (
+        depositor: SandboxContract<TreasuryContract>,
+        amountLeft: bigint,
+        amountRight: bigint,
+    ) => {
+        await vaultA.deploy()
+        await vaultB.deploy()
+        const liqSetup = await liquidityDepositSetup(depositor, amountLeft, amountRight)
 
-            await liqSetup.deploy()
-            await vaultA.addLiquidity(liqSetup.liquidityDeposit.address, amountLeft)
-            await vaultB.addLiquidity(liqSetup.liquidityDeposit.address, amountRight)
+        await liqSetup.deploy()
+        await vaultA.addLiquidity(liqSetup.liquidityDeposit.address, amountLeft)
+        await vaultB.addLiquidity(liqSetup.liquidityDeposit.address, amountRight)
 
-            return {
-                depositorLpWallet: liqSetup.depositorLpWallet,
-                withdrawLiquidity: liqSetup.withdrawLiquidity,
-            }
+        return {
+            depositorLpWallet: liqSetup.depositorLpWallet,
+            withdrawLiquidity: liqSetup.withdrawLiquidity,
         }
+    }
 
-        const swap = async (
-            amountToSwap: bigint,
-            swapFrom: "vaultA" | "vaultB",
-            expectedOutput: bigint = 0n,
-            timeout: bigint = 0n,
-            payloadOnSuccess: Cell | null = null,
-            payloadOnFailure: Cell | null = null,
-        ) => {
-            if (swapFrom === "vaultA") {
-                return await firstVault.sendSwapRequest(
-                    amountToSwap,
-                    secondVault.vault.address,
-                    expectedOutput,
-                    timeout,
-                    payloadOnSuccess,
-                    payloadOnFailure,
-                )
-            }
-
-            return await secondVault.sendSwapRequest(
+    const swap = async (
+        amountToSwap: bigint,
+        swapFrom: "vaultA" | "vaultB",
+        expectedOutput: bigint = 0n,
+        timeout: bigint = 0n,
+        payloadOnSuccess: Cell | null = null,
+        payloadOnFailure: Cell | null = null,
+        nextSwapStep: SwapStep | null = null,
+        receiver: Address | null = null,
+    ) => {
+        if (swapFrom === "vaultA") {
+            return await firstVault.sendSwapRequest(
                 amountToSwap,
-                firstVault.vault.address,
+                ammPool.address,
+                false,
                 expectedOutput,
                 timeout,
                 payloadOnSuccess,
                 payloadOnFailure,
+                nextSwapStep,
+                receiver,
             )
         }
 
-        return {
-            ammPool,
-            vaultA: firstVault,
-            vaultB: secondVault,
-            sorted: sortedAddresses,
-            isSwapped: sortedAddresses.lower !== firstVault.vault.address,
-            liquidityDepositSetup,
-            swap,
-            initWithLiquidity,
-        }
+        return await secondVault.sendSwapRequest(
+            amountToSwap,
+            ammPool.address,
+            false,
+            expectedOutput,
+            timeout,
+            payloadOnSuccess,
+            payloadOnFailure,
+            nextSwapStep,
+            receiver,
+        )
     }
 
-export const createJettonAmmPool = createAmmPool<JettonTreasury, JettonTreasury>(
+    return {
+        ammPool,
+        vaultA: firstVault,
+        vaultB: secondVault,
+        sorted: sortedAddresses,
+        isSwapped: sortedAddresses.lower !== firstVault.vault.address,
+        liquidityDepositSetup,
+        swap,
+        initWithLiquidity,
+    }
+}
+
+export const createJettonAmmPool = createAmmPoolFromCreators<JettonTreasury, JettonTreasury>(
     createJettonVault,
     createJettonVault,
 )
 
-export const createTonJettonAmmPool = createAmmPool<TonTreasury, JettonTreasury>(
+export const createTonJettonAmmPool = createAmmPoolFromCreators<TonTreasury, JettonTreasury>(
     createTonVault,
     createJettonVault,
 )
