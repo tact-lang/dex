@@ -288,7 +288,7 @@ contract AmmPool(
                         multihopInfo: MultihopInfo {
                             leftVault: self.leftVault,
                             rightVault: self.rightVault,
-                            outVault: outVault,
+                            outVault,
                         },
                     }.toCell(),
                     value: 0,
@@ -413,9 +413,9 @@ inline fun returnFunds(viaVault: Address, receiver: Address, otherVault: Address
         bounce: false,
         mode: SendRemainingValue,
         body: PayoutFromPool {
-            otherVault: otherVault,
-            amount: amount,
-            receiver: receiver,
+            otherVault,
+            amount,
+            receiver,
             payloadToForward: payloadOnFailure,
         }.toCell(),
     });
