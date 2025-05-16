@@ -2,13 +2,14 @@ import "./vault-interface";
 import "../math";
 import "../core/messages.tact";
 import "../core/liquidity-deposit";
+import "../core/amm-pool";
 
 contract TonVault(
     admin: Address,
 ) with VaultInterface {
     override fun handlePayout(msg: PayoutFromPool) {
         let sortedAddresses = sortAddresses(myAddress(), msg.otherVault);
-        let poolInit = initOf AmmPool(sortedAddresses.lower, sortedAddresses.higher, 0, 0, 0);
+        let poolInit = initOf AmmPool(sortedAddresses.lower, sortedAddresses.higher, 0, 0, 0, null);
 
         require(poolInit.hasSameBasechainAddress(sender()), "TonVault: Sender must be pool");
         // -> (fee) -> (ton vault) -> [(0.2) + amount 10 ton]

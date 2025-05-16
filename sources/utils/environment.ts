@@ -15,6 +15,7 @@ import {
 } from "./testUtils"
 import {randomAddress} from "@ton/test-utils"
 import {TonVault} from "../output/DEX_TonVault"
+import {ExtendedLPJettonWallet} from "../wrappers/ExtendedLPJettonWallet"
 
 // TODO: unify common prefix to structs on create setups
 export const createJetton = async (blockchain: Blockchain) => {
@@ -292,11 +293,11 @@ const createLiquidityDepositSetup = (
         }
 
         const ammPool = blockchain.openContract(
-            await AmmPool.fromInit(sortedAddresses.lower, sortedAddresses.higher, 0n, 0n, 0n),
+            await AmmPool.fromInit(sortedAddresses.lower, sortedAddresses.higher, 0n, 0n, 0n, null),
         )
 
         const depositorLpWallet = blockchain.openContract(
-            await JettonWallet.fromInit(0n, depositor, ammPool.address),
+            await ExtendedLPJettonWallet.fromInit(0n, depositor, ammPool.address),
         )
 
         const withdrawLiquidity = async (
@@ -353,7 +354,7 @@ export const createAmmPool = async <T, U>(
     const sortedAddresses = sortAddresses(vaultA.vault.address, vaultB.vault.address, 0n, 0n)
 
     const ammPool = blockchain.openContract(
-        await AmmPool.fromInit(vaultA.vault.address, vaultB.vault.address, 0n, 0n, 0n),
+        await AmmPool.fromInit(vaultA.vault.address, vaultB.vault.address, 0n, 0n, 0n, null),
     )
 
     const liquidityDepositSetup = createLiquidityDepositSetup(

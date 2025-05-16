@@ -1,18 +1,21 @@
-import {ClaimTON, JettonTransfer, JettonWallet} from "../output/Jetton_JettonWallet"
+import {ClaimTON, JettonTransfer, LPJettonWallet} from "../output/DEX_LPJettonWallet"
 import {Address, Builder, Cell, ContractProvider, Sender, toNano} from "@ton/core"
-import {JettonBurn, ProvideWalletBalance} from "../output/Jetton_JettonMinter"
+import {LPWithdrawViaJettonBurn, ProvideWalletBalance} from "../output/DEX_AmmPool"
 
-export class ExtendedJettonWallet extends JettonWallet {
+export class ExtendedLPJettonWallet extends LPJettonWallet {
     constructor(address: Address, init?: {code: Cell; data: Cell}) {
         super(address, init)
     }
 
     static async fromInit(balance: bigint, owner: Address, minter: Address) {
-        const base = await JettonWallet.fromInit(balance, owner, minter)
+        const base = await LPJettonWallet.fromInit(balance, owner, minter)
         if (base.init === undefined) {
             throw new Error("JettonWallet init is not defined")
         }
-        return new ExtendedJettonWallet(base.address, {code: base.init.code, data: base.init.data})
+        return new ExtendedLPJettonWallet(base.address, {
+            code: base.init.code,
+            data: base.init.data,
+        })
     }
 
     getJettonBalance = async (provider: ContractProvider): Promise<bigint> => {
@@ -89,8 +92,8 @@ export class ExtendedJettonWallet extends JettonWallet {
         responseAddress: Address | null,
         customPayload: Cell | null,
     ): Promise<void> => {
-        const msg: JettonBurn = {
-            $$type: "JettonBurn",
+        const msg: LPWithdrawViaJettonBurn = {
+            $$type: "LPWithdrawViaJettonBurn",
             queryId: 0n,
             amount: jettonAmount,
             responseDestination: responseAddress,

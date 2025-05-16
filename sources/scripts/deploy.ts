@@ -108,6 +108,7 @@ const main = async () => {
         0n,
         0n,
         0n,
+        null,
     )
     const pool = client.open(poolContract)
 

@@ -55,7 +55,7 @@ contract LiquidityDepositContract(
                 value: 0,
                 bounce: false, // 1. To pay storage fees of AmmPool. 2. We will destroy this contract, so bounce does not have sense.
                 mode: SendRemainingBalance + SendDestroyIfZero, // We don't need to keep this contract alive
-                init: initOf AmmPool(self.leftVault, self.rightVault, 0, 0, 0),
+                init: initOf AmmPool(self.leftVault, self.rightVault, 0, 0, 0, null),
                 body: LiquidityDeposit {
                     depositor: self.depositor,
                     contractId: self.contractId,

@@ -1,8 +1,8 @@
 import "./messages";
-import "../core/messages.tact";
 import "./constants";
+import "./utils";
 
-contract LPJettonWallet(
+contract JettonWallet(
     balance: Int as coins,
     owner: Address,
     minter: Address,
@@ -21,6 +21,7 @@ contract LPJettonWallet(
             ctx.value >
             msg.forwardTonAmount +
             fwdCount * ctx.readForwardFee() +
+            getForwardFee(walletStateInitCells, walletStateInitBits, false) +
             (2 * getComputeFee(gasForTransfer, false) + minTonsForStorage),
             "Insufficient amount of TON attached",
         );
@@ -37,15 +38,15 @@ contract LPJettonWallet(
                 forwardTonAmount: msg.forwardTonAmount,
                 forwardPayload: msg.forwardPayload,
             }.toCell(),
-            init: initOf LPJettonWallet(0, msg.destination, self.minter),
+            init: initOf JettonWallet(0, msg.destination, self.minter),
         });
     }
 
     receive(msg: JettonTransferInternal) {
         self.balance += msg.amount;
 
-        // This message should come only from master, or from other LPJettonWallet
-        let wallet: StateInit = initOf LPJettonWallet(0, msg.sender, self.minter);
+        // This message should come only from master, or from other JettonWallet
+        let wallet: StateInit = initOf JettonWallet(0, msg.sender, self.minter);
         if (!wallet.hasSameBasechainAddress(sender())) {
             require(self.minter == sender(), "Incorrect sender");
         }
@@ -121,12 +122,11 @@ contract LPJettonWallet(
             value: 0,
             mode: SendRemainingValue,
             bounce: true,
-            body: LiquidityWithdrawViaBurnNotification {
+            body: JettonBurnNotification {
                 queryId: msg.queryId,
                 amount: msg.amount,
                 sender: self.owner,
                 responseDestination: msg.responseDestination,
-                forwardPayload: LiquidityWithdrawParameters.fromCell(msg.customPayload!!),
             }.toCell(),
         });
     }
