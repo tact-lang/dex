@@ -216,7 +216,7 @@ contract AmmPool(
 
         // Check if the sender is another pool
         if (msg.multihopInfo != null) {
-            let init = initOf AmmPool(msg.multihopInfo!!.leftVault, msg.multihopInfo!!.rightVault, 0, 0, 0);
+            let init = initOf AmmPool(msg.multihopInfo!!.leftVault, msg.multihopInfo!!.rightVault, 0, 0, 0, null);
             // We use require if situations that should never be possible unless someone is trying to hack the contract
             require(init.hasSameBasechainAddress(sender()), "Pool: Sender must be pool if multihopInfo is specified");
             require(msg.multihopInfo!!.outVault == self.leftVault || msg.multihopInfo!!.outVault == self.rightVault, "Pool: Out vault on a previous step must be one of the pool vaults");
@@ -348,11 +348,6 @@ contract AmmPool(
             require(false, "Pool: argument of `reserveForVault` must be one of the vaults");
             return 0; // This line will never be reached, but we need to return something to satisfy the compiler
         }
-    }
-
-    // For TEP-74 compatibility
-    get fun get_wallet_address(ownerAddress: Address): Address {
-        return getJettonWalletByOwner(ownerAddress);
     }
 
     get fun expectedOut(vaultAddress: Address, amountIn: Int): Int {
