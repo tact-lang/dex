@@ -1,9 +1,9 @@
 import "./liquidity-deposit";
 import "./messages";
 import "../utils/utils";
-import "../jettons/utils";
-import "../vaults/vault-interface";
-import "../jettons/constants";
+import "./lp-jettons/constants";
+import "./lp-jettons/utils";
+import "./lp-jettons/LP-jetton-minter";
 
 contract AmmPool(
     leftVault: Address,
@@ -14,7 +14,8 @@ contract AmmPool(
     rightSideReserve: Int as coins, // Should be deployed with 0
     // LP tokens-related field
     totalSupply: Int as coins, // Should be deployed with 0
-) {
+    jettonContent: Cell?,
+) with LPJettonMinter {
     receive() {}
 
     receive(msg: LiquidityDeposit) {
@@ -146,7 +147,7 @@ contract AmmPool(
                 sender: myAddress(),
                 responseDestination: msg.depositor,
                 forwardTonAmount: 1, // TODO: We should maximize forwardTonAmount
-                forwardPayload: forwardPayload,
+                forwardPayload,
             }.toCell(),
         });
     }
@@ -203,8 +204,6 @@ contract AmmPool(
         });
     }
 
-    // TODO: Add TEP-89 Discoverable functionality
-
     const PoolFee: Int = 3; // 0.3%
 
     receive(msg: SwapIn) {
@@ -217,7 +216,7 @@ contract AmmPool(
 
         // Check if the sender is another pool
         if (msg.multihopInfo != null) {
-            let init = initOf AmmPool(msg.multihopInfo!!.leftVault, msg.multihopInfo!!.rightVault, 0, 0, 0);
+            let init = initOf AmmPool(msg.multihopInfo!!.leftVault, msg.multihopInfo!!.rightVault, 0, 0, 0, null);
             // We use require if situations that should never be possible unless someone is trying to hack the contract
             require(init.hasSameBasechainAddress(sender()), "Pool: Sender must be pool if multihopInfo is specified");
             require(msg.multihopInfo!!.outVault == self.leftVault || msg.multihopInfo!!.outVault == self.rightVault, "Pool: Out vault on a previous step must be one of the pool vaults");
@@ -289,7 +288,7 @@ contract AmmPool(
                         multihopInfo: MultihopInfo {
                             leftVault: self.leftVault,
                             rightVault: self.rightVault,
-                            outVault: outVault,
+                            outVault,
                         },
                     }.toCell(),
                     value: 0,
@@ -349,11 +348,6 @@ contract AmmPool(
             require(false, "Pool: argument of `reserveForVault` must be one of the vaults");
             return 0; // This line will never be reached, but we need to return something to satisfy the compiler
         }
-    }
-
-    // For TEP-74 compatibility
-    get fun get_wallet_address(ownerAddress: Address): Address {
-        return getJettonWalletByOwner(ownerAddress);
     }
 
     get fun expectedOut(vaultAddress: Address, amountIn: Int): Int {
@@ -419,9 +413,9 @@ inline fun returnFunds(viaVault: Address, receiver: Address, otherVault: Address
         bounce: false,
         mode: SendRemainingValue,
         body: PayoutFromPool {
-            otherVault: otherVault,
-            amount: amount,
-            receiver: receiver,
+            otherVault,
+            amount,
+            receiver,
             payloadToForward: payloadOnFailure,
         }.toCell(),
     });

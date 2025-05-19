@@ -1,6 +1,9 @@
-import "./messages";
-import "../core/messages.tact";
-import "./constants";
+import "./messages.tact";
+import "./constants.tact";
+import "./utils";
+
+// VENDOR LOCK: These jetton wallet base implementation were copied from the tact-lang/jetton repository.
+// https://github.com/tact-lang/jetton/tree/0e2b51dcd7f91c2db194027ae867c44fb0e0c11b
 
 contract LPJettonWallet(
     balance: Int as coins,
@@ -21,6 +24,7 @@ contract LPJettonWallet(
             ctx.value >
             msg.forwardTonAmount +
             fwdCount * ctx.readForwardFee() +
+            getForwardFee(walletStateInitCells, walletStateInitBits, false) +
             (2 * getComputeFee(gasForTransfer, false) + minTonsForStorage),
             "Insufficient amount of TON attached",
         );
@@ -104,7 +108,7 @@ contract LPJettonWallet(
         });
     }
 
-    receive(msg: JettonBurn) {
+    receive(msg: LPWithdrawViaJettonBurn) {
         // we can skip forceBasechain here because with other checks in place it's not possible
         // to acquire jettons outside of basechain, so amount check is enough
         require(sender() == self.owner, "Incorrect sender");
@@ -147,7 +151,7 @@ contract LPJettonWallet(
         self.balance += msg.amount;
     }
 
-    bounced(msg: bounced<JettonBurnNotification>) {
+    bounced(msg: bounced<LiquidityWithdrawViaBurnNotification>) {
         self.balance += msg.amount;
     }
 

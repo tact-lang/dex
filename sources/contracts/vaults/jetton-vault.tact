@@ -73,7 +73,7 @@ contract JettonVault(
 
     override fun handlePayout(msg: PayoutFromPool) {
         let sortedAddresses = sortAddresses(myAddress(), msg.otherVault);
-        let poolInit = initOf AmmPool(sortedAddresses.lower, sortedAddresses.higher, 0, 0, 0);
+        let poolInit = initOf AmmPool(sortedAddresses.lower, sortedAddresses.higher, 0, 0, 0, null);
 
         require(poolInit.hasSameBasechainAddress(sender()), "JettonVault: Sender must be pool");
 

@@ -1,7 +1,10 @@
-import "./LP-jetton-wallet";
+import "./jetton-wallet";
 import "./messages";
 import "./constants";
 import "./utils";
+
+// VENDOR LOCK: These jetton base implementation were copied from the tact-lang/jetton repository.
+// https://github.com/tact-lang/jetton/tree/0e2b51dcd7f91c2db194027ae867c44fb0e0c11b
 
 struct JettonMinterState {
     totalSupply: Int as coins;
@@ -34,6 +37,7 @@ contract JettonMinter(
             minTonsForStorage +
             msg.mintMessage.forwardTonAmount +
             ctx.readForwardFee() +
+            getForwardFee(walletStateInitCells, walletStateInitBits, false) +
             2 * getComputeFee(gasForTransfer, false),
             "Insufficient gas for mint",
         );
@@ -53,9 +57,9 @@ contract JettonMinter(
     receive(msg: ProvideWalletAddress) {
         let ownerWorkchain: Int = parseStdAddress(msg.ownerAddress.asSlice()).workchain;
 
-        // If owner is basechain address, we can calculate LPJettonWallet
+        // If owner is basechain address, we can calculate jettonWallet
         let targetJettonWallet: BasechainAddress = (ownerWorkchain == Basechain)
-            ? contractBasechainAddress(initOf LPJettonWallet(0, msg.ownerAddress, myAddress()))
+            ? contractBasechainAddress(getJettonWalletInit(msg.ownerAddress))
             : emptyBasechainAddress();
 
         message(MessageParameters {
@@ -125,11 +129,23 @@ contract JettonMinter(
             mintable: self.mintable,
             adminAddress: self.owner,
             jettonContent: self.jettonContent,
-            jettonWalletCode: codeOf LPJettonWallet,
+            jettonWalletCode: codeOf JettonWallet,
         };
     }
 
     get fun get_wallet_address(ownerAddress: Address): Address {
         return getJettonWalletByOwner(ownerAddress);
     }
+}
+
+inline fun getJettonWalletInit(address: Address): StateInit {
+    return initOf JettonWallet(0, address, myAddress());
+}
+
+inline fun getJettonWalletByOwner(jettonWalletOwner: Address): Address {
+    return contractAddress(getJettonWalletInit(jettonWalletOwner));
+}
+
+inline fun getJettonBasechainWalletByOwner(jettonWalletOwner: Address): BasechainAddress {
+    return contractBasechainAddress(getJettonWalletInit(jettonWalletOwner));
 }
