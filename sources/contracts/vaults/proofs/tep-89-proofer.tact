@@ -1,4 +1,4 @@
-import "../../core/LP-jettons/messages";
+import "../../core/lp-jettons/messages";
 
 // As TEP-89 does not support forwardPayload, we need to use a separate contract
 // This contract will store the request and will validate the proof.

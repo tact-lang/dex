@@ -39,7 +39,8 @@ trait LPJettonMinter {
             totalSupply: self.totalSupply,
             mintable: true,
             adminAddress: zeroBasechainAddress(),
-            jettonContent: self.jettonContent!!,
+            // TODO: Fix after solving https://github.com/tact-lang/dex/issues/54
+            jettonContent: emptyCell(),
             jettonWalletCode: codeOf LPJettonWallet,
         };
     }

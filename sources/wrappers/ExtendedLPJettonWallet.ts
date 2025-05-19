@@ -131,18 +131,4 @@ export class ExtendedLPJettonWallet extends LPJettonWallet {
         }
         return this.send(provider, via, {value: value}, msg)
     }
-
-    // for compatibility with the reference implementation tests
-    sendWithdrawTons = async (_provider: ContractProvider, _via: Sender): Promise<void> => {
-        throw new Error("Not implemented")
-    }
-
-    sendWithdrawJettons = async (
-        _provider: ContractProvider,
-        _via: Sender,
-        _from: Address,
-        _amount: bigint,
-    ): Promise<void> => {
-        throw new Error("Not implemented")
-    }
 }

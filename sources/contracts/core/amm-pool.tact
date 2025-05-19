@@ -1,9 +1,9 @@
 import "./liquidity-deposit";
 import "./messages";
 import "../utils/utils";
-import "./LP-jettons/constants";
-import "./LP-jettons/utils";
-import "./LP-jettons/LP-jetton-minter";
+import "lp-jettons/constants";
+import "lp-jettons/utils";
+import "lp-jettons/LP-jetton-minter";
 
 contract AmmPool(
     leftVault: Address,
