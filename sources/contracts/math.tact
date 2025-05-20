@@ -21,7 +21,7 @@ inline fun sortAddressesAndCoins(
     a: Address,
     b: Address,
     aCoins: Int,
-    bCoins: Int
+    bCoins: Int,
 ): SortedAddressesAndCoins {
     if (parseStdAddress(a.asSlice()).address < parseStdAddress(b.asSlice()).address) {
         return SortedAddressesAndCoins { lower: a, higher: b, lowerCoins: aCoins, higherCoins: bCoins };
