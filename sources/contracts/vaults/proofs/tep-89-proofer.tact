@@ -13,6 +13,8 @@ message(0x7a1267fd) TEP89ProofResponse {
     action: Cell;
 }
 
+// TEP-89 Proofer contains an action in state init, so we will have different proofer addresses for each action
+// This helps to handle situation, when more than one action were sent to uninitialized jetton vault
 contract TEP89Proofer(
     jettonMaster: Address,
     proofRequester: Address,

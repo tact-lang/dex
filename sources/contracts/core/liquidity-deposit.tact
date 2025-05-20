@@ -1,4 +1,4 @@
-import "./amm-pool.tact";
+import "./amm-pool";
 import "../math";
 import "./messages";
 
