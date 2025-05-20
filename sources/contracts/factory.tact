@@ -1,5 +1,6 @@
 import "./math";
 import "./core/amm-pool";
+import "./vaults/jetton-vault";
 
 const AmmPoolAddrRequestId: Int = 0x46389573;
 struct AmmPoolParams {
@@ -25,48 +26,72 @@ struct JettonVaultParams {
     jettonMaster: Address;
 }
 
+// Request should be something like Either Cell ^Cell in the future
+// Or (perfect) it could be a union that supports such layout
+struct Request {
+    requestId: Int as uint32;
+    request: Cell;
+}
+
 // Address request may contain up to 3 subrequests, it is convenient, as you can provide lp or perform swap with only one address-get request
 // For LP you need 3 addresses: left vault, right vault and depositor
 // For swap you need 2 addresses: left vault and AmmPool
 message AddressesRequest {
-    firstRequestId: Int? as uint32;
-    firstRequest: Cell?;
-    secondRequestId: Int? as uint32;
-    secondRequest: Cell?;
-    thirdRequestId: Int? as uint32;
-    thirdRequest: Cell?;
+    responseAddress: Address?;
+    first: Request;
+    second: Request?;
+    third: Request?;
     forwardPayload: Cell?;
 }
 
 message AddressResponse {
-    firstRequestId: Int? as uint32;
-    firstResult: Address?;
-    secondRequestId: Int? as uint32;
-    secondResult: Address?;
-    thirdRequestId: Int? as uint32;
-    thirdResult: Address?;
+    first: Address;
+    second: Address?;
+    third: Address?;
     forwardPayload: Cell?;
 }
 
 contract Factory() {
     receive(msg: AddressesRequest) {
-
+        let second: Address? = null;
+        if(msg.second != null) {
+            second = performAddrRequest(msg.second!!.requestId, msg.second!!.request);
+        }
+        let third: Address? = null;
+        if(msg.third != null) {
+            third = performAddrRequest(msg.third!!.requestId, msg.third!!.request);
+        }
+        let destination = msg.responseAddress != null ? msg.responseAddress : sender();
+        message(MessageParameters {
+            mode: SendRemainingValue,
+            body: AddressResponse {
+                first: performAddrRequest(msg.first.requestId, msg.first.request),
+                second: second,
+                third: third,
+                forwardPayload: msg.forwardPayload,
+            },
+            value: 0,
+            to: destination,
+            bounce: false,
+        })
     }
-
 }
 
 fun performAddrRequest(requestId: Int, request: Cell): Address {
     if(requestId == AmmPoolAddrRequestId) {
         let params = AmmPoolParams.fromCell(request);
         let sortedAddresses = sortAddresses(params.firstVault, params.secondVault);
-        return contractAddress(initOf AmmPool(sortedAddresses.lower, sortedAddresses.upper, 0, 0, 0, null));
+        return contractAddress(initOf AmmPool(sortedAddresses.lower, sortedAddresses.higher, 0, 0, 0, null));
     }
     if(requestId == LPDepositRequestId) {
         let params = LPDepositParams.fromCell(request);
+        let sortedAddresses = sortAddresses(params.firstVault, params.secondVault);
+        return contractAddress(initOf AmmPool(sortedAddresses.lower, sortedAddresses.higher, 0, 0, 0, null));
 
     }
     if(requestId == JettonVaultRequestId) {
         let params = JettonVaultParams.fromCell(request);
-
+        return contractAddress(initOf JettonVault(params.jettonMaster, null));
     }
+    require(false, "Factory: Unknown requestId");
 }
