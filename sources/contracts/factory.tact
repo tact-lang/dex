@@ -1,9 +1,14 @@
+import "./math";
+import "./core/amm-pool";
+
+const AmmPoolAddrRequestId: Int = 0x46389573;
 struct AmmPoolParams {
     // Here vault may be not sorted, we will sort them for user
     firstVault: Address;
     secondVault: Address;
 }
 
+const LPDepositRequestId: Int = 0x7bd2db38;
 struct LPDepositParams {
     // Here, unlike in real state init, vaults can be not sorted, we will sort them for user
     firstVault: Address;
@@ -15,6 +20,7 @@ struct LPDepositParams {
     contractId: Int as uint64;
 }
 
+const JettonVaultRequestId: Int = 0x7af4c10b;
 struct JettonVaultParams {
     jettonMaster: Address;
 }
@@ -44,6 +50,23 @@ message AddressResponse {
 
 contract Factory() {
     receive(msg: AddressesRequest) {
+
+    }
+
+}
+
+fun performAddrRequest(requestId: Int, request: Cell): Address {
+    if(requestId == AmmPoolAddrRequestId) {
+        let params = AmmPoolParams.fromCell(request);
+        let sortedAddresses = sortAddresses(params.firstVault, params.secondVault);
+        return contractAddress(initOf AmmPool(sortedAddresses.lower, sortedAddresses.upper, 0, 0, 0, null));
+    }
+    if(requestId == LPDepositRequestId) {
+        let params = LPDepositParams.fromCell(request);
+
+    }
+    if(requestId == JettonVaultRequestId) {
+        let params = JettonVaultParams.fromCell(request);
 
     }
 }
