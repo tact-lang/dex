@@ -63,7 +63,7 @@ contract JettonVault(
 
     // We will receive this message only if TEP-89 proofer will successfully validate jettonWallet
     receive(msg: TEP89ProofResponse) {
-        let prooferStateInit = initOf TEP89Proofer(self.jettonMaster, myAddress(), msg.proofedJettonWallet, null);
+        let prooferStateInit = initOf TEP89Proofer(self.jettonMaster, myAddress(), msg.proofedJettonWallet, msg.action);
         require(prooferStateInit.hasSameBasechainAddress(sender()), "JettonVault: Sender must be a valid proofer");
         self.jettonWallet = msg.proofedJettonWallet;
         actionHandler(JettonNotifyWithActionRequest.fromCell(msg.action));
@@ -73,7 +73,7 @@ contract JettonVault(
 
     override fun handlePayout(msg: PayoutFromPool) {
         let sortedAddresses = sortAddresses(myAddress(), msg.otherVault);
-        let poolInit = initOf AmmPool(sortedAddresses.lower, sortedAddresses.higher, 0, 0, 0);
+        let poolInit = initOf AmmPool(sortedAddresses.lower, sortedAddresses.higher, 0, 0, 0, null);
 
         require(poolInit.hasSameBasechainAddress(sender()), "JettonVault: Sender must be pool");
 

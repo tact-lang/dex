@@ -1,9 +1,11 @@
-import {Blockchain} from "@ton/sandbox"
+import {Blockchain, SandboxContract} from "@ton/sandbox"
 import {createJettonAmmPool, createTonJettonAmmPool} from "../utils/environment"
-import {toNano} from "@ton/core"
+import {Address, beginCell, toNano} from "@ton/core"
 import {AmmPool} from "../output/DEX_AmmPool"
 // eslint-disable-next-line
 import {SendDumpToDevWallet} from "@tondevwallet/traces"
+import {randomAddress} from "@ton/test-utils"
+import {ExtendedLPJettonWallet} from "../wrappers/ExtendedLPJettonWallet"
 
 describe("Amm pool", () => {
     test("should swap exact amount of jetton to jetton", async () => {
@@ -266,5 +268,170 @@ describe("Amm pool", () => {
 
         const amountOfJettonBAfterSwap = await vaultB.treasury.wallet.getJettonBalance()
         expect(amountOfJettonBAfterSwap).toBe(amountBJettonBeforeSwap + expectedOutputJetton)
+    })
+
+    describe("Amm pool should act as a JettonMaster", () => {
+        const createUserLPWallet = (blockchain: Blockchain, ammPool: SandboxContract<AmmPool>) => {
+            return async (address: Address) => {
+                return blockchain.openContract(
+                    new ExtendedLPJettonWallet(await ammPool.getGetWalletAddress(address)),
+                )
+            }
+        }
+
+        test("Amm pool is TEP-89 compatible JettonMaster that reports correct discovery address", async () => {
+            const blockchain = await Blockchain.create()
+            const deployer = await blockchain.treasury(randomAddress().toString()) // Just a random treasury
+            const notDeployer = await blockchain.treasury(randomAddress().toString())
+            const ammPool = blockchain.openContract(
+                await AmmPool.fromInit(randomAddress(), randomAddress(), 0n, 0n, 0n, null),
+            )
+            const userWallet = createUserLPWallet(blockchain, ammPool)
+            const deployAmmPoolRes = await ammPool.send(
+                deployer.getSender(),
+                {value: toNano(0.01)},
+                null,
+            )
+            expect(deployAmmPoolRes.transactions).toHaveTransaction({
+                from: deployer.address,
+                to: ammPool.address,
+                success: true,
+            })
+
+            let discoveryResult = await ammPool.send(
+                deployer.getSender(),
+                {
+                    value: toNano(0.01),
+                },
+                {
+                    $$type: "ProvideWalletAddress",
+                    queryId: 0n,
+                    ownerAddress: deployer.address,
+                    includeAddress: true,
+                },
+            )
+            /*
+              take_wallet_address#d1735400 query_id:uint64 wallet_address:MsgAddress owner_address:(Maybe ^MsgAddress) = InternalMsgBody;
+            */
+            const deployerJettonWallet = await userWallet(deployer.address)
+            expect(discoveryResult.transactions).toHaveTransaction({
+                from: ammPool.address,
+                to: deployer.address,
+                body: beginCell()
+                    .storeUint(AmmPool.opcodes.TakeWalletAddress, 32)
+                    .storeUint(0, 64)
+                    .storeAddress(deployerJettonWallet.address)
+                    .storeUint(1, 1)
+                    .storeRef(beginCell().storeAddress(deployer.address).endCell())
+                    .endCell(),
+            })
+
+            discoveryResult = await ammPool.send(
+                deployer.getSender(),
+                {
+                    value: toNano(0.01),
+                },
+                {
+                    $$type: "ProvideWalletAddress",
+                    queryId: 0n,
+                    ownerAddress: notDeployer.address,
+                    includeAddress: true,
+                },
+            )
+            const notDeployerJettonWallet = await userWallet(notDeployer.address)
+            expect(discoveryResult.transactions).toHaveTransaction({
+                from: ammPool.address,
+                to: deployer.address,
+                body: beginCell()
+                    .storeUint(AmmPool.opcodes.TakeWalletAddress, 32)
+                    .storeUint(0, 64)
+                    .storeAddress(notDeployerJettonWallet.address)
+                    .storeUint(1, 1)
+                    .storeRef(beginCell().storeAddress(notDeployer.address).endCell())
+                    .endCell(),
+            })
+
+            // do not include the owner address
+            discoveryResult = await ammPool.send(
+                deployer.getSender(),
+                {
+                    value: toNano(0.01),
+                },
+                {
+                    $$type: "ProvideWalletAddress",
+                    queryId: 0n,
+                    ownerAddress: notDeployer.address,
+                    includeAddress: false,
+                },
+            )
+            expect(discoveryResult.transactions).toHaveTransaction({
+                from: ammPool.address,
+                to: deployer.address,
+                body: beginCell()
+                    .storeUint(AmmPool.opcodes.TakeWalletAddress, 32)
+                    .storeUint(0, 64)
+                    .storeAddress(notDeployerJettonWallet.address)
+                    .storeUint(0, 1)
+                    .endCell(),
+            })
+        })
+        test("Correctly handles not valid address in discovery", async () => {
+            const blockchain = await Blockchain.create()
+            const deployer = await blockchain.treasury(randomAddress().toString()) // Just a random treasury
+            const ammPool = blockchain.openContract(
+                await AmmPool.fromInit(randomAddress(), randomAddress(), 0n, 0n, 0n, null),
+            )
+            const badAddr = randomAddress(-1)
+            let discoveryResult = await ammPool.send(
+                deployer.getSender(),
+                {
+                    value: toNano(0.01),
+                },
+                {
+                    $$type: "ProvideWalletAddress",
+                    queryId: 0n,
+                    ownerAddress: badAddr,
+                    includeAddress: false,
+                },
+            )
+
+            expect(discoveryResult.transactions).toHaveTransaction({
+                from: ammPool.address,
+                to: deployer.address,
+                body: beginCell()
+                    .storeUint(AmmPool.opcodes.TakeWalletAddress, 32)
+                    .storeUint(0, 64)
+                    .storeUint(0, 2) // addr_none
+                    .storeUint(0, 1)
+                    .endCell(),
+            })
+
+            // Include address should still be available
+
+            discoveryResult = await ammPool.send(
+                deployer.getSender(),
+                {
+                    value: toNano(0.01),
+                },
+                {
+                    $$type: "ProvideWalletAddress",
+                    queryId: 0n,
+                    ownerAddress: badAddr,
+                    includeAddress: true,
+                },
+            )
+
+            expect(discoveryResult.transactions).toHaveTransaction({
+                from: ammPool.address,
+                to: deployer.address,
+                body: beginCell()
+                    .storeUint(AmmPool.opcodes.TakeWalletAddress, 32)
+                    .storeUint(0, 64)
+                    .storeUint(0, 2) // addr_none
+                    .storeUint(1, 1)
+                    .storeRef(beginCell().storeAddress(badAddr).endCell())
+                    .endCell(),
+            })
+        })
     })
 })
