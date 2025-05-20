@@ -1,6 +1,7 @@
 import "./tep-89-proofer.tact";
 import "./tep-89-proofer";
 import "./calculate-jetton-wallet";
+import "../../utils/utils";
 
 struct JettonMasterState {
     jettonMasterCode: Cell?;
@@ -19,7 +20,7 @@ inline fun checkProof(jettonMaster: Address, proofType: Int, proof: Slice, msgCe
             jettonMaster,
             myAddress(),
             sender(),
-            null,
+            msgCell,
         );
 
         deploy(DeployParameters {
