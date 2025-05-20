@@ -35,7 +35,7 @@ struct Request {
     request: Cell;
 }
 
-// Address request may contain up to 3 subrequests, it is convenient, as you can provide lp or perform swap with only one address-get request
+// Address request may contain up to 3 queries, it is convenient, as you can provide lp or perform swap with only one address-get request
 // For LP you need 3 addresses: left vault, right vault and depositor
 // For swap you need 2 addresses: left vault and AmmPool
 message(0xb0534b79) AddressesRequest {

@@ -127,9 +127,6 @@ describe("Factory", () => {
         }
 
         const result = await factory.send(deployer.getSender(), {value: toNano("0.05")}, requestMsg)
-        await SendDumpToDevWallet({
-            transactions: result.transactions as any,
-        })
         // Check that the response contains the correct pool address
         const replyTx = flattenTransaction(
             findTransactionRequired(result.transactions, {
