@@ -60,7 +60,6 @@ describe("Cross-pool Swaps", () => {
 
     test.each(createPoolCombinations)("should perform $name swap", async ({name, createVaults}) => {
         const blockchain = await Blockchain.create()
-        blockchain.openContract()
 
         const {firstPoolVaultA, firstPoolVaultB, secondPoolVaultA, secondPoolVaultB} =
             await createVaults(blockchain)
