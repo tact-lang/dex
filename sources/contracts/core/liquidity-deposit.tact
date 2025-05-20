@@ -1,5 +1,6 @@
 import "./amm-pool.tact";
 import "../math";
+import "./messages";
 
 message(0xe7a3475f) PartHasBeenDeposited {
     depositor: Address;

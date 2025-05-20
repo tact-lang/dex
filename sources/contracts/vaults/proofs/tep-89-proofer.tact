@@ -17,10 +17,11 @@ contract TEP89Proofer(
     jettonMaster: Address,
     proofRequester: Address,
     possibleJettonWallet: Address,
-    action: Cell?, // Actually it is JettonNotifyWithActionRequest, but is cheaper to store it as Cell
+    action: Cell, // Actually it is JettonNotifyWithActionRequest, but is cheaper to store it as Cell
 ) {
     receive(msg: TEP89ProofRequest) {
         require(sender() == self.proofRequester, "TEP89 proof: Sender must be the proof requester");
+        require(msg.action == self.action, "TEP89 proof: Action must be the same");
         self.action = msg.action;
         self.possibleJettonWallet = msg.possibleJettonWallet;
         self.jettonMaster = msg.jettonMaster;
@@ -51,7 +52,7 @@ contract TEP89Proofer(
             mode: SendRemainingBalance | SendDestroyIfZero,
             body: TEP89ProofResponse {
                 proofedJettonWallet: msg.walletAddress,
-                action: self.action!!,
+                action: self.action,
             }.toCell(),
         });
     }
