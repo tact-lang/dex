@@ -53,7 +53,7 @@ contract JettonVault(
             let proofCheckRes = checkProof(self.jettonMaster, msg.proofType, msg.proof, msg.toCell());
 
             // Proof is not valid, or not supported, let's try to send jettons back
-            if(!proofCheckRes) {
+            if (!proofCheckRes) {
                 message(MessageParameters {
                     mode: SendRemainingValue | SendIgnoreErrors,
                     body: SendViaJettonTransfer {
@@ -80,7 +80,7 @@ contract JettonVault(
             commit();
         }
         // Maybe someone messed up with address, so let's try to send jettons back
-        if(sender() != self.jettonWallet) {
+        if (sender() != self.jettonWallet) {
             message(MessageParameters {
                 mode: SendRemainingValue | SendIgnoreErrors,
                 body: SendViaJettonTransfer {
