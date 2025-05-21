@@ -3,6 +3,10 @@ struct SortedAddresses {
     higher: Address;
 }
 
+// Represents a pair of sorted addresses and their associated coin values.
+// The addresses are sorted in ascending order, with `lower` being the smaller address
+// and `higher` being the larger address. `lowerCoins` and `higherCoins` store the
+// respective coin values for these addresses.
 struct SortedAddressesAndCoins {
     lower: Address;
     higher: Address;
