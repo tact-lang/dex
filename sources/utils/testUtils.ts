@@ -14,6 +14,7 @@ import {
     storeLiquidityWithdrawParameters,
 } from "../output/DEX_JettonVault"
 import {storeAddLiquidityPartTon, storeSwapRequestTon} from "../output/DEX_TonVault"
+import {randomBytes} from "node:crypto"
 
 export type NoProof = {
     proofType: 0n
@@ -211,4 +212,11 @@ export function createWithdrawLiquidityBody(
             }),
         )
         .endCell()
+}
+
+// Coins is a value from 0 to 2^120-1 inclusive.
+// https://github.com/ton-blockchain/ton/blob/6f745c04daf8861bb1791cffce6edb1beec62204/crypto/block/block.tlb#L116
+export function randomCoins() {
+    // 120 bits = 15 bytes
+    return BigInt("0x" + randomBytes(15).toString("hex"))
 }
