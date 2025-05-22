@@ -161,7 +161,7 @@ describe("Proofs", () => {
                 to: vaultSetup.vault.address,
                 op: JettonVault.opcodes.JettonNotifyWithActionRequest,
                 success: true, // Because commit was called
-                exitCode: JettonVault.errors["Jetton Vault: Proof is invalid"],
+                exitCode: JettonVault.errors["JettonVault: Proof is invalid"],
             }),
         )
 
