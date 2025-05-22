@@ -61,10 +61,12 @@ contract Factory() {
         if (msg.second != null) {
             second = performAddrRequest(msg.second!!.requestId, msg.second!!.request);
         }
+
         let third: Address? = null;
         if (msg.third != null) {
             third = performAddrRequest(msg.third!!.requestId, msg.third!!.request);
         }
+
         let destination = msg.responseAddress != null ? msg.responseAddress!! : sender();
         message(MessageParameters {
             mode: SendRemainingValue,
@@ -78,6 +80,19 @@ contract Factory() {
             to: destination,
             bounce: false,
         });
+    }
+
+    // Of course this kind of thing waste gas on extra toCell/fromCell, but we don't care about gas in get-methods
+    get fun ammPoolAddr(params: AmmPoolParams): Address {
+        return performAddrRequest(AmmPoolAddrRequestId, params.toCell());
+    }
+
+    get fun lpDepositAddr(params: LPDepositParams): Address {
+        return performAddrRequest(LPDepositAddrRequestId, params.toCell());
+    }
+
+    get fun jettonVaultAddr(params: JettonVaultParams): Address {
+        return performAddrRequest(JettonVaultAddrRequestId, params.toCell());
     }
 }
 

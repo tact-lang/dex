@@ -13,18 +13,21 @@ import {
     JettonVaultAddrRequestId,
     LPDepositParams,
     storeLPDepositParams,
+    AddressesRequest,
 } from "../output/DEX_Factory"
-import {AddressesRequest, AmmPool} from "../output/DEX_AmmPool"
+import {AmmPool} from "../output/DEX_AmmPool"
 import {LiquidityDepositContract} from "../output/DEX_LiquidityDepositContract"
 import {sortAddresses} from "../utils/deployUtils"
-// eslint-disable-next-line
-import {SendDumpToDevWallet} from "@tondevwallet/traces"
 import {JettonVault} from "../output/DEX_JettonVault"
 import {randomInt} from "crypto"
+// eslint-disable-next-line
+import {SendDumpToDevWallet} from "@tondevwallet/traces"
+import {randomCoins} from "../utils/testUtils"
 
 describe("Factory", () => {
     let factory: SandboxContract<Factory>
     let deployer: SandboxContract<TreasuryContract>
+
     beforeAll(async () => {
         const blockchain = await Blockchain.create()
         deployer = await blockchain.treasury("deployer")
@@ -35,14 +38,13 @@ describe("Factory", () => {
             deploy: true,
         })
     })
+
     test("should calculate correct addresses", async () => {
         // Mock vaults
         const vaultA = randomAddress()
         const vaultB = randomAddress()
-        // 281,474,976,710,655 is the maximum value for a 48-bit integer
-        // Value of "max - min" must be less or equal to that number for randomInt function
-        const randomLeftSideAmount = randomInt(0, 281474976710655)
-        const randomRightSideAmount = randomInt(0, 281474976710655)
+        const randomLeftSideAmount = randomCoins()
+        const randomRightSideAmount = randomCoins()
         const sortedAddresses = sortAddresses(
             vaultA,
             vaultB,
