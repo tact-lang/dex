@@ -70,7 +70,7 @@ contract JettonVault(
                     bounce: true,
                 });
                 commit();
-                require(false, "Jetton Vault: Proof is invalid");
+                require(false, "JettonVault: Proof is invalid");
             }
             self.jettonWallet = sender();
 
