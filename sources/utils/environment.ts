@@ -104,11 +104,15 @@ export const createJettonVault: Create<VaultInterface<JettonTreasury>> = async (
     const vault = blockchain.openContract(await JettonVault.fromInit(jetton.minter.address, null))
 
     const deploy = async () => {
-        return await vault.send(
+        const deployRes = await vault.send(
             (await blockchain.treasury("any-user")).getSender(),
             {value: toNano(0.1), bounce: false},
             null,
         )
+        if ((await blockchain.getContract(vault.address)).balance !== 0n) {
+            throw new Error("Vault balance should be 0 after deploy")
+        }
+        return deployRes
     }
 
     const addLiquidity = async (
@@ -178,11 +182,18 @@ export const createTonVault: Create<VaultInterface<TonTreasury>> = async (
     const wallet = await blockchain.treasury("wallet-owner")
 
     const deploy = async () => {
-        return await vault.send(
+        const contractWasInited =
+            (await blockchain.getContract(vault.address)).accountState?.type == "active"
+        const deployRes = await vault.send(
             (await blockchain.treasury("any-user-3")).getSender(),
             {value: toNano(0.1), bounce: false},
             null,
         )
+        const balance = (await blockchain.getContract(vault.address)).balance
+        if (!contractWasInited && balance !== 0n) {
+            throw new Error("Vault balance should be 0 after deploy, got " + balance)
+        }
+        return deployRes
     }
 
     const addLiquidity = async (
@@ -288,6 +299,9 @@ const createLiquidityDepositSetup = (
                 {value: toNano(0.1), bounce: false},
                 null,
             )
+            if ((await blockchain.getContract(liquidityDeposit.address)).balance !== 0n) {
+                throw new Error("Liquidity deposit balance should be 0 after deploy")
+            }
 
             return deployResult
         }
@@ -320,6 +334,10 @@ const createLiquidityDepositSetup = (
                     successfulPayload,
                 ),
             )
+
+            if ((await blockchain.getContract(ammPool.address)).balance !== 0n) {
+                throw new Error("AmmPool balance should be 0 after withdraw")
+            }
 
             return withdrawResult
         }
@@ -381,6 +399,10 @@ export const createAmmPool = async <T, U>(
         await vaultA.addLiquidity(liqSetup.liquidityDeposit.address, amountLeft)
         await vaultB.addLiquidity(liqSetup.liquidityDeposit.address, amountRight)
 
+        if ((await blockchain.getContract(ammPool.address)).balance !== 0n) {
+            throw new Error("Vault balance should be 0 after deploy")
+        }
+
         return {
             depositorLpWallet: liqSetup.depositorLpWallet,
             withdrawLiquidity: liqSetup.withdrawLiquidity,
@@ -397,8 +419,21 @@ export const createAmmPool = async <T, U>(
         nextSwapStep: SwapStep | null = null,
         receiver: Address | null = null,
     ) => {
+        let swapRes
         if (swapFrom === "vaultA") {
-            return await firstVault.sendSwapRequest(
+            swapRes = await firstVault.sendSwapRequest(
+                amountToSwap,
+                ammPool.address,
+                false,
+                expectedOutput,
+                timeout,
+                payloadOnSuccess,
+                payloadOnFailure,
+                nextSwapStep,
+                receiver,
+            )
+        } else {
+            swapRes = await secondVault.sendSwapRequest(
                 amountToSwap,
                 ammPool.address,
                 false,
@@ -411,25 +446,19 @@ export const createAmmPool = async <T, U>(
             )
         }
 
-        return await secondVault.sendSwapRequest(
-            amountToSwap,
-            ammPool.address,
-            false,
-            expectedOutput,
-            timeout,
-            payloadOnSuccess,
-            payloadOnFailure,
-            nextSwapStep,
-            receiver,
-        )
+        if ((await blockchain.getContract(ammPool.address)).balance !== 0n) {
+            throw new Error("AmmPool balance should be 0 after swap")
+        }
+
+        return swapRes
     }
 
     return {
         ammPool,
         vaultA: firstVault,
         vaultB: secondVault,
-        sorted: sortedAddresses,
-        isSwapped: sortedAddresses.lower !== firstVault.vault.address,
+        sorted: sortedVaults,
+        isSwapped: sortedVaults.lower !== firstVault.vault.address,
         liquidityDepositSetup,
         swap,
         initWithLiquidity,

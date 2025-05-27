@@ -35,6 +35,8 @@ describe("Amm pool", () => {
 
         const swapResult = await swap(amountToSwap, "vaultA", expectedOutput)
 
+        expect((await blockchain.getContract(ammPool.address)).balance).toEqual(0n)
+
         // check that swap was successful
         expect(swapResult.transactions).toHaveTransaction({
             from: vaultA.vault.address,
@@ -89,6 +91,7 @@ describe("Amm pool", () => {
         const amountAJettonBeforeSwap = await vaultA.treasury.wallet.getJettonBalance()
 
         const swapResult = await swap(amountToSwap, "vaultA", expectedOutput + 1n) // slippage
+        expect((await blockchain.getContract(ammPool.address)).balance).toEqual(0n)
 
         expect(swapResult.transactions).toHaveTransaction({
             from: vaultA.vault.address,
@@ -132,6 +135,8 @@ describe("Amm pool", () => {
         const amountAJettonBefore = await vaultA.treasury.wallet.getJettonBalance()
 
         const withdrawResult = await withdrawLiquidity(lpBalanceAfterFirstLiq, 0n, 0n, 0n, null)
+
+        expect((await blockchain.getContract(ammPool.address)).balance).toEqual(0n)
 
         expect(withdrawResult.transactions).toHaveTransaction({
             from: depositorLpWallet.address,
@@ -187,6 +192,7 @@ describe("Amm pool", () => {
         const amountBJettonBeforeSwap = await vaultB.treasury.wallet.getJettonBalance()
 
         const swapResult = await swap(amountToSwap, "vaultB", expectedOutputTon)
+        expect((await blockchain.getContract(ammPool.address)).balance).toEqual(0n)
 
         // check that swap was successful
         expect(swapResult.transactions).toHaveTransaction({
@@ -244,6 +250,8 @@ describe("Amm pool", () => {
         const amountBJettonBeforeSwap = await vaultB.treasury.wallet.getJettonBalance()
 
         const swapResult = await swap(amountToSwapTon, "vaultA", expectedOutputJetton)
+
+        expect((await blockchain.getContract(ammPool.address)).balance).toEqual(0n)
 
         // check that swap was successful
         expect(swapResult.transactions).toHaveTransaction({
@@ -310,6 +318,9 @@ describe("Amm pool", () => {
                     includeAddress: true,
                 },
             )
+
+            expect((await blockchain.getContract(ammPool.address)).balance).toEqual(0n)
+
             /*
               take_wallet_address#d1735400 query_id:uint64 wallet_address:MsgAddress owner_address:(Maybe ^MsgAddress) = InternalMsgBody;
             */
@@ -338,6 +349,9 @@ describe("Amm pool", () => {
                     includeAddress: true,
                 },
             )
+
+            expect((await blockchain.getContract(ammPool.address)).balance).toEqual(0n)
+
             const notDeployerJettonWallet = await userWallet(notDeployer.address)
             expect(discoveryResult.transactions).toHaveTransaction({
                 from: ammPool.address,
@@ -394,6 +408,8 @@ describe("Amm pool", () => {
                     includeAddress: false,
                 },
             )
+
+            expect((await blockchain.getContract(ammPool.address)).balance).toEqual(0n)
 
             expect(discoveryResult.transactions).toHaveTransaction({
                 from: ammPool.address,

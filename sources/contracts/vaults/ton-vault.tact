@@ -35,7 +35,7 @@ contract TonVault(
                 swapOutReceiver: msg.action.receiver != null ? msg.action.receiver!! : sender(),
                 amount: msg.amount,
                 isExactOutType: msg.action.isExactOutType,
-                limit: msg.action.limit,
+                desiredAmount: msg.action.limit,
                 timeout: msg.action.timeout,
                 payloadOnSuccess: msg.action.payloadOnSuccess,
                 payloadOnFailure: msg.action.payloadOnFailure,
@@ -61,5 +61,7 @@ contract TonVault(
         });
     }
 
-    receive() {}
+    receive() {
+        cashback(sender());
+    }
 }

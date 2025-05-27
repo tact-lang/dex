@@ -69,7 +69,9 @@ contract JettonVault(
         actionHandler(JettonNotifyWithActionRequest.fromCell(msg.action));
     }
 
-    receive() {}
+    receive() {
+        cashback(sender());
+    }
 
     override fun handlePayout(msg: PayoutFromPool) {
         let sortedAddresses = sortAddresses(myAddress(), msg.otherVault);
@@ -126,7 +128,7 @@ inline fun handleSwapRequest(msg: JettonNotifyWithActionRequest, action: SwapReq
             swapOutReceiver: action.receiver != null ? action.receiver!! : msg.sender,
             amount: msg.amount,
             isExactOutType: action.isExactOutType,
-            limit: action.limit,
+            desiredAmount: action.limit,
             timeout: action.timeout,
             payloadOnSuccess: action.payloadOnSuccess,
             payloadOnFailure: action.payloadOnFailure,
