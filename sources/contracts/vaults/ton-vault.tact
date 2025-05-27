@@ -34,12 +34,14 @@ contract TonVault(
             body: SwapIn {
                 swapOutReceiver: msg.action.receiver != null ? msg.action.receiver!! : sender(),
                 amount: msg.amount,
-                isExactOutType: msg.action.isExactOutType,
-                desiredAmount: msg.action.limit,
-                timeout: msg.action.timeout,
-                payloadOnSuccess: msg.action.payloadOnSuccess,
-                payloadOnFailure: msg.action.payloadOnFailure,
-                nextStep: msg.action.nextStep,
+                params: SwapParameters {
+                    isExactOutType: msg.action.params.isExactOutType,
+                    desiredAmount: msg.action.params.desiredAmount,
+                    timeout: msg.action.params.timeout,
+                    payloadOnSuccess: msg.action.params.payloadOnSuccess,
+                    payloadOnFailure: msg.action.params.payloadOnFailure,
+                    nextStep: msg.action.params.nextStep,
+                },
             }.toCell(),
         });
     }

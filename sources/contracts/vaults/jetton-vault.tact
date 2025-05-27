@@ -124,15 +124,17 @@ inline fun handleSwapRequest(msg: JettonNotifyWithActionRequest, action: SwapReq
         mode: SendRemainingValue,
         to: action.pool,
         body: SwapIn {
-            // If receiver is not specified, then it will be the sender of TONs or Jettons
-            swapOutReceiver: action.receiver != null ? action.receiver!! : msg.sender,
             amount: msg.amount,
-            isExactOutType: action.isExactOutType,
-            desiredAmount: action.limit,
-            timeout: action.timeout,
-            payloadOnSuccess: action.payloadOnSuccess,
-            payloadOnFailure: action.payloadOnFailure,
-            nextStep: action.nextStep,
+            // If receiver is not specified, then it will be the sender of Jettons
+            swapOutReceiver: action.receiver != null ? action.receiver!! : msg.sender,
+            params: SwapParameters {
+                isExactOutType: action.params.isExactOutType,
+                desiredAmount: action.params.desiredAmount,
+                timeout: action.params.timeout,
+                payloadOnSuccess: action.params.payloadOnSuccess,
+                payloadOnFailure: action.params.payloadOnFailure,
+                nextStep: action.params.nextStep,
+            },
         }.toCell(),
     });
 }

@@ -245,18 +245,18 @@ contract AmmPool(
         // TODO: Need to add block functionality (for exact-time listings)
 
         if (inBalance == 0 || outBalance == 0) {
-            returnFunds(inVault, msg.swapOutReceiver, outVault, msg.amount, msg.payloadOnFailure);
+            returnFunds(inVault, msg.swapOutReceiver, outVault, msg.amount, msg.params.payloadOnFailure);
             require(false, "Pool: No liquidity in pool");
         }
 
-        if (msg.timeout > 0 && now() > msg.timeout) {
-            returnFunds(inVault, msg.swapOutReceiver, outVault, msg.amount, msg.payloadOnFailure);
+        if (msg.params.timeout > 0 && now() > msg.params.timeout) {
+            returnFunds(inVault, msg.swapOutReceiver, outVault, msg.amount, msg.params.payloadOnFailure);
             require(false, "Pool: Swap timeout");
         }
         let newAmountIn = -1;
         let newAmountOut = -1;
         // ExactIn swap (default one)
-        if (!msg.isExactOutType) {
+        if (!msg.params.isExactOutType) {
             // TODO: Test, that muldiv for msg.amount >= 0, 1000 - self.PoolFee >= 0 does not produce negative result
             // I couldn't check that in sources, cause there is very shitty c++ code that is impossible to read
             // So we just need to kinda fuzz it with corner cases
@@ -266,26 +266,27 @@ contract AmmPool(
             newAmountOut = muldiv(outBalance, inBalance, newAmountIn);
             let amountToPay = outBalance - newAmountOut;
 
-            if (amountToPay < msg.desiredAmount) {
-                returnFunds(inVault, msg.swapOutReceiver, outVault, msg.amount, msg.payloadOnFailure);
+            if (amountToPay < msg.params.desiredAmount) {
+                returnFunds(inVault, msg.swapOutReceiver, outVault, msg.amount, msg.params.payloadOnFailure);
                 require(false, "Pool: Amount out is less than minAmountOut");
             }
 
             // So we have one more swap step
-            if (msg.nextStep != null) {
+            if (msg.params.nextStep != null) {
                 message(MessageParameters {
                     mode: SendRemainingValue,
                     body: SwapIn {
                         swapOutReceiver: msg.swapOutReceiver,
                         amount: amountToPay,
                         // Swap type for multi-hop swaps is always exactIn
-                        isExactOutType: false,
-                        desiredAmount: msg.nextStep!!.minAmountOut,
-                        timeout: msg.timeout,
-                        payloadOnSuccess: msg.payloadOnSuccess,
-                        payloadOnFailure: msg.payloadOnFailure,
-                        nextStep: msg.nextStep!!.nextStep != null ? SwapStep.fromCell(msg.nextStep!!.nextStep) : null,
-
+                        params: SwapParameters {
+                            isExactOutType: false,
+                            desiredAmount: msg.params.nextStep!!.minAmountOut,
+                            timeout: msg.params.timeout,
+                            payloadOnSuccess: msg.params.payloadOnSuccess,
+                            payloadOnFailure: msg.params.payloadOnFailure,
+                            nextStep: msg.params.nextStep!!.nextStep != null ? SwapStep.fromCell(msg.params.nextStep!!.nextStep) : null,
+                        },
                         multihopInfo: MultihopInfo {
                             leftVault: self.leftVault,
                             rightVault: self.rightVault,
@@ -293,7 +294,7 @@ contract AmmPool(
                         },
                     }.toCell(),
                     value: 0,
-                    to: msg.nextStep!!.pool,
+                    to: msg.params.nextStep!!.pool,
                     // All internal protocol messages are sent with bounce = false
                     bounce: false,
                 });
@@ -306,14 +307,14 @@ contract AmmPool(
                         otherVault: inVault,
                         amount: amountToPay,
                         receiver: msg.swapOutReceiver,
-                        payloadToForward: msg.payloadOnSuccess,
+                        payloadToForward: msg.params.payloadOnSuccess,
                     }.toCell(),
                 });
             }
         } else {
-            newAmountOut = outBalance - msg.desiredAmount;
+            newAmountOut = outBalance - msg.params.desiredAmount;
             if (newAmountOut < 0) {
-                returnFunds(inVault, msg.swapOutReceiver, outVault, msg.amount, msg.payloadOnFailure);
+                returnFunds(inVault, msg.swapOutReceiver, outVault, msg.amount, msg.params.payloadOnFailure);
                 require(false, "Pool: Desired amount out is greater than pool reserves");
             }
             let neededAmountIn = muldiv(inBalance, outBalance, newAmountOut);
@@ -323,7 +324,7 @@ contract AmmPool(
             // This is done because in this case user won't need to calculate fee by themselves, if they want exactly X tokens out.
             let amountToBeTakenWithFee = muldiv(amountToBeTaken, 1000 + self.PoolFee, 1000);
             if (amountToBeTakenWithFee > msg.amount) {
-                returnFunds(inVault, msg.swapOutReceiver, outVault, msg.amount, msg.payloadOnFailure);
+                returnFunds(inVault, msg.swapOutReceiver, outVault, msg.amount, msg.params.payloadOnFailure);
                 require(false, "Pool: Amount of tokens sent is insufficient for exactOut swap");
             }
             // We need to return excess
@@ -334,8 +335,8 @@ contract AmmPool(
                     body: PayoutFromPool {
                         otherVault: outVault,
                         amount: msg.amount - amountToBeTakenWithFee,
-                        receiver: msg.excessTokensReceiver != null ? msg.excessTokensReceiver!! : msg.swapOutReceiver,
-                        payloadToForward: msg.payloadOnSuccess,
+                        receiver: msg.params.excessTokensReceiver != null ? msg.params.excessTokensReceiver!! : msg.swapOutReceiver,
+                        payloadToForward: msg.params.payloadOnSuccess,
                     }.toCell(),
                     to: inVault,
                     bounce: false,
@@ -347,9 +348,9 @@ contract AmmPool(
                 value: 0,
                 body: PayoutFromPool {
                     otherVault: inVault,
-                    amount: msg.desiredAmount,
+                    amount: msg.params.desiredAmount,
                     receiver: msg.swapOutReceiver,
-                    payloadToForward: msg.payloadOnSuccess,
+                    payloadToForward: msg.params.payloadOnSuccess,
                 }.toCell(),
                 to: outVault,
                 bounce: false,
@@ -415,13 +416,13 @@ contract AmmPool(
         return outBalance - newAmountOut;
     }
 
-    get fun neededInToGetX(outVault: Address, amountOut: Int): Int {
+    get fun neededInToGetX(vaultOut: Address, amountOut: Int): Int {
         let inVault = emptyAddress();
         let outVault = emptyAddress();
         let inBalance = 0;
         let outBalance = 0;
 
-        if (outVault == self.leftVault) {
+        if (vaultOut == self.leftVault) {
             inVault = self.rightVault;
             outVault = self.leftVault;
             inBalance = self.rightSideReserve;

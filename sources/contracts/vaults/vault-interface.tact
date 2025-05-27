@@ -5,22 +5,32 @@ struct SwapStep {
     pool: Address;
     // Here we don't specify swapType as it is always exactIn for multihop swaps
     minAmountOut: Int as coins;
-    // Actually it is SwapStep, but Tact doesn't support recursive structs
+    // Actually it is SwapStep too, but Tact doesn't support recursive structs
     nextStep: Cell? = null;
 }
 
 const SwapRequestOpcode: Int = 0xbfa68001;
 struct SwapRequest {
     pool: Address;
-    // If receiver is not specified, then it will be the sender of TONs or Jettons
+    // If receiver is not specified, then it will be the sender of the asset
     receiver: Address?;
+    params: SwapParameters;
+}
+
+struct SwapParameters {
     // false - exactIn type. True - exactOut type.
     // Note, that exactOut type doesn't support multihop swaps.
+    // If you specify nextStep for exactOut swap, it will be ignored.
     isExactOutType: Bool;
-    // If swapType is exactIn, then limit is minAmountOut
-    // If swapType is exactOut, then limit is maxAmountIn
-    limit: Int as coins;
-    // amountIn is part of the jetton notification
+    // This value is needed only for exactOut swaps.
+    // This is the address, where unused tokens will be sent.
+    // If the swapType is exactIn, this value is ignored.
+    // If the swapType is exactOut but this value is null, then unused tokens will be sent to the swapOutReceiver.
+    excessTokensReceiver: Address? = null;
+    // If swapType is exactIn, then desiredAmount is minimal amount trader can receive
+    // If swapType is exactOut, then desiredAmount is exactValue trader wants to get
+    desiredAmount: Int as coins;
+    // Absolute unix timestamp
     timeout: Int as uint32;
     payloadOnSuccess: Cell? = null;
     payloadOnFailure: Cell? = null;

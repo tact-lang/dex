@@ -2,23 +2,10 @@ import "../vaults/vault-interface";
 import "./liquidity-deposit";
 
 message(0xac2f5a38) SwapIn {
+    // The value trader sent to the pool.
     amount: Int as coins;
-    // false - exactIn type. True - exactOut type.
-    isExactOutType: Bool;
-    // This value is needed only for exactOut swaps.
-    // This is the address, where unused tokens will be sent.
-    // If the swapType is exactIn, this value is ignored.
-    // If the swapType is exactOut but this value is null, then unused tokens will be sent to the swapOutReceiver.
-    excessTokensReceiver: Address? = null;
-    // If swapType is exactIn, then desiredAmount is minimal amount trader can receive
-    // If swapType is exactOut, then desiredAmount is exactValue trader wants to get
-    desiredAmount: Int as coins;
-    timeout: Int as uint32; // Absolute unix timestamp
     swapOutReceiver: Address;
-    payloadOnSuccess: Cell? = null;
-    payloadOnFailure: Cell? = null;
-    nextStep: SwapStep? = null;
-
+    params: SwapParameters;
     // For multihop swaps
     multihopInfo: MultihopInfo? = null;
 }
