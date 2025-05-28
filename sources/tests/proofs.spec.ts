@@ -143,6 +143,8 @@ describe("Proofs", () => {
             .storeStringTail("Random action that does not mean anything")
             .endCell()
 
+        const initialJettonBalance = await vaultSetup.treasury.wallet.getJettonBalance()
+
         const sendNotifyWithNoProof = await vaultSetup.treasury.transfer(
             vaultSetup.vault.address,
             toNano(0.5),
@@ -173,6 +175,8 @@ describe("Proofs", () => {
         })
 
         expect(await vaultSetup.isInited()).toBe(false)
+        const finalJettonBalance = await vaultSetup.treasury.wallet.getJettonBalance()
+        expect(finalJettonBalance).toEqual(initialJettonBalance)
     })
 
     test("Jettons are returned if sent to wrong vault", async () => {
