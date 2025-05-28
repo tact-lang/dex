@@ -32,16 +32,9 @@ contract TonVault(
             mode: SendBounceIfActionFail | SendRemainingBalance,
             bounce: false,
             body: SwapIn {
-                swapOutReceiver: msg.action.receiver != null ? msg.action.receiver!! : sender(),
+                receiver: msg.action.receiver != null ? msg.action.receiver!! : sender(),
                 amount: msg.amount,
-                params: SwapParameters {
-                    isExactOutType: msg.action.params.isExactOutType,
-                    desiredAmount: msg.action.params.desiredAmount,
-                    timeout: msg.action.params.timeout,
-                    payloadOnSuccess: msg.action.params.payloadOnSuccess,
-                    payloadOnFailure: msg.action.params.payloadOnFailure,
-                    nextStep: msg.action.params.nextStep,
-                },
+                params: msg.action.params,
             }.toCell(),
         });
     }

@@ -4,6 +4,7 @@ import "../core/messages.tact";
 struct SwapStep {
     pool: Address;
     // Here we don't specify swapType as it is always exactIn for multihop swaps
+    // therefore desiredAmount here is named minAmountOut
     minAmountOut: Int as coins;
     // Actually it is SwapStep too, but Tact doesn't support recursive structs
     nextStep: Cell? = null;
@@ -26,7 +27,7 @@ struct SwapParameters {
     // This is the address, where unused tokens will be sent.
     // If the swapType is exactIn, this value is ignored.
     // If the swapType is exactOut but this value is null, then unused tokens will be sent to the swapOutReceiver.
-    excessTokensReceiver: Address? = null;
+    exactOutReceiver: Address? = null;
     // If swapType is exactIn, then desiredAmount is minimal amount trader can receive
     // If swapType is exactOut, then desiredAmount is exactValue trader wants to get
     desiredAmount: Int as coins;

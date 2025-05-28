@@ -1,10 +1,10 @@
 import {Blockchain, SandboxContract} from "@ton/sandbox"
 import {createJettonAmmPool, createTonJettonAmmPool} from "../utils/environment"
 import {Address, beginCell, toNano} from "@ton/core"
-import {AmmPool} from "../output/DEX_AmmPool"
+import {AmmPool, loadPayoutFromPool} from "../output/DEX_AmmPool"
 // eslint-disable-next-line
 import {SendDumpToDevWallet} from "@tondevwallet/traces"
-import {randomAddress} from "@ton/test-utils"
+import {findTransactionRequired, flattenTransaction, randomAddress} from "@ton/test-utils"
 import {ExtendedLPJettonWallet} from "../wrappers/ExtendedLPJettonWallet"
 
 describe("Amm pool", () => {
@@ -96,7 +96,7 @@ describe("Amm pool", () => {
         expect(swapResult.transactions).toHaveTransaction({
             from: vaultA.vault.address,
             to: ammPool.address, // NOTE: Swap should fail
-            exitCode: AmmPool.errors["Pool: Amount out is less than minAmountOut"],
+            exitCode: AmmPool.errors["Pool: Amount out is less than desired amount"],
             success: true, // That is what happens when throw after commit(), exit code is non-zero, success is true
         })
 
@@ -471,43 +471,102 @@ describe("Amm pool", () => {
             // check that liquidity deposit was successful
             expect(lpBalanceAfterFirstLiq).toBeGreaterThan(0n)
 
-            const exactAmountOut = 10n
-            const notEnoughAmountIn = await ammPool.getNeededInToGetX(
-                vaultB.vault.address,
+            const exactAmountOut = 100000n
+            const notEnoughAmountIn =
+                (await ammPool.getNeededInToGetX(vaultB.vault.address, exactAmountOut)) - 1n
+
+            const tokenBReceiver = randomAddress()
+
+            const payloadOnFailure = beginCell().storeStringTail("Failure payload").endCell()
+            const payloadOnSuccess = beginCell().storeStringTail("Success payload").endCell()
+
+            let swapResult = await swap(
+                notEnoughAmountIn,
+                "vaultA",
                 exactAmountOut,
+                0n,
+                true,
+                tokenBReceiver,
+                payloadOnSuccess,
+                payloadOnFailure,
             )
-
-            const amountBJettonBeforeSwap = await vaultB.treasury.wallet.getJettonBalance()
-
-            const swapResult = await swap(amountToSwap, "vaultA", expectedOutput)
 
             expect((await blockchain.getContract(ammPool.address)).balance).toEqual(0n)
 
-            // check that swap was successful
+            await SendDumpToDevWallet({
+                transactions: swapResult.transactions as any,
+            })
+
+            // check that swap was not successful
             expect(swapResult.transactions).toHaveTransaction({
                 from: vaultA.vault.address,
                 to: ammPool.address,
                 op: AmmPool.opcodes.SwapIn,
-                success: true,
+                exitCode:
+                    AmmPool.errors["Pool: Amount of tokens sent is insufficient for exactOut swap"],
             })
 
-            expect(swapResult.transactions).toHaveTransaction({
+            expect(swapResult.transactions).not.toHaveTransaction({
                 from: ammPool.address,
                 to: vaultB.vault.address,
-                op: AmmPool.opcodes.PayoutFromPool,
-                success: true,
             })
+
+            const returnFundsTx = flattenTransaction(
+                findTransactionRequired(swapResult.transactions, {
+                    from: ammPool.address,
+                    to: vaultA.vault.address,
+                    op: AmmPool.opcodes.PayoutFromPool,
+                }),
+            )
+            if (returnFundsTx.body === undefined) {
+                throw new Error("Return funds transaction body is undefined")
+            }
+            const parsedReturnFundsTx = loadPayoutFromPool(returnFundsTx.body.asSlice())
+            expect(parsedReturnFundsTx.amount).toEqual(notEnoughAmountIn)
+            expect(parsedReturnFundsTx.otherVault).toEqualAddress(vaultB.vault.address)
+            expect(parsedReturnFundsTx.payloadToForward).toEqualCell(payloadOnFailure)
+
+            const enoughAmountIn = notEnoughAmountIn + 1n
+            swapResult = await swap(
+                enoughAmountIn,
+                "vaultA",
+                exactAmountOut,
+                0n,
+                true,
+                tokenBReceiver,
+                payloadOnSuccess,
+                payloadOnFailure,
+            )
 
             expect(swapResult.transactions).toHaveTransaction({
-                // TODO: from: vaultB.jettonWallet
-                to: vaultB.treasury.wallet.address,
-                op: AmmPool.opcodes.JettonTransferInternal,
+                from: vaultA.vault.address,
+                to: ammPool.address,
+                op: AmmPool.opcodes.SwapIn,
+                exitCode: 0,
                 success: true,
             })
 
-            const amountOfJettonBAfterSwap = await vaultB.treasury.wallet.getJettonBalance()
-            // TODO: calculate precise expected amount of token B off-chain
-            expect(amountOfJettonBAfterSwap).toBeGreaterThan(amountBJettonBeforeSwap)
+            // Because we are sending the minimal possible amount, so there should be no excess
+            expect(swapResult.transactions).not.toHaveTransaction({
+                from: ammPool.address,
+                to: vaultA.vault.address,
+            })
+
+            const payoutTx = flattenTransaction(
+                findTransactionRequired(swapResult.transactions, {
+                    from: ammPool.address,
+                    to: vaultB.vault.address,
+                    op: AmmPool.opcodes.PayoutFromPool,
+                    exitCode: 0,
+                }),
+            )
+            if (payoutTx.body === undefined) {
+                throw new Error("Payout transaction body is undefined")
+            }
+            const parsedPayoutTx = loadPayoutFromPool(payoutTx.body.asSlice())
+            expect(parsedPayoutTx.amount).toEqual(exactAmountOut)
+            expect(parsedPayoutTx.otherVault).toEqualAddress(vaultA.vault.address)
+            expect(parsedPayoutTx.payloadToForward).toEqualCell(payloadOnSuccess)
         })
     })
 })

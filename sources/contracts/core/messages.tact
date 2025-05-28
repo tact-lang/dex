@@ -4,7 +4,7 @@ import "./liquidity-deposit";
 message(0xac2f5a38) SwapIn {
     // The value trader sent to the pool.
     amount: Int as coins;
-    swapOutReceiver: Address;
+    receiver: Address;
     params: SwapParameters;
     // For multihop swaps
     multihopInfo: MultihopInfo? = null;

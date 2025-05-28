@@ -75,13 +75,16 @@ export function createJettonVaultSwapRequest(
         $$type: "SwapRequest",
         pool: destinationPool,
         receiver: receiver,
-        isExactOutType: isExactOutType,
-        limit: desiredAmount,
-        timeout: timeout,
-        payloadOnSuccess: payloadOnSuccess,
-        payloadOnFailure: payloadOnFailure,
-        // Field for specifying the next step in the swap (for cross-pool swaps)
-        nextStep: nextStep,
+        params: {
+            $$type: "SwapParameters",
+            isExactOutType,
+            excessTokensReceiver,
+            desiredAmount,
+            payloadOnSuccess,
+            payloadOnFailure,
+            timeout,
+            nextStep,
+        },
     }
 
     return createJettonVaultMessage(
@@ -182,14 +185,18 @@ export function createTonSwapRequest(
                 action: {
                     $$type: "SwapRequest",
                     pool: pool,
-                    isExactOutType: isExactOutType,
-                    limit: desiredAmount,
-                    payloadOnFailure: payloadOnFailure,
-                    payloadOnSuccess: payloadOnSuccess,
-                    timeout: timeout,
                     receiver: receiver,
-                    // Field for specifying the next step in the swap (for cross-pool swaps)
-                    nextStep: nextStep,
+                    params: {
+                        $$type: "SwapParameters",
+                        isExactOutType,
+                        excessTokensReceiver,
+                        desiredAmount,
+                        payloadOnFailure,
+                        payloadOnSuccess,
+                        timeout,
+                        // Field for specifying the next step in the swap (for cross-pool swaps)
+                        nextStep,
+                    },
                 },
             }),
         )
