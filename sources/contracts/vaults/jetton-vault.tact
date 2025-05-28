@@ -102,12 +102,33 @@ contract JettonVault(
         actionHandler(msg);
     }
 
-    // We will receive this message only if TEP-89 proofer will successfully validate jettonWallet
     receive(msg: TEP89ProofResponse) {
-        let prooferStateInit = initOf TEP89Proofer(self.jettonMaster, myAddress(), msg.proofedJettonWallet, msg.action);
+        let prooferStateInit = initOf TEP89Proofer(self.jettonMaster, myAddress(), msg.possibleJettonWallet, msg.action, msg.requestLt);
         require(prooferStateInit.hasSameBasechainAddress(sender()), "JettonVault: Sender must be a valid proofer");
-        self.jettonWallet = msg.proofedJettonWallet;
-        actionHandler(JettonNotifyWithActionRequest.fromCell(msg.action));
+
+        let action = JettonNotifyWithActionRequest.fromCell(msg.action);
+        if (msg.possibleJettonWallet == msg.proofedJettonWallet) {
+            self.jettonWallet = msg.proofedJettonWallet;
+            actionHandler(action);
+        } else {
+            message(MessageParameters {
+                mode: SendRemainingValue | SendIgnoreErrors,
+                body: SendViaJettonTransfer {
+                    queryId: action.queryId,
+                    amount: action.amount,
+                    destination: action.sender,
+                    responseDestination: action.sender,
+                    customPayload: null,
+                    forwardTonAmount: 0,
+                    forwardPayload: sliceWithOneZeroBit(),
+                }.toCell(),
+                value: 0,
+                to: msg.possibleJettonWallet,
+                bounce: true,
+            });
+            commit();
+            require(false, "JettonVault: Possible and Proofed wallets are not equal");
+        }
     }
 
     receive() {}

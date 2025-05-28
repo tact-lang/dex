@@ -2,14 +2,12 @@ import "../../core/lp-jettons/messages";
 
 // As TEP-89 does not support forwardPayload, we need to use a separate contract
 // This contract will store the request and will validate the proof.
-message(0xb6a69dbc) TEP89ProofRequest {
-    jettonMaster: Address;
-    possibleJettonWallet: Address;
-    action: Cell; // Actually it is JettonNotifyWithActionRequest, but is cheaper to store it as Cell
-}
+message(0xb6a69dbc) TEP89ProofRequest {}
 
 message(0x7a1267fd) TEP89ProofResponse {
-    proofedJettonWallet: Address;
+    requestLt: Int as uint64;
+    possibleJettonWallet: Address;
+    proofedJettonWallet: Address?;
     action: Cell;
 }
 
@@ -20,16 +18,13 @@ contract TEP89Proofer(
     proofRequester: Address,
     possibleJettonWallet: Address,
     action: Cell, // Actually it is JettonNotifyWithActionRequest, but is cheaper to store it as Cell
+    requestLt: Int as uint64, // Salt
 ) {
     receive(msg: TEP89ProofRequest) {
         require(sender() == self.proofRequester, "TEP89 proof: Sender must be the proof requester");
-        require(msg.action == self.action, "TEP89 proof: Action must be the same");
-        self.action = msg.action;
-        self.possibleJettonWallet = msg.possibleJettonWallet;
-        self.jettonMaster = msg.jettonMaster;
 
         message(MessageParameters {
-            to: msg.jettonMaster,
+            to: self.jettonMaster,
             bounce: true, // So we can save some tons (we won't pay storage fees for JettonMaster)
             value: 0,
             mode: SendRemainingValue,
@@ -44,7 +39,6 @@ contract TEP89Proofer(
 
     receive(msg: TakeWalletAddress) {
         require(sender() == self.jettonMaster, "TEP89 proof: TakeWalletAddress must be sent by the jetton master");
-        require(msg.walletAddress == self.possibleJettonWallet, "TEP89 proof: Wallet address does not match");
         // Jetton wallet is valid, we can send the action
         message(MessageParameters {
             to: self.proofRequester,
@@ -53,7 +47,25 @@ contract TEP89Proofer(
             value: 0,
             mode: SendRemainingBalance | SendDestroyIfZero,
             body: TEP89ProofResponse {
+                requestLt: self.requestLt,
+                possibleJettonWallet: self.possibleJettonWallet,
                 proofedJettonWallet: msg.walletAddress,
+                action: self.action,
+            }.toCell(),
+        });
+    }
+
+    bounced(msg: bounced<ProvideWalletAddress>) {
+        message(MessageParameters {
+            to: self.proofRequester,
+            // We don't need to bounce, because we will destroy the contract after sending the message
+            bounce: false,
+            value: 0,
+            mode: SendRemainingBalance | SendDestroyIfZero,
+            body: TEP89ProofResponse {
+                requestLt: self.requestLt,
+                possibleJettonWallet: self.possibleJettonWallet,
+                proofedJettonWallet: null,
                 action: self.action,
             }.toCell(),
         });

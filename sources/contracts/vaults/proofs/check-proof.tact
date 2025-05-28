@@ -21,6 +21,7 @@ inline fun checkProof(jettonMaster: Address, proofType: Int, proof: Slice, msgCe
             myAddress(),
             sender(),
             msgCell,
+            curLt(),
         );
 
         deploy(DeployParameters {
@@ -29,11 +30,7 @@ inline fun checkProof(jettonMaster: Address, proofType: Int, proof: Slice, msgCe
             // Doesn't really matter, so just for consistency - all internal protocol messages are not bounceable
             bounce: false,
             init: prooferStateInit,
-            body: TEP89ProofRequest {
-                jettonMaster,
-                possibleJettonWallet: sender(),
-                action: msgCell,
-            }.toCell(),
+            body: TEP89ProofRequest {}.toCell(),
         });
         // We don't need to save state init, so we just need to exit() quickly
         exit();
