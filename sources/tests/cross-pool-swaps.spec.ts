@@ -136,6 +136,8 @@ describe("Cross-pool Swaps", () => {
             "vaultA",
             expectedOutFirst,
             0n,
+            false,
+            null,
             payloadOnSuccess,
             payloadOnFailure,
             nextSwapStep,
@@ -268,6 +270,8 @@ describe("Cross-pool Swaps", () => {
                 "vaultA",
                 expectedOutFirst, // We will receive exactly this amount in the first pool
                 0n,
+                false,
+                null,
                 payloadOnSuccess,
                 payloadOnFailure,
                 nextSwapStep,
@@ -277,7 +281,7 @@ describe("Cross-pool Swaps", () => {
             expect(swapResult.transactions).toHaveTransaction({
                 from: firstAmmPool.address,
                 to: secondAmmPool.address,
-                exitCode: AmmPool.errors["Pool: Amount out is less than minAmountOut"],
+                exitCode: AmmPool.errors["Pool: Amount out is less than desired amount"],
             })
 
             const payoutTx = flattenTransaction(

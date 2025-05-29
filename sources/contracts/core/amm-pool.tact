@@ -435,12 +435,16 @@ contract AmmPool(
             outBalance = self.rightSideReserve;
         }
         let newAmountOut = outBalance - amountOut;
-        if (newAmountOut < 0) {
+        if (newAmountOut <= 0) {
             require(false, "Pool: Desired amount out is greater than pool reserves");
         }
         let neededAmountIn = muldiv(inBalance, outBalance, newAmountOut);
         // newAmountOut <= outBalance => neededAmountIn >= inBalance
-        return muldiv(neededAmountIn, 1000 + self.PoolFee, 1000) - inBalance;
+        let amountToBeTaken = neededAmountIn - inBalance;
+        // In exactOut swaps we take fee here, not in the beginning.
+        // This is done because in this case user won't need to calculate fee by themselves, if they want exactly X tokens out.
+        let amountToBeTakenWithFee = muldiv(amountToBeTaken, 1000 + self.PoolFee, 1000);
+        return amountToBeTakenWithFee;
     }
 
     inline fun failLiquidityProvision(msg: LiquidityDeposit) {

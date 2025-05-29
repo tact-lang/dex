@@ -65,7 +65,7 @@ export function createJettonVaultSwapRequest(
     // Default is exactIn
     desiredAmount: bigint = 0n,
     timeout: bigint = 0n,
-    excessTokensReceiver: Address | null,
+    exactOutReceiver: Address | null,
     payloadOnSuccess: Cell | null = null,
     payloadOnFailure: Cell | null = null,
     nextStep: SwapStep | null = null,
@@ -78,7 +78,7 @@ export function createJettonVaultSwapRequest(
         params: {
             $$type: "SwapParameters",
             isExactOutType,
-            excessTokensReceiver,
+            exactOutReceiver,
             desiredAmount,
             payloadOnSuccess,
             payloadOnFailure,
@@ -172,7 +172,7 @@ export function createTonSwapRequest(
     isExactOutType: boolean,
     desiredAmount: bigint,
     timeout: bigint = 0n,
-    excessTokensReceiver: Address | null,
+    exactOutReceiver: Address | null,
     payloadOnSuccess: Cell | null = null,
     payloadOnFailure: Cell | null = null,
     nextStep: SwapStep | null = null,
@@ -189,7 +189,7 @@ export function createTonSwapRequest(
                     params: {
                         $$type: "SwapParameters",
                         isExactOutType,
-                        excessTokensReceiver,
+                        exactOutReceiver,
                         desiredAmount,
                         payloadOnFailure,
                         payloadOnSuccess,

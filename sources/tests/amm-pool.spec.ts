@@ -1,11 +1,12 @@
-import {Blockchain, SandboxContract} from "@ton/sandbox"
+import {Blockchain, GetMethodError, SandboxContract} from "@ton/sandbox"
 import {createJettonAmmPool, createTonJettonAmmPool} from "../utils/environment"
-import {Address, beginCell, toNano} from "@ton/core"
+import {Address, beginCell, toNano, TupleBuilder} from "@ton/core"
 import {AmmPool, loadPayoutFromPool} from "../output/DEX_AmmPool"
 // eslint-disable-next-line
 import {SendDumpToDevWallet} from "@tondevwallet/traces"
 import {findTransactionRequired, flattenTransaction, randomAddress} from "@ton/test-utils"
 import {ExtendedLPJettonWallet} from "../wrappers/ExtendedLPJettonWallet"
+import {randomInt} from "crypto"
 
 describe("Amm pool", () => {
     test("should swap exact amount of jetton to jetton", async () => {
@@ -493,10 +494,6 @@ describe("Amm pool", () => {
 
             expect((await blockchain.getContract(ammPool.address)).balance).toEqual(0n)
 
-            await SendDumpToDevWallet({
-                transactions: swapResult.transactions as any,
-            })
-
             // check that swap was not successful
             expect(swapResult.transactions).toHaveTransaction({
                 from: vaultA.vault.address,
@@ -567,6 +564,167 @@ describe("Amm pool", () => {
             expect(parsedPayoutTx.amount).toEqual(exactAmountOut)
             expect(parsedPayoutTx.otherVault).toEqualAddress(vaultA.vault.address)
             expect(parsedPayoutTx.payloadToForward).toEqualCell(payloadOnSuccess)
+        })
+        test("Exact out swap send excesses and swap out amount correctly", async () => {
+            const blockchain = await Blockchain.create()
+
+            const {ammPool, vaultA, vaultB, initWithLiquidity, swap} =
+                await createJettonAmmPool(blockchain)
+
+            // deploy liquidity deposit contract
+            const initialRatio = 2n
+
+            const amountA = toNano(1)
+            const amountB = amountA * initialRatio // 1 a == 2 b ratio
+
+            const depositor = vaultA.treasury.walletOwner
+
+            const {depositorLpWallet} = await initWithLiquidity(depositor, amountA, amountB)
+
+            const lpBalanceAfterFirstLiq = await depositorLpWallet.getJettonBalance()
+            // check that liquidity deposit was successful
+            expect(lpBalanceAfterFirstLiq).toBeGreaterThan(0n)
+
+            const exactAmountOut = 100000n
+            const amountToRefund = BigInt(randomInt(100, 1000))
+            const moreThanEnoughAmountIn =
+                (await ammPool.getNeededInToGetX(vaultB.vault.address, exactAmountOut)) +
+                amountToRefund
+
+            const payloadOnFailure = beginCell().storeStringTail("Failure payload").endCell()
+            const payloadOnSuccess = beginCell().storeStringTail("Success payload").endCell()
+
+            const swapOutReceiver = randomAddress()
+
+            const swapResult = await swap(
+                moreThanEnoughAmountIn,
+                "vaultA",
+                exactAmountOut,
+                0n,
+                true,
+                swapOutReceiver,
+                payloadOnSuccess,
+                payloadOnFailure,
+            )
+
+            expect((await blockchain.getContract(ammPool.address)).balance).toEqual(0n)
+
+            expect(swapResult.transactions).toHaveTransaction({
+                from: vaultA.vault.address,
+                to: ammPool.address,
+                op: AmmPool.opcodes.SwapIn,
+                exitCode: 0,
+                success: true,
+            })
+
+            const refundTx = flattenTransaction(
+                findTransactionRequired(swapResult.transactions, {
+                    from: ammPool.address,
+                    to: vaultA.vault.address,
+                    op: AmmPool.opcodes.PayoutFromPool,
+                    exitCode: 0,
+                }),
+            )
+            if (refundTx.body === undefined) {
+                throw new Error("Refund transaction body is undefined")
+            }
+            const parsedRefundTx = loadPayoutFromPool(refundTx.body.asSlice())
+            expect(parsedRefundTx.amount).toEqual(amountToRefund)
+            expect(parsedRefundTx.otherVault).toEqualAddress(vaultB.vault.address)
+            expect(parsedRefundTx.payloadToForward).toEqualCell(payloadOnSuccess)
+            expect(parsedRefundTx.receiver).toEqualAddress(vaultA.treasury.walletOwner.address)
+
+            const payoutTx = flattenTransaction(
+                findTransactionRequired(swapResult.transactions, {
+                    from: ammPool.address,
+                    to: vaultB.vault.address,
+                    op: AmmPool.opcodes.PayoutFromPool,
+                    exitCode: 0,
+                }),
+            )
+            if (payoutTx.body === undefined) {
+                throw new Error("Payout transaction body is undefined")
+            }
+            const parsedPayoutTx = loadPayoutFromPool(payoutTx.body.asSlice())
+            expect(parsedPayoutTx.receiver).toEqualAddress(swapOutReceiver)
+            expect(parsedPayoutTx.amount).toEqual(exactAmountOut)
+            expect(parsedPayoutTx.otherVault).toEqualAddress(vaultA.vault.address)
+            expect(parsedPayoutTx.payloadToForward).toEqualCell(payloadOnSuccess)
+        })
+
+        test("Too big amountOut should revert", async () => {
+            const blockchain = await Blockchain.create()
+
+            const {ammPool, vaultA, vaultB, initWithLiquidity, swap} =
+                await createJettonAmmPool(blockchain)
+
+            const amountA = 1n
+            const amountB = 2n
+
+            const depositor = vaultA.treasury.walletOwner
+
+            const {depositorLpWallet} = await initWithLiquidity(depositor, amountA, amountB)
+
+            const lpBalanceAfterFirstLiq = await depositorLpWallet.getJettonBalance()
+            // check that liquidity deposit was successful
+            expect(lpBalanceAfterFirstLiq).toBeGreaterThan(0n)
+
+            const builder = new TupleBuilder()
+            builder.writeAddress(vaultB.vault.address)
+            //builder.writeNumber(randomInt(2, 3));
+            builder.writeNumber(2)
+            const provider = blockchain.provider(ammPool.address)
+            // IDK, how to catch the error in a better way
+            // Sandbox just doesn't provide an interface for it
+            try {
+                await provider.get("neededInToGetX", builder.build())
+            } catch (e) {
+                if (!(e instanceof GetMethodError)) {
+                    throw e
+                }
+                expect(e.exitCode).toEqual(
+                    AmmPool.errors["Pool: Desired amount out is greater than pool reserves"],
+                )
+            }
+
+            const tooMuchAmountOut = BigInt(randomInt(2, 4))
+            const payloadOnFailure = beginCell().storeStringTail("Failure payload").endCell()
+            const payloadOnSuccess = beginCell().storeStringTail("Success payload").endCell()
+
+            const swapOutReceiver = randomAddress()
+
+            const moreThanEnoughAmountIn = toNano(1)
+            const swapResult = await swap(
+                moreThanEnoughAmountIn,
+                "vaultA",
+                tooMuchAmountOut,
+                0n,
+                true,
+                swapOutReceiver,
+                payloadOnSuccess,
+                payloadOnFailure,
+            )
+            expect(swapResult.transactions).toHaveTransaction({
+                to: ammPool.address,
+                from: vaultA.vault.address,
+                exitCode: AmmPool.errors["Pool: Desired amount out is greater than pool reserves"],
+            })
+            const refundTx = flattenTransaction(
+                findTransactionRequired(swapResult.transactions, {
+                    from: ammPool.address,
+                    to: vaultA.vault.address,
+                    op: AmmPool.opcodes.PayoutFromPool,
+                    exitCode: 0,
+                }),
+            )
+            if (refundTx.body === undefined) {
+                throw new Error("Refund transaction body is undefined")
+            }
+            const parsedRefundTx = loadPayoutFromPool(refundTx.body.asSlice())
+            expect(parsedRefundTx.receiver).toEqualAddress(vaultA.treasury.walletOwner.address)
+            expect(parsedRefundTx.amount).toEqual(moreThanEnoughAmountIn)
+            expect(parsedRefundTx.otherVault).toEqualAddress(vaultB.vault.address)
+            expect(parsedRefundTx.payloadToForward).toEqualCell(payloadOnFailure)
         })
     })
 })
