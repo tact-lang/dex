@@ -3,6 +3,24 @@ import "../math";
 import "../core/messages.tact";
 import "../core/liquidity-deposit";
 import "../core/amm-pool";
+import "../utils/utils";
+
+message(0xf8a7ea5) ReturnJettonsViaJettonTransfer {
+    queryId: Int as uint64;
+    amount: Int as coins;
+    destination: Address;
+    responseDestination: Address?;
+    customPayload: Cell?;
+    forwardTonAmount: Int as coins;
+    forwardPayload: Slice as remaining;
+}
+
+message(0x7362d09c) UnexpectedJettonNotification {
+    queryId: Int as uint64;
+    amount: Int as coins;
+    sender: Address;
+    forwardPayload: Slice as remaining;
+}
 
 contract TonVault(
     admin: Address,
@@ -37,6 +55,27 @@ contract TonVault(
                 params: msg.action.params,
             }.toCell(),
         });
+    }
+
+    // Someone possibly transferred us jettons by accident
+    receive(msg: UnexpectedJettonNotification) {
+        message(MessageParameters {
+            mode: SendRemainingValue,
+            value: 0,
+            body: ReturnJettonsViaJettonTransfer {
+                queryId: msg.queryId,
+                amount: msg.amount,
+                destination: msg.sender,
+                responseDestination: msg.sender,
+                customPayload: null,
+                forwardTonAmount: 1,
+                forwardPayload: sliceWithOneZeroBit(),
+            }.toCell(),
+            to: sender(),
+            bounce: true,
+        });
+        commit();
+        require(false, "TonVault: Jetton transfer must be performed to correct Jetton Vault");
     }
 
     receive(msg: AddLiquidityPartTon) {

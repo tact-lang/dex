@@ -75,6 +75,8 @@ export type VaultInterface<T> = {
     }
     treasury: T
     deploy: () => Promise<SandboxSendResult>
+    // TON Vault is always inited, no need to init explicitly
+    isInited: () => Promise<boolean>
     addLiquidity: (
         liquidityDepositContractAddress: Address,
         amount: bigint,
@@ -115,6 +117,10 @@ export const createJettonVault: Create<VaultInterface<JettonTreasury>> = async (
             throw new Error("Vault balance should be 0 after deploy")
         }
         return deployRes
+    }
+
+    const isInited = async () => {
+        return await vault.getInited()
     }
 
     const addLiquidity = async (
@@ -170,6 +176,7 @@ export const createJettonVault: Create<VaultInterface<JettonTreasury>> = async (
     return {
         vault,
         treasury: jetton,
+        isInited,
         deploy,
         addLiquidity,
         sendSwapRequest,
@@ -260,6 +267,9 @@ export const createTonVault: Create<VaultInterface<TonTreasury>> = async (
     return {
         deploy,
         vault,
+        isInited: async () => {
+            return true
+        },
         treasury: wallet,
         addLiquidity,
         sendSwapRequest,
