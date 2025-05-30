@@ -27,7 +27,7 @@ struct SwapParameters {
     // This is the address, where unused tokens will be sent.
     // If the swapType is exactIn, this value is ignored.
     // If the swapType is exactOut but this value is null, then unused tokens will be sent to the swapOutReceiver.
-    exactOutReceiver: Address? = null;
+    cashbackAddress: Address? = null;
     // If swapType is exactIn, then desiredAmount is minimal amount trader can receive
     // If swapType is exactOut, then desiredAmount is exactValue trader wants to get
     desiredAmount: Int as coins;
