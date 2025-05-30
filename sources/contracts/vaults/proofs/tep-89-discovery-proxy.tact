@@ -1,28 +1,26 @@
 import "../../core/lp-jettons/messages";
 
 // As TEP-89 does not support forwardPayload, we need to use a separate contract
-// This contract will store the request and will validate the proof.
-message(0xb6a69dbc) TEP89ProofRequest {}
-
-message(0x7a1267fd) TEP89ProofResponse {
-    requestLt: Int as uint64;
-    possibleJettonWallet: Address;
-    proofedJettonWallet: Address?;
+message(0x7a1267fd) TEP89DiscoveryResult {
+    discoveryId: Int as uint64;
+    expectedJettonWallet: Address;
+    actualJettonWallet: Address?;
     action: Cell;
 }
 
-// TEP-89 Proofer contains an action in state init, so we will have different proofer addresses for each action
-// This helps to handle situation, when more than one action were sent to uninitialized jetton vault
-contract TEP89Proofer(
+// Proxy for TEP-89 wallet discovery process
+// Handles interaction with Jetton Master and result delivery
+contract TEP89DiscoveryProxy(
     jettonMaster: Address,
-    proofRequester: Address,
-    possibleJettonWallet: Address,
-    action: Cell, // Actually it is JettonNotifyWithActionRequest, but is cheaper to store it as Cell
-    requestLt: Int as uint64, // Salt
+    discoveryRequester: Address,
+    expectedJettonWallet: Address,
+    action: Cell, // Actually it is JettonNotify*, but is cheaper to store it as Cell
+    discoveryId: Int as uint64, // Unique discovery ID (salt)
 ) {
-    receive(msg: TEP89ProofRequest) {
-        require(sender() == self.proofRequester, "TEP89 proof: Sender must be the proof requester");
+    receive() {
+        require(sender() == self.discoveryRequester, "TEP89 proxy: Sender must be the discovery requester");
 
+        // Initiate discovery with jetton master
         message(MessageParameters {
             to: self.jettonMaster,
             bounce: true, // So we can save some tons (we won't pay storage fees for JettonMaster)
@@ -30,7 +28,7 @@ contract TEP89Proofer(
             mode: SendRemainingValue,
             body: ProvideWalletAddress {
                 queryId: 0,
-                ownerAddress: self.proofRequester,
+                ownerAddress: self.discoveryRequester,
                 // We could ask to provide address, but it is cheaper to store it in data
                 includeAddress: false,
             }.toCell(),
@@ -38,34 +36,34 @@ contract TEP89Proofer(
     }
 
     receive(msg: TakeWalletAddress) {
-        require(sender() == self.jettonMaster, "TEP89 proof: TakeWalletAddress must be sent by the jetton master");
-        // Jetton wallet is valid, we can send the action
+        require(sender() == self.jettonMaster, "TEP89 proxy: TakeWalletAddress must be sent by the jetton master");
+
+        // Return discovery result to requester
         message(MessageParameters {
-            to: self.proofRequester,
-            // We don't need to bounce, because we will destroy the contract after sending the message
+            to: self.discoveryRequester,
             bounce: false,
             value: 0,
             mode: SendRemainingBalance | SendDestroyIfZero,
-            body: TEP89ProofResponse {
-                requestLt: self.requestLt,
-                possibleJettonWallet: self.possibleJettonWallet,
-                proofedJettonWallet: msg.walletAddress,
+            body: TEP89DiscoveryResult {
+                discoveryId: self.discoveryId,
+                expectedJettonWallet: self.expectedJettonWallet,
+                actualJettonWallet: msg.walletAddress,
                 action: self.action,
             }.toCell(),
         });
     }
 
     bounced(msg: bounced<ProvideWalletAddress>) {
+        // Handle failed discovery request
         message(MessageParameters {
-            to: self.proofRequester,
-            // We don't need to bounce, because we will destroy the contract after sending the message
+            to: self.discoveryRequester,
             bounce: false,
             value: 0,
             mode: SendRemainingBalance | SendDestroyIfZero,
-            body: TEP89ProofResponse {
-                requestLt: self.requestLt,
-                possibleJettonWallet: self.possibleJettonWallet,
-                proofedJettonWallet: null,
+            body: TEP89DiscoveryResult {
+                discoveryId: self.discoveryId,
+                expectedJettonWallet: self.expectedJettonWallet,
+                actualJettonWallet: null,
                 action: self.action,
             }.toCell(),
         });

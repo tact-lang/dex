@@ -1,11 +1,11 @@
 import "../core/amm-pool";
 import "../math";
 import "./vault-interface";
-import "../core/messages.tact";
+import "../core/messages";
 // for compilation
-import "./ton-vault.tact";
+import "./ton-vault";
 import "./proofs/check-proof";
-import "./proofs/tep-89-proofer";
+import "./proofs/tep-89-discovery-proxy";
 import "../core/liquidity-deposit";
 import "../utils/utils";
 
@@ -62,7 +62,7 @@ contract JettonVault(
                         destination: msg.sender,
                         responseDestination: msg.sender,
                         customPayload: null,
-                        forwardTonAmount: 0,
+                        forwardTonAmount: 1,
                         forwardPayload: sliceWithOneZeroBit(),
                     }.toCell(),
                     value: 0,
@@ -89,7 +89,7 @@ contract JettonVault(
                     destination: msg.sender,
                     responseDestination: msg.sender,
                     customPayload: null,
-                    forwardTonAmount: 0,
+                    forwardTonAmount: 1,
                     forwardPayload: sliceWithOneZeroBit(),
                 }.toCell(),
                 value: 0,
@@ -102,13 +102,13 @@ contract JettonVault(
         actionHandler(msg);
     }
 
-    receive(msg: TEP89ProofResponse) {
-        let prooferStateInit = initOf TEP89Proofer(self.jettonMaster, myAddress(), msg.possibleJettonWallet, msg.action, msg.requestLt);
-        require(prooferStateInit.hasSameBasechainAddress(sender()), "JettonVault: Sender must be a valid proofer");
+    receive(msg: TEP89DiscoveryResult) {
+        let proxyStateInit = initOf TEP89DiscoveryProxy(self.jettonMaster, myAddress(), msg.expectedJettonWallet, msg.action, msg.discoveryId);
+        require(proxyStateInit.hasSameBasechainAddress(sender()), "JettonVault: Sender must be a valid TEP-89 proxy");
 
         let action = JettonNotifyWithActionRequest.fromCell(msg.action);
-        if (msg.possibleJettonWallet == msg.proofedJettonWallet) {
-            self.jettonWallet = msg.proofedJettonWallet;
+        if (msg.expectedJettonWallet == msg.actualJettonWallet) {
+            self.jettonWallet = msg.actualJettonWallet;
             actionHandler(action);
         } else {
             message(MessageParameters {
@@ -119,15 +119,15 @@ contract JettonVault(
                     destination: action.sender,
                     responseDestination: action.sender,
                     customPayload: null,
-                    forwardTonAmount: 0,
+                    forwardTonAmount: 1,
                     forwardPayload: sliceWithOneZeroBit(),
                 }.toCell(),
                 value: 0,
-                to: msg.possibleJettonWallet,
+                to: msg.expectedJettonWallet,
                 bounce: true,
             });
             commit();
-            require(false, "JettonVault: Possible and Proofed wallets are not equal");
+            require(false, "JettonVault: Expected and Actual wallets are not equal");
         }
     }
 

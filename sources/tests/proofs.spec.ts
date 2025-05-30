@@ -7,7 +7,7 @@ import {SendDumpToDevWallet} from "@tondevwallet/traces"
 import {createJettonVaultMessage} from "../utils/testUtils"
 import {JettonVault, storeLPDepositPart} from "../output/DEX_JettonVault"
 import {LPDepositPartOpcode} from "../output/DEX_LiquidityDepositContract"
-import {PROOF_TEP89, TEP89Proofer} from "../output/DEX_TEP89Proofer"
+import {PROOF_TEP89, TEP89DiscoveryProxy} from "../output/DEX_TEP89DiscoveryProxy"
 describe("Proofs", () => {
     test("TEP89 proof should correctly work for discoverable jettons", async () => {
         const blockchain = await Blockchain.create()
@@ -53,10 +53,10 @@ describe("Proofs", () => {
             op: JettonVault.opcodes.TakeWalletAddress,
             success: true,
         })
-        const prooferAddress = flattenTransaction(replyWithWallet).to
+        const tep89proxyAddress = flattenTransaction(replyWithWallet).to
         expect(sendNotifyWithTep89Proof.transactions).toHaveTransaction({
-            from: prooferAddress,
-            op: JettonVault.opcodes.TEP89ProofResponse,
+            from: tep89proxyAddress,
+            op: JettonVault.opcodes.TEP89DiscoveryResult,
             // As there was a commit() after the proof was validated
             success: true,
             // However, probably there is not-null exit code, as we attached the incorrect payload
@@ -107,10 +107,10 @@ describe("Proofs", () => {
             ),
         )
 
-        // Vault deployed proofer that asked JettonMaster for the wallet address
+        // Vault deployed proxy that asked JettonMaster for the wallet address
         expect(sendNotifyFromIncorrectWallet.transactions).toHaveTransaction({
             to: vaultSetup.treasury.minter.address,
-            op: TEP89Proofer.opcodes.ProvideWalletAddress,
+            op: TEP89DiscoveryProxy.opcodes.ProvideWalletAddress,
             success: true,
         })
         // Jetton Master replied with the correct wallet address
@@ -122,13 +122,13 @@ describe("Proofs", () => {
                 success: true,
             },
         )
-        const prooferAddress = flattenTransaction(replyWithWallet).to
+        const tep89proxyAddress = flattenTransaction(replyWithWallet).to
 
         expect(sendNotifyFromIncorrectWallet.transactions).toHaveTransaction({
-            from: prooferAddress,
-            op: JettonVault.opcodes.TEP89ProofResponse,
+            from: tep89proxyAddress,
+            op: JettonVault.opcodes.TEP89DiscoveryResult,
             success: true, // Because commit was called
-            exitCode: JettonVault.errors["JettonVault: Possible and Proofed wallets are not equal"],
+            exitCode: JettonVault.errors["JettonVault: Expected and Actual wallets are not equal"],
         })
 
         expect(await vaultSetup.isInited()).toBe(false)
