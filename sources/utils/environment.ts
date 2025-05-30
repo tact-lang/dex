@@ -113,7 +113,7 @@ export const createJettonVault: Create<VaultInterface<JettonTreasury>> = async (
             {value: toNano(0.1), bounce: false},
             null,
         )
-        if ((await blockchain.getContract(vault.address)).balance !== 0n) {
+        if ((await blockchain.getContract(vault.address)).balance > 0n) {
             throw new Error("Vault balance should be 0 after deploy")
         }
         return deployRes
@@ -152,7 +152,7 @@ export const createJettonVault: Create<VaultInterface<JettonTreasury>> = async (
         isExactOutType: boolean,
         desiredAmount: bigint,
         timeout: bigint,
-        exactOutReceiver: Address | null,
+        excessTokensReceiver: Address | null,
         payloadOnSuccess: Cell | null,
         payloadOnFailure: Cell | null,
         nextStep?: SwapStep | null,
@@ -163,7 +163,7 @@ export const createJettonVault: Create<VaultInterface<JettonTreasury>> = async (
             isExactOutType,
             desiredAmount,
             timeout,
-            exactOutReceiver,
+            excessTokensReceiver,
             payloadOnSuccess,
             payloadOnFailure,
             nextStep,
@@ -201,7 +201,7 @@ export const createTonVault: Create<VaultInterface<TonTreasury>> = async (
             null,
         )
         const balance = (await blockchain.getContract(vault.address)).balance
-        if (!contractWasInited && balance !== 0n) {
+        if (!contractWasInited && balance > 0n) {
             throw new Error("Vault balance should be 0 after deploy, got " + balance)
         }
         return deployRes
@@ -316,7 +316,7 @@ const createLiquidityDepositSetup = (
                 {value: toNano(0.1), bounce: false},
                 null,
             )
-            if ((await blockchain.getContract(liquidityDeposit.address)).balance !== 0n) {
+            if ((await blockchain.getContract(liquidityDeposit.address)).balance > 0n) {
                 throw new Error("Liquidity deposit balance should be 0 after deploy")
             }
 
@@ -352,7 +352,7 @@ const createLiquidityDepositSetup = (
                 ),
             )
 
-            if ((await blockchain.getContract(ammPool.address)).balance !== 0n) {
+            if ((await blockchain.getContract(ammPool.address)).balance > 0n) {
                 throw new Error("AmmPool balance should be 0 after withdraw")
             }
 
@@ -416,7 +416,7 @@ export const createAmmPool = async <T, U>(
         await vaultA.addLiquidity(liqSetup.liquidityDeposit.address, amountLeft)
         await vaultB.addLiquidity(liqSetup.liquidityDeposit.address, amountRight)
 
-        if ((await blockchain.getContract(ammPool.address)).balance !== 0n) {
+        if ((await blockchain.getContract(ammPool.address)).balance > 0n) {
             throw new Error("Vault balance should be 0 after deploy")
         }
 
@@ -467,7 +467,7 @@ export const createAmmPool = async <T, U>(
             )
         }
 
-        if ((await blockchain.getContract(ammPool.address)).balance !== 0n) {
+        if ((await blockchain.getContract(ammPool.address)).balance > 0n) {
             throw new Error("AmmPool balance should be 0 after swap")
         }
 
