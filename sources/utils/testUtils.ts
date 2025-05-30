@@ -65,7 +65,7 @@ export function createJettonVaultSwapRequest(
     // Default is exactIn
     desiredAmount: bigint = 0n,
     timeout: bigint = 0n,
-    exactOutReceiver: Address | null,
+    exactOutReceiver: Address | null = null,
     payloadOnSuccess: Cell | null = null,
     payloadOnFailure: Cell | null = null,
     nextStep: SwapStep | null = null,
@@ -172,7 +172,7 @@ export function createTonSwapRequest(
     isExactOutType: boolean,
     desiredAmount: bigint,
     timeout: bigint = 0n,
-    exactOutReceiver: Address | null,
+    exactOutReceiver: Address | null = null,
     payloadOnSuccess: Cell | null = null,
     payloadOnFailure: Cell | null = null,
     nextStep: SwapStep | null = null,
@@ -191,8 +191,8 @@ export function createTonSwapRequest(
                         isExactOutType,
                         exactOutReceiver,
                         desiredAmount,
-                        payloadOnFailure,
                         payloadOnSuccess,
+                        payloadOnFailure,
                         timeout,
                         // Field for specifying the next step in the swap (for cross-pool swaps)
                         nextStep,
