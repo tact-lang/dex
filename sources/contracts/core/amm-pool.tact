@@ -405,11 +405,14 @@ contract AmmPool(
             outVault = self.rightVault;
             inBalance = self.leftSideReserve;
             outBalance = self.rightSideReserve;
-        } else {
+        } else if (vaultAddress == self.rightVault) {
             inVault = self.rightVault;
             outVault = self.leftVault;
             inBalance = self.rightSideReserve;
             outBalance = self.leftSideReserve;
+        } else {
+            require(false, "Pool: vaultAddress must be one of the vaults");
+            return 0;
         }
         let amountInWithFee = muldiv(amountIn, 1000 - self.PoolFee, 1000);
         let newAmountIn = inBalance + amountInWithFee;
@@ -428,11 +431,14 @@ contract AmmPool(
             outVault = self.leftVault;
             inBalance = self.rightSideReserve;
             outBalance = self.leftSideReserve;
-        } else {
+        } else if (vaultOut == self.rightVault) {
             inVault = self.leftVault;
             outVault = self.rightVault;
             inBalance = self.leftSideReserve;
             outBalance = self.rightSideReserve;
+        } else {
+            require(false, "Pool: vaultOut must be one of the vaults");
+            return 0;
         }
         let newAmountOut = outBalance - amountOut;
         if (newAmountOut <= 0) {
