@@ -30,7 +30,15 @@ describe("Payloads", () => {
         const expectedOutput = await ammPool.getExpectedOut(vaultA.vault.address, amountToSwap)
         const amountBJettonBeforeSwap = await vaultB.treasury.wallet.getJettonBalance()
 
-        const swapResult = await swap(amountToSwap, "vaultA", expectedOutput, 0n, payloadOnSuccess)
+        const swapResult = await swap(
+            amountToSwap,
+            "vaultA",
+            expectedOutput,
+            0n,
+            false,
+            null,
+            payloadOnSuccess,
+        )
 
         // check that swap was successful
         expect(swapResult.transactions).toHaveTransaction({
@@ -96,6 +104,8 @@ describe("Payloads", () => {
             "vaultA",
             expectedOutput,
             0n,
+            false,
+            null,
             payloadOnSuccess,
             payloadOnFailure,
         )
@@ -104,7 +114,7 @@ describe("Payloads", () => {
             from: vaultA.vault.address,
             to: ammPool.address,
             op: AmmPool.opcodes.SwapIn,
-            exitCode: AmmPool.errors["Pool: Amount out is less than minAmountOut"],
+            exitCode: AmmPool.errors["Pool: Amount out is less than desired amount"],
         })
 
         const payoutTx = findTransactionRequired(swapResult.transactions, {
@@ -146,6 +156,8 @@ describe("Payloads", () => {
             "vaultA",
             expectedOutput,
             timeout,
+            false,
+            null,
             payloadOnSuccess,
             payloadOnFailure,
         )

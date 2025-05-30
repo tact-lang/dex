@@ -50,14 +50,9 @@ contract TonVault(
             mode: SendBounceIfActionFail | SendRemainingBalance,
             bounce: false,
             body: SwapIn {
-                swapOutReceiver: msg.action.receiver != null ? msg.action.receiver!! : sender(),
+                receiver: msg.action.receiver != null ? msg.action.receiver!! : sender(),
                 amount: msg.amount,
-                isExactOutType: msg.action.isExactOutType,
-                limit: msg.action.limit,
-                timeout: msg.action.timeout,
-                payloadOnSuccess: msg.action.payloadOnSuccess,
-                payloadOnFailure: msg.action.payloadOnFailure,
-                nextStep: msg.action.nextStep,
+                params: msg.action.params,
             }.toCell(),
         });
     }
@@ -100,5 +95,7 @@ contract TonVault(
         });
     }
 
-    receive() {}
+    receive() {
+        cashback(sender());
+    }
 }

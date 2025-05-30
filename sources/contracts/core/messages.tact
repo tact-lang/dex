@@ -2,18 +2,10 @@ import "../vaults/vault-interface";
 import "./liquidity-deposit";
 
 message(0xac2f5a38) SwapIn {
+    // The value trader sent to the pool.
     amount: Int as coins;
-    // false - exactIn type. True - exactOut type.
-    isExactOutType: Bool;
-    // If swapType is exactIn, then limit is minAmountOut
-    // If swapType is exactOut, then limit is maxAmountIn
-    limit: Int as coins;
-    timeout: Int as uint32; // Absolute unix timestamp
-    swapOutReceiver: Address;
-    payloadOnSuccess: Cell? = null;
-    payloadOnFailure: Cell? = null;
-    nextStep: SwapStep? = null;
-
+    receiver: Address;
+    params: SwapParameters;
     // For multihop swaps
     multihopInfo: MultihopInfo? = null;
 }
