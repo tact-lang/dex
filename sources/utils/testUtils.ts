@@ -63,8 +63,9 @@ export function createJettonVaultSwapRequest(
     destinationPool: Address,
     isExactOutType: boolean = false,
     // Default is exactIn
-    limit: bigint = 0n,
+    desiredAmount: bigint = 0n,
     timeout: bigint = 0n,
+    cashbackAddress: Address | null = null,
     payloadOnSuccess: Cell | null = null,
     payloadOnFailure: Cell | null = null,
     nextStep: SwapStep | null = null,
@@ -74,13 +75,16 @@ export function createJettonVaultSwapRequest(
         $$type: "SwapRequest",
         pool: destinationPool,
         receiver: receiver,
-        isExactOutType: isExactOutType,
-        limit: limit,
-        timeout: timeout,
-        payloadOnSuccess: payloadOnSuccess,
-        payloadOnFailure: payloadOnFailure,
-        // Field for specifying the next step in the swap (for cross-pool swaps)
-        nextStep: nextStep,
+        params: {
+            $$type: "SwapParameters",
+            isExactOutType,
+            cashbackAddress,
+            desiredAmount,
+            payloadOnSuccess,
+            payloadOnFailure,
+            timeout,
+            nextStep,
+        },
     }
 
     return createJettonVaultMessage(
@@ -165,8 +169,10 @@ export function createTonSwapRequest(
     pool: Address,
     receiver: Address | null,
     amountIn: bigint,
-    minAmountOut: bigint = 0n,
+    isExactOutType: boolean,
+    desiredAmount: bigint,
     timeout: bigint = 0n,
+    cashbackAddress: Address | null = null,
     payloadOnSuccess: Cell | null = null,
     payloadOnFailure: Cell | null = null,
     nextStep: SwapStep | null = null,
@@ -179,14 +185,18 @@ export function createTonSwapRequest(
                 action: {
                     $$type: "SwapRequest",
                     pool: pool,
-                    isExactOutType: false,
-                    limit: minAmountOut,
-                    payloadOnFailure: payloadOnFailure,
-                    payloadOnSuccess: payloadOnSuccess,
-                    timeout: timeout,
                     receiver: receiver,
-                    // Field for specifying the next step in the swap (for cross-pool swaps)
-                    nextStep: nextStep,
+                    params: {
+                        $$type: "SwapParameters",
+                        isExactOutType,
+                        cashbackAddress,
+                        desiredAmount,
+                        payloadOnSuccess,
+                        payloadOnFailure,
+                        timeout,
+                        // Field for specifying the next step in the swap (for cross-pool swaps)
+                        nextStep,
+                    },
                 },
             }),
         )

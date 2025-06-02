@@ -100,7 +100,9 @@ contract JettonVault(
         actionHandler(JettonNotifyWithActionRequest.fromCell(msg.action));
     }
 
-    receive() {}
+    receive() {
+        cashback(sender());
+    }
 
     override fun handlePayout(msg: PayoutFromPool) {
         let sortedAddresses = sortAddresses(myAddress(), msg.otherVault);
@@ -153,15 +155,10 @@ inline fun handleSwapRequest(msg: JettonNotifyWithActionRequest, action: SwapReq
         mode: SendRemainingValue,
         to: action.pool,
         body: SwapIn {
-            // If receiver is not specified, then it will be the sender of TONs or Jettons
-            swapOutReceiver: action.receiver != null ? action.receiver!! : msg.sender,
             amount: msg.amount,
-            isExactOutType: action.isExactOutType,
-            limit: action.limit,
-            timeout: action.timeout,
-            payloadOnSuccess: action.payloadOnSuccess,
-            payloadOnFailure: action.payloadOnFailure,
-            nextStep: action.nextStep,
+            // If receiver is not specified, then it will be the sender of Jettons
+            receiver: action.receiver != null ? action.receiver!! : msg.sender,
+            params: action.params,
         }.toCell(),
     });
 }
