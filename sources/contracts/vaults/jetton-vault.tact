@@ -116,6 +116,7 @@ contract JettonVault(
                 to: msg.expectedJettonWallet,
                 bounce: true,
             });
+
             commit();
             require(false, "JettonVault: Expected and Actual wallets are not equal");
         }
