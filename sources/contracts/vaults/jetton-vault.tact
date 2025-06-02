@@ -1,11 +1,11 @@
 import "../core/amm-pool";
 import "../math";
 import "./vault-interface";
-import "../core/messages.tact";
+import "../core/messages";
 // for compilation
-import "./ton-vault.tact";
+import "./ton-vault";
 import "./proofs/check-proof";
-import "./proofs/tep-89-proofer";
+import "./proofs/tep-89-discovery-proxy";
 import "../core/liquidity-deposit";
 import "../utils/utils";
 
@@ -53,7 +53,7 @@ contract JettonVault(
                         destination: msg.sender,
                         responseDestination: msg.sender,
                         customPayload: null,
-                        forwardTonAmount: 0,
+                        forwardTonAmount: 1,
                         forwardPayload: sliceWithOneZeroBit(),
                     }.toCell(),
                     value: 0,
@@ -79,7 +79,7 @@ contract JettonVault(
                     destination: msg.sender,
                     responseDestination: msg.sender,
                     customPayload: null,
-                    forwardTonAmount: 0,
+                    forwardTonAmount: 1,
                     forwardPayload: sliceWithOneZeroBit(),
                 }.toCell(),
                 value: 0,
@@ -92,12 +92,34 @@ contract JettonVault(
         actionHandler(msg);
     }
 
-    // We will receive this message only if TEP-89 proofer will successfully validate jettonWallet
-    receive(msg: TEP89ProofResponse) {
-        let prooferStateInit = initOf TEP89Proofer(self.jettonMaster, myAddress(), msg.proofedJettonWallet, msg.action);
-        require(prooferStateInit.hasSameBasechainAddress(sender()), "JettonVault: Sender must be a valid proofer");
-        self.jettonWallet = msg.proofedJettonWallet;
-        actionHandler(JettonNotifyWithActionRequest.fromCell(msg.action));
+    receive(msg: TEP89DiscoveryResult) {
+        let proxyStateInit = initOf TEP89DiscoveryProxy(self.jettonMaster, myAddress(), msg.expectedJettonWallet, msg.action, msg.discoveryId);
+        require(proxyStateInit.hasSameBasechainAddress(sender()), "JettonVault: Sender must be a valid TEP-89 proxy");
+
+        let action = JettonNotifyWithActionRequest.fromCell(msg.action);
+        if (msg.expectedJettonWallet == msg.actualJettonWallet) {
+            self.jettonWallet = msg.actualJettonWallet;
+            actionHandler(action);
+        } else {
+            message(MessageParameters {
+                mode: SendRemainingValue | SendIgnoreErrors,
+                body: SendViaJettonTransfer {
+                    queryId: action.queryId,
+                    amount: action.amount,
+                    destination: action.sender,
+                    responseDestination: action.sender,
+                    customPayload: null,
+                    forwardTonAmount: 1,
+                    forwardPayload: sliceWithOneZeroBit(),
+                }.toCell(),
+                value: 0,
+                to: msg.expectedJettonWallet,
+                bounce: true,
+            });
+
+            commit();
+            require(false, "JettonVault: Expected and Actual wallets are not equal");
+        }
     }
 
     receive() {

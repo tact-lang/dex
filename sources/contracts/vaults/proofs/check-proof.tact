@@ -1,5 +1,4 @@
-import "./tep-89-proofer.tact";
-import "./tep-89-proofer";
+import "./tep-89-discovery-proxy";
 import "./calculate-jetton-wallet";
 import "../../utils/utils";
 
@@ -16,11 +15,12 @@ const PROOF_JETTON_BURN: Int = 4;
 
 inline fun checkProof(jettonMaster: Address, proofType: Int, proof: Slice, msgCell: Cell): Bool {
     if (proofType == PROOF_TEP89) {
-        let prooferStateInit = initOf TEP89Proofer(
+        let proxyStateInit = initOf TEP89DiscoveryProxy(
             jettonMaster,
             myAddress(),
             sender(),
             msgCell,
+            curLt(),
         );
 
         deploy(DeployParameters {
@@ -28,12 +28,7 @@ inline fun checkProof(jettonMaster: Address, proofType: Int, proof: Slice, msgCe
             value: 0,
             // Doesn't really matter, so just for consistency - all internal protocol messages are not bounceable
             bounce: false,
-            init: prooferStateInit,
-            body: TEP89ProofRequest {
-                jettonMaster,
-                possibleJettonWallet: sender(),
-                action: msgCell,
-            }.toCell(),
+            init: proxyStateInit,
         });
         // We don't need to save state init, so we just need to exit() quickly
         exit();

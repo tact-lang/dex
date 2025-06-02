@@ -7,7 +7,7 @@ import {SendDumpToDevWallet} from "@tondevwallet/traces"
 import {createJettonVaultMessage} from "../utils/testUtils"
 import {JettonVault, storeLPDepositPart} from "../output/DEX_JettonVault"
 import {LPDepositPartOpcode} from "../output/DEX_LiquidityDepositContract"
-import {PROOF_TEP89, TEP89Proofer} from "../output/DEX_TEP89Proofer"
+import {PROOF_TEP89, TEP89DiscoveryProxy} from "../output/DEX_TEP89DiscoveryProxy"
 describe("Proofs", () => {
     test("TEP89 proof should correctly work for discoverable jettons", async () => {
         const blockchain = await Blockchain.create()
@@ -53,10 +53,10 @@ describe("Proofs", () => {
             op: JettonVault.opcodes.TakeWalletAddress,
             success: true,
         })
-        const prooferAddress = flattenTransaction(replyWithWallet).to
+        const tep89proxyAddress = flattenTransaction(replyWithWallet).to
         expect(sendNotifyWithTep89Proof.transactions).toHaveTransaction({
-            from: prooferAddress,
-            op: JettonVault.opcodes.TEP89ProofResponse,
+            from: tep89proxyAddress,
+            op: JettonVault.opcodes.TEP89DiscoveryResult,
             // As there was a commit() after the proof was validated
             success: true,
             // However, probably there is not-null exit code, as we attached the incorrect payload
@@ -67,7 +67,7 @@ describe("Proofs", () => {
         expect(await jettonVaultInstance.getInited()).toBe(true)
     })
 
-    test("TEP89 proof fails if wrong jetton sent", async () => {
+    test("Jettons are returned if TEP89 proof fails if wrong jetton sent", async () => {
         const blockchain = await Blockchain.create()
         // Our Jettons, used when creating the vault support TEP-89
         const vaultSetup = await createJettonVault(blockchain)
@@ -92,6 +92,8 @@ describe("Proofs", () => {
         // Create different Jetton and send it to the vault
         const differentJetton = await createJetton(blockchain)
 
+        const initialJettonBalance = await differentJetton.wallet.getJettonBalance()
+
         const sendNotifyFromIncorrectWallet = await differentJetton.transfer(
             vaultSetup.vault.address,
             toNano(0.5),
@@ -105,10 +107,10 @@ describe("Proofs", () => {
             ),
         )
 
-        // Vault deployed proofer that asked JettonMaster for the wallet address
+        // Vault deployed proxy that asked JettonMaster for the wallet address
         expect(sendNotifyFromIncorrectWallet.transactions).toHaveTransaction({
             to: vaultSetup.treasury.minter.address,
-            op: TEP89Proofer.opcodes.ProvideWalletAddress,
+            op: TEP89DiscoveryProxy.opcodes.ProvideWalletAddress,
             success: true,
         })
         // Jetton Master replied with the correct wallet address
@@ -117,22 +119,21 @@ describe("Proofs", () => {
             {
                 from: vaultSetup.treasury.minter.address,
                 op: JettonVault.opcodes.TakeWalletAddress,
-                success: false,
-                exitCode: TEP89Proofer.errors["TEP89 proof: Wallet address does not match"],
+                success: true,
             },
         )
-        const prooferAddress = flattenTransaction(replyWithWallet).to
+        const tep89proxyAddress = flattenTransaction(replyWithWallet).to
 
-        // The only transaction sent from the proofer was ProvideWalletAddress to JettonMaster,
-        // So no other transactions from the proofer should be present
-        expect(sendNotifyFromIncorrectWallet.transactions).not.toHaveTransaction({
-            from: prooferAddress,
-            to: to => to === undefined || !to.equals(vaultSetup.treasury.minter.address),
+        expect(sendNotifyFromIncorrectWallet.transactions).toHaveTransaction({
+            from: tep89proxyAddress,
+            op: JettonVault.opcodes.TEP89DiscoveryResult,
+            success: true, // Because commit was called
+            exitCode: JettonVault.errors["JettonVault: Expected and Actual wallets are not equal"],
         })
-        const jettonVaultInstance = blockchain.openContract(
-            JettonVault.fromAddress(vaultSetup.vault.address),
-        )
-        expect(await jettonVaultInstance.getInited()).toBe(false)
+
+        expect(await vaultSetup.isInited()).toBe(false)
+        const finalJettonBalance = await differentJetton.wallet.getJettonBalance()
+        expect(finalJettonBalance).toEqual(initialJettonBalance)
     })
     test("Jettons are returned if proof type is incorrect", async () => {
         const blockchain = await Blockchain.create()
