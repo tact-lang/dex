@@ -2,6 +2,7 @@ import {Blockchain} from "@ton/sandbox"
 import {
     Create,
     createAmmPool,
+    createJettonAmmPool,
     createJettonVault,
     createTonVault,
     JettonTreasury,
@@ -136,6 +137,8 @@ describe("Cross-pool Swaps", () => {
             "vaultA",
             expectedOutFirst,
             0n,
+            false,
+            null,
             payloadOnSuccess,
             payloadOnFailure,
             nextSwapStep,
@@ -268,6 +271,8 @@ describe("Cross-pool Swaps", () => {
                 "vaultA",
                 expectedOutFirst, // We will receive exactly this amount in the first pool
                 0n,
+                false,
+                null,
                 payloadOnSuccess,
                 payloadOnFailure,
                 nextSwapStep,
@@ -277,7 +282,7 @@ describe("Cross-pool Swaps", () => {
             expect(swapResult.transactions).toHaveTransaction({
                 from: firstAmmPool.address,
                 to: secondAmmPool.address,
-                exitCode: AmmPool.errors["Pool: Amount out is less than minAmountOut"],
+                exitCode: AmmPool.errors["Pool: Amount out is less than desired amount"],
             })
 
             const payoutTx = flattenTransaction(
@@ -299,4 +304,75 @@ describe("Cross-pool Swaps", () => {
             expect(parsedPayoutBody.payloadToForward).toEqualCell(payloadOnFailure)
         },
     )
+    test("Cross-pool swap next step is ignored if swap type is exactOut", async () => {
+        const blockchain = await Blockchain.create()
+
+        const {ammPool, vaultA, vaultB, initWithLiquidity, swap} =
+            await createJettonAmmPool(blockchain)
+
+        // deploy liquidity deposit contract
+        const initialRatio = 2n
+        const amountA = toNano(1)
+        const amountB = amountA * initialRatio // 1 a == 2 b ratio
+        const depositor = vaultA.treasury.walletOwner
+        const _ = await initWithLiquidity(depositor, amountA, amountB)
+
+        const payloadOnSuccess = beginCell().storeStringTail("Success").endCell()
+        const payloadOnFailure = beginCell().storeStringTail("Failure").endCell()
+
+        const amountToGet = toNano(0.05)
+        // No excesses should be sent as the result of ExactOut swap
+        const amountToSend = await ammPool.getNeededInToGetX(vaultB.vault.address, amountToGet)
+        const randomCashbackAddress = randomAddress()
+        const randomNextPool = randomAddress()
+        const nextSwapStep = {
+            $$type: "SwapStep",
+            pool: randomNextPool,
+            // This does not matter anything as we will ignore this step
+            minAmountOut: amountToGet,
+            nextStep: null,
+        } as const
+        const swapResult = await swap(
+            amountToSend,
+            "vaultA",
+            amountToGet,
+            0n,
+            true,
+            randomCashbackAddress,
+            payloadOnSuccess,
+            payloadOnFailure,
+            nextSwapStep,
+        )
+        expect(swapResult.transactions).toHaveTransaction({
+            from: vaultA.vault.address,
+            to: ammPool.address,
+            op: AmmPool.opcodes.SwapIn,
+        })
+        expect(swapResult.transactions).toHaveTransaction({
+            from: vaultA.vault.address,
+            to: ammPool.address,
+            op: AmmPool.opcodes.SwapIn,
+        })
+
+        // The only transaction from pool must be to vaultB, no next step should be executed
+        expect(swapResult.transactions).not.toHaveTransaction({
+            from: ammPool.address,
+            to: addr => addr === undefined || !addr.equals(vaultB.vault.address),
+        })
+
+        const payoutRes = flattenTransaction(
+            findTransactionRequired(swapResult.transactions, {
+                from: ammPool.address,
+                to: vaultB.vault.address,
+                op: AmmPool.opcodes.PayoutFromPool,
+            }),
+        )
+        if (payoutRes.body === undefined) {
+            throw new Error("Payout transaction body is undefined")
+        }
+        const parsedPayout = loadPayoutFromPool(payoutRes.body.asSlice())
+        expect(parsedPayout.amount).toEqual(amountToGet)
+        expect(parsedPayout.otherVault).toEqualAddress(vaultA.vault.address)
+        expect(parsedPayout.payloadToForward).toEqualCell(payloadOnSuccess)
+    })
 })

@@ -69,7 +69,9 @@ contract LiquidityDepositContract(
         }
     }
 
-    receive() {}
+    receive() {
+        cashback(sender());
+    }
 
     get fun status(): Int {
         return self.status;

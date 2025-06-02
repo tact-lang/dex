@@ -89,8 +89,10 @@ export type VaultInterface<T> = {
         amountToSwap: bigint,
         destinationPool: Address,
         isExactOutType: boolean,
-        limit: bigint,
+        desiredAmount: bigint,
         timeout: bigint,
+        // This value is needed only for exactOut swaps, for exactIn it is ignored
+        cashbackAddress: Address | null,
         payloadOnSuccess: Cell | null,
         payloadOnFailure: Cell | null,
         nextStep: SwapStep | null,
@@ -106,11 +108,15 @@ export const createJettonVault: Create<VaultInterface<JettonTreasury>> = async (
     const vault = blockchain.openContract(await JettonVault.fromInit(jetton.minter.address, null))
 
     const deploy = async () => {
-        return await vault.send(
+        const deployRes = await vault.send(
             (await blockchain.treasury("any-user")).getSender(),
             {value: toNano(0.1), bounce: false},
             null,
         )
+        if ((await blockchain.getContract(vault.address)).balance > 0n) {
+            throw new Error("Vault balance should be 0 after deploy")
+        }
+        return deployRes
     }
 
     const isInited = async () => {
@@ -143,9 +149,10 @@ export const createJettonVault: Create<VaultInterface<JettonTreasury>> = async (
     const sendSwapRequest = async (
         amountToSwap: bigint,
         destinationPool: Address,
-        type: boolean,
-        limit: bigint,
+        isExactOutType: boolean,
+        desiredAmount: bigint,
         timeout: bigint,
+        cashbackAddress: Address | null,
         payloadOnSuccess: Cell | null,
         payloadOnFailure: Cell | null,
         nextStep?: SwapStep | null,
@@ -153,9 +160,10 @@ export const createJettonVault: Create<VaultInterface<JettonTreasury>> = async (
     ) => {
         const swapRequest = createJettonVaultSwapRequest(
             destinationPool,
-            type,
-            limit,
+            isExactOutType,
+            desiredAmount,
             timeout,
+            cashbackAddress,
             payloadOnSuccess,
             payloadOnFailure,
             nextStep,
@@ -185,11 +193,18 @@ export const createTonVault: Create<VaultInterface<TonTreasury>> = async (
     const wallet = await blockchain.treasury("wallet-owner")
 
     const deploy = async () => {
-        return await vault.send(
+        const contractWasInited =
+            (await blockchain.getContract(vault.address)).accountState?.type == "active"
+        const deployRes = await vault.send(
             (await blockchain.treasury("any-user-3")).getSender(),
             {value: toNano(0.1), bounce: false},
             null,
         )
+        const balance = (await blockchain.getContract(vault.address)).balance
+        if (!contractWasInited && balance > 0n) {
+            throw new Error("Vault balance should be 0 after deploy, got " + balance)
+        }
+        return deployRes
     }
 
     const addLiquidity = async (
@@ -218,9 +233,10 @@ export const createTonVault: Create<VaultInterface<TonTreasury>> = async (
     const sendSwapRequest = async (
         amountToSwap: bigint,
         destinationPool: Address,
-        type: boolean,
-        limit: bigint,
+        isExactOutType: boolean,
+        desiredAmount: bigint,
         timeout: bigint,
+        cashbackAddress: Address | null,
         payloadOnSuccess: Cell | null,
         payloadOnFailure: Cell | null,
         nextStep: SwapStep | null,
@@ -230,8 +246,10 @@ export const createTonVault: Create<VaultInterface<TonTreasury>> = async (
             destinationPool,
             receiver,
             amountToSwap,
-            limit,
+            isExactOutType,
+            desiredAmount,
             timeout,
+            cashbackAddress,
             payloadOnSuccess,
             payloadOnFailure,
             nextStep,
@@ -298,6 +316,9 @@ const createLiquidityDepositSetup = (
                 {value: toNano(0.1), bounce: false},
                 null,
             )
+            if ((await blockchain.getContract(liquidityDeposit.address)).balance > 0n) {
+                throw new Error("Liquidity deposit balance should be 0 after deploy")
+            }
 
             return deployResult
         }
@@ -330,6 +351,10 @@ const createLiquidityDepositSetup = (
                     successfulPayload,
                 ),
             )
+
+            if ((await blockchain.getContract(ammPool.address)).balance > 0n) {
+                throw new Error("AmmPool balance should be 0 after withdraw")
+            }
 
             return withdrawResult
         }
@@ -391,6 +416,10 @@ export const createAmmPool = async <T, U>(
         await vaultA.addLiquidity(liqSetup.liquidityDeposit.address, amountLeft)
         await vaultB.addLiquidity(liqSetup.liquidityDeposit.address, amountRight)
 
+        if ((await blockchain.getContract(ammPool.address)).balance > 0n) {
+            throw new Error("Vault balance should be 0 after deploy")
+        }
+
         return {
             depositorLpWallet: liqSetup.depositorLpWallet,
             withdrawLiquidity: liqSetup.withdrawLiquidity,
@@ -400,20 +429,37 @@ export const createAmmPool = async <T, U>(
     const swap = async (
         amountToSwap: bigint,
         swapFrom: "vaultA" | "vaultB",
-        expectedOutput: bigint = 0n,
+        desiredAmount: bigint = 0n,
         timeout: bigint = 0n,
+        isExactOutType: boolean = false,
+        cashbackAddress: Address | null = null,
         payloadOnSuccess: Cell | null = null,
         payloadOnFailure: Cell | null = null,
         nextSwapStep: SwapStep | null = null,
         receiver: Address | null = null,
     ) => {
+        let swapRes
         if (swapFrom === "vaultA") {
-            return await firstVault.sendSwapRequest(
+            swapRes = await firstVault.sendSwapRequest(
                 amountToSwap,
                 ammPool.address,
-                false,
-                expectedOutput,
+                isExactOutType,
+                desiredAmount,
                 timeout,
+                cashbackAddress,
+                payloadOnSuccess,
+                payloadOnFailure,
+                nextSwapStep,
+                receiver,
+            )
+        } else {
+            swapRes = await secondVault.sendSwapRequest(
+                amountToSwap,
+                ammPool.address,
+                isExactOutType,
+                desiredAmount,
+                timeout,
+                cashbackAddress,
                 payloadOnSuccess,
                 payloadOnFailure,
                 nextSwapStep,
@@ -421,25 +467,19 @@ export const createAmmPool = async <T, U>(
             )
         }
 
-        return await secondVault.sendSwapRequest(
-            amountToSwap,
-            ammPool.address,
-            false,
-            expectedOutput,
-            timeout,
-            payloadOnSuccess,
-            payloadOnFailure,
-            nextSwapStep,
-            receiver,
-        )
+        if ((await blockchain.getContract(ammPool.address)).balance > 0n) {
+            throw new Error("AmmPool balance should be 0 after swap")
+        }
+
+        return swapRes
     }
 
     return {
         ammPool,
         vaultA: firstVault,
         vaultB: secondVault,
-        sorted: sortedAddresses,
-        isSwapped: sortedAddresses.lower !== firstVault.vault.address,
+        sorted: sortedVaults,
+        isSwapped: sortedVaults.lower !== firstVault.vault.address,
         liquidityDepositSetup,
         swap,
         initWithLiquidity,
