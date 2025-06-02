@@ -36,7 +36,7 @@ describe("Amm pool", () => {
 
         const swapResult = await swap(amountToSwap, "vaultA", expectedOutput)
 
-        expect((await blockchain.getContract(ammPool.address)).balance).toEqual(0n)
+        expect((await blockchain.getContract(ammPool.address)).balance).toBeLessThanOrEqual(0n)
 
         // check that swap was successful
         expect(swapResult.transactions).toHaveTransaction({
@@ -92,7 +92,7 @@ describe("Amm pool", () => {
         const amountAJettonBeforeSwap = await vaultA.treasury.wallet.getJettonBalance()
 
         const swapResult = await swap(amountToSwap, "vaultA", expectedOutput + 1n) // slippage
-        expect((await blockchain.getContract(ammPool.address)).balance).toEqual(0n)
+        expect((await blockchain.getContract(ammPool.address)).balance).toBeLessThanOrEqual(0n)
 
         expect(swapResult.transactions).toHaveTransaction({
             from: vaultA.vault.address,
@@ -137,7 +137,7 @@ describe("Amm pool", () => {
 
         const withdrawResult = await withdrawLiquidity(lpBalanceAfterFirstLiq, 0n, 0n, 0n, null)
 
-        expect((await blockchain.getContract(ammPool.address)).balance).toEqual(0n)
+        expect((await blockchain.getContract(ammPool.address)).balance).toBeLessThanOrEqual(0n)
 
         expect(withdrawResult.transactions).toHaveTransaction({
             from: depositorLpWallet.address,
@@ -193,7 +193,7 @@ describe("Amm pool", () => {
         const amountBJettonBeforeSwap = await vaultB.treasury.wallet.getJettonBalance()
 
         const swapResult = await swap(amountToSwap, "vaultB", expectedOutputTon)
-        expect((await blockchain.getContract(ammPool.address)).balance).toEqual(0n)
+        expect((await blockchain.getContract(ammPool.address)).balance).toBeLessThanOrEqual(0n)
 
         // check that swap was successful
         expect(swapResult.transactions).toHaveTransaction({
@@ -252,7 +252,7 @@ describe("Amm pool", () => {
 
         const swapResult = await swap(amountToSwapTon, "vaultA", expectedOutputJetton)
 
-        expect((await blockchain.getContract(ammPool.address)).balance).toEqual(0n)
+        expect((await blockchain.getContract(ammPool.address)).balance).toBeLessThanOrEqual(0n)
 
         // check that swap was successful
         expect(swapResult.transactions).toHaveTransaction({
@@ -320,7 +320,7 @@ describe("Amm pool", () => {
                 },
             )
 
-            expect((await blockchain.getContract(ammPool.address)).balance).toEqual(0n)
+            expect((await blockchain.getContract(ammPool.address)).balance).toBeLessThanOrEqual(0n)
 
             /*
               take_wallet_address#d1735400 query_id:uint64 wallet_address:MsgAddress owner_address:(Maybe ^MsgAddress) = InternalMsgBody;
@@ -351,7 +351,7 @@ describe("Amm pool", () => {
                 },
             )
 
-            expect((await blockchain.getContract(ammPool.address)).balance).toEqual(0n)
+            expect((await blockchain.getContract(ammPool.address)).balance).toBeLessThanOrEqual(0n)
 
             const notDeployerJettonWallet = await userWallet(notDeployer.address)
             expect(discoveryResult.transactions).toHaveTransaction({
@@ -410,7 +410,7 @@ describe("Amm pool", () => {
                 },
             )
 
-            expect((await blockchain.getContract(ammPool.address)).balance).toEqual(0n)
+            expect((await blockchain.getContract(ammPool.address)).balance).toBeLessThanOrEqual(0n)
 
             expect(discoveryResult.transactions).toHaveTransaction({
                 from: ammPool.address,
@@ -492,7 +492,7 @@ describe("Amm pool", () => {
                 payloadOnFailure,
             )
 
-            expect((await blockchain.getContract(ammPool.address)).balance).toEqual(0n)
+            expect((await blockchain.getContract(ammPool.address)).balance).toBeLessThanOrEqual(0n)
 
             // check that swap was not successful
             expect(swapResult.transactions).toHaveTransaction({
@@ -594,7 +594,7 @@ describe("Amm pool", () => {
             const payloadOnFailure = beginCell().storeStringTail("Failure payload").endCell()
             const payloadOnSuccess = beginCell().storeStringTail("Success payload").endCell()
 
-            const swapOutReceiver = randomAddress()
+            const cashbackAddress = randomAddress()
 
             const swapResult = await swap(
                 moreThanEnoughAmountIn,
@@ -602,12 +602,12 @@ describe("Amm pool", () => {
                 exactAmountOut,
                 0n,
                 true,
-                swapOutReceiver,
+                cashbackAddress,
                 payloadOnSuccess,
                 payloadOnFailure,
             )
 
-            expect((await blockchain.getContract(ammPool.address)).balance).toEqual(0n)
+            expect((await blockchain.getContract(ammPool.address)).balance).toBeLessThanOrEqual(0n)
 
             expect(swapResult.transactions).toHaveTransaction({
                 from: vaultA.vault.address,
@@ -632,7 +632,7 @@ describe("Amm pool", () => {
             expect(parsedRefundTx.amount).toEqual(amountToRefund)
             expect(parsedRefundTx.otherVault).toEqualAddress(vaultB.vault.address)
             expect(parsedRefundTx.payloadToForward).toEqualCell(payloadOnSuccess)
-            expect(parsedRefundTx.receiver).toEqualAddress(vaultA.treasury.walletOwner.address)
+            expect(parsedRefundTx.receiver).toEqualAddress(cashbackAddress)
 
             const payoutTx = flattenTransaction(
                 findTransactionRequired(swapResult.transactions, {
@@ -646,7 +646,7 @@ describe("Amm pool", () => {
                 throw new Error("Payout transaction body is undefined")
             }
             const parsedPayoutTx = loadPayoutFromPool(payoutTx.body.asSlice())
-            expect(parsedPayoutTx.receiver).toEqualAddress(swapOutReceiver)
+            expect(parsedPayoutTx.receiver).toEqualAddress(vaultA.treasury.walletOwner.address)
             expect(parsedPayoutTx.amount).toEqual(exactAmountOut)
             expect(parsedPayoutTx.otherVault).toEqualAddress(vaultA.vault.address)
             expect(parsedPayoutTx.payloadToForward).toEqualCell(payloadOnSuccess)

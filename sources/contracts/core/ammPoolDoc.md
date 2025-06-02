@@ -32,11 +32,11 @@ In exactOut swaps, the token flow differs from exactIn swaps:
 
 1. When a user requests an exactOut swap, they must send more tokens than might be needed to fulfill the desired output amount. This is because the exact input amount can only be calculated after evaluating the pool's reserves.
 
-2. If the swap succeeds, the specified `desiredAmount` of output tokens are sent to the `params.exactOutReceiver` (or the `receiver` if `exactOutReceiver` is null).
+2. If the swap succeeds, the specified `desiredAmount` of output tokens are sent to the `receiver` address.
 
-3. Any excess input tokens (tokens that weren't needed for the swap) are returned to the address specified in `receiver`
+3. Any excess input tokens (tokens that weren't needed for the swap) are returned to the address specified in `params.cashbackAddress`. If no `cashbackAddress` is specified, the excess tokens are returned to the `receiver` address.
 
-4. If there are no excess input tokens, the `receiver` will not receive any tokens.
+4. If there are no excess input tokens, the `params.cashbackAddress` will not receive any tokens.
 
 This mechanism ensures users always get the exact number of output tokens they requested, while any excess input tokens are properly returned.
 ExactOut swaps have these semantics because they are primarily designed for instantly exchanging and transferring a specific amount of tokens to someone. For example, if you need to send exactly 100 USDT to a recipient, you can use an exactOut swap to convert your TON to exactly 100 USDT and send it in one transaction. This approach can be used in the future for native implementation of convenient on-chain orders.

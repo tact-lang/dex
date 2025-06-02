@@ -323,7 +323,7 @@ describe("Cross-pool Swaps", () => {
         const amountToGet = toNano(0.05)
         // No excesses should be sent as the result of ExactOut swap
         const amountToSend = await ammPool.getNeededInToGetX(vaultB.vault.address, amountToGet)
-        const randomExactOutReceiver = randomAddress()
+        const randomCashbackAddress = randomAddress()
         const randomNextPool = randomAddress()
         const nextSwapStep = {
             $$type: "SwapStep",
@@ -338,7 +338,7 @@ describe("Cross-pool Swaps", () => {
             amountToGet,
             0n,
             true,
-            randomExactOutReceiver,
+            randomCashbackAddress,
             payloadOnSuccess,
             payloadOnFailure,
             nextSwapStep,

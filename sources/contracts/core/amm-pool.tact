@@ -336,7 +336,7 @@ contract AmmPool(
                     body: PayoutFromPool {
                         otherVault: outVault,
                         amount: msg.amount - amountToBeTakenWithFee,
-                        receiver: msg.receiver,
+                        receiver: msg.params.cashbackAddress != null ? msg.params.cashbackAddress!! : msg.receiver,
                         payloadToForward: msg.params.payloadOnSuccess,
                     }.toCell(),
                     to: inVault,
@@ -350,7 +350,7 @@ contract AmmPool(
                 body: PayoutFromPool {
                     otherVault: inVault,
                     amount: msg.params.desiredAmount,
-                    receiver: msg.params.exactOutReceiver != null ? msg.params.exactOutReceiver!! : msg.receiver,
+                    receiver: msg.receiver,
                     payloadToForward: msg.params.payloadOnSuccess,
                 }.toCell(),
                 to: outVault,
