@@ -32,15 +32,6 @@ message(0xf8a7ea5) SendViaJettonTransfer {
     forwardPayload: Slice as remaining;
 }
 
-// TODO: Kind of hack for now, blocked by https://github.com/tact-lang/tact/issues/2496
-asm fun saveState(jettonWallet: Address?, jettonMaster: Address) {
-    NEWC
-    STSLICE
-    STSLICE
-    ENDC
-    c4 POP
-}
-
 // First sender proves that it sent the correct jetton via attaching the jetton master init state
 contract JettonVault(
     jettonMaster: Address,
@@ -74,9 +65,8 @@ contract JettonVault(
             }
             self.jettonWallet = sender();
 
-            // There is no sense to bounce, as Jettons won't be sent back
-            // However, we can save jettonWallet address to the storage, as the proof succeeded
-            saveState(self.jettonWallet, self.jettonMaster);
+            // We can save jettonWallet address to the storage, as the proof succeeded
+            setData(self.toCell());
             commit();
         }
         // Maybe someone messed up with address, so let's try to send jettons back
