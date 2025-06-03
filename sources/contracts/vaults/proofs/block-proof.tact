@@ -21,7 +21,6 @@ struct MerkleUpdate {
     newState: Cell;
 }
 
-
 // https://docs.ton.org/v3/documentation/data-formats/tlb/block-layout#block
 /*
 block#11ef55aa global_id:int32
@@ -85,13 +84,11 @@ struct ShardDescr {
     _remaining: Slice as remaining;
 }
 
-inline fun findShardInBinTree(root: Cell): {
-
-}
+inline fun findShardInBinTree(root: Cell): ShardDescr {}
 
 inline fun validateBlockHeaderProof(rawProof: Cell, blockRootHash: Int): Bool {
     let parsedExotic = rawProof.beginParseExotic();
-    if(!parsedExotic.is_exotic) {
+    if (!parsedExotic.is_exotic) {
         return false;
     }
     let proof = MerkleProof.fromCell(parsedExotic.data);
@@ -107,7 +104,6 @@ inline fun validateBlockHeaderProof(rawProof: Cell, blockRootHash: Int): Bool {
     // We can use non-null assertation as we already proved that is is a valid block and
     // valid mc block must have ShardDescr for workchain 0
     let shardDescr: Cell = mcStateExtra.shardHashes.get(0)!!;
-
 }
 
 struct BlockId {
