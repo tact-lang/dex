@@ -110,13 +110,7 @@ export const calculateLiquidityWithdraw = (
     }
 }
 
-/*
-https://github.com/Uniswap/v2-periphery/blob/master/contracts/libraries/UniswapV2Library.sol#L43
- uint amountInWithFee = amountIn.mul(997);
- uint numerator = amountInWithFee.mul(reserveOut);
- uint denominator = reserveIn.mul(1000).add(amountInWithFee);
- amountOut = numerator / denominator;
-*/
+// https://github.com/Uniswap/v2-periphery/blob/master/contracts/libraries/UniswapV2Library.sol#L43
 export const calculateAmountOut = (
     tokenAReserveBefore: bigint,
     tokenBReserveBefore: bigint,
@@ -128,4 +122,34 @@ export const calculateAmountOut = (
     const denominator = tokenAReserveBefore * 1000n + amountInWithFee
 
     return numerator / denominator
+}
+
+type SwapResult = {
+    reserveA: bigint
+    reserveB: bigint
+    amountOut: bigint
+}
+
+export const calculateSwapResult = (
+    tokenAReserveBefore: bigint,
+    tokenBReserveBefore: bigint,
+    poolFee: bigint,
+    tokenAIn: bigint,
+    minAmountOut: bigint,
+): SwapResult => {
+    const amountInWithFee = tokenAIn * (1000n - poolFee)
+    const numerator = amountInWithFee * tokenBReserveBefore
+    const denominator = tokenAReserveBefore * 1000n + amountInWithFee
+
+    const amountOut = numerator / denominator
+
+    if (amountOut < minAmountOut) {
+        throw new Error("Could not satisfy min amount out")
+    }
+
+    return {
+        amountOut,
+        reserveA: tokenAReserveBefore + amountInWithFee / 1000n,
+        reserveB: tokenBReserveBefore - amountOut,
+    }
 }
