@@ -207,11 +207,8 @@ account_descr$_ account:^Account last_trans_hash:bits256
   last_trans_lt:uint64 = ShardAccount;
  */
 
-
 inline fun parseStateInitFromShardAccount(c: Cell): StateInit? {
     let account = c.beginParse().loadRef();
-
-
 }
 
 struct BlockId {
@@ -264,7 +261,7 @@ fun getJettonMasterState(proof: StateProof, jettonMaster: Address): StateInit? {
     let shardAccounts = getShardAccounts(shardRootHash!!, proof.shardBlockHeaderProof, proof.shardStateProof);
     let jettonMasterId = parseStdAddress(jettonMaster.asSlice()).address;
     let shardAccountRaw = shardAccounts.get(jettonMasterId);
-    if(shardAccountRaw == null) {
+    if (shardAccountRaw == null) {
         return false;
     }
     let shardAccount = parseStateInitFromShardAccount(shardAccountRaw);
