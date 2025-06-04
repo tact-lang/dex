@@ -1,5 +1,6 @@
 import "./tep-89-discovery-proxy";
 import "./calculate-jetton-wallet";
+import "./block-proof";
 import "../../utils/utils";
 
 struct JettonMasterState {
@@ -41,7 +42,9 @@ inline fun checkProof(jettonMaster: Address, proofType: Int, proof: Slice, msgCe
                 data: init.jettonMasterData!!,
             }) == jettonMaster;
     } else if (proofType == PROOF_STATE_TO_THE_BLOCK) {
-        return true;
+        let stateProof = StateProof.fromSlice(proof);
+        let init = getJettonMasterState(stateProof, jettonMaster);
+        return init != null;
     }
     return false;
 }
