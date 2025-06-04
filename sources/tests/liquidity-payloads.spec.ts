@@ -6,6 +6,7 @@ import {createJettonAmmPool} from "../utils/environment"
 // eslint-disable-next-line
 import {SendDumpToDevWallet} from "@tondevwallet/traces"
 
+import {setStoragePrices} from "../utils/gasUtils"
 describe("Liquidity payloads", () => {
     test("should send both successful payloads via LP minting, and send no excesses on first deposit", async () => {
         const blockchain = await Blockchain.create()
@@ -341,6 +342,16 @@ describe("Liquidity payloads", () => {
 
     test("should return withdrawal payload on both jettons", async () => {
         const blockchain = await Blockchain.create()
+
+        blockchain.setConfig(
+            setStoragePrices(blockchain.config, {
+                unixTimeSince: 0,
+                bitPricePerSecond: 10n ** 10n,
+                cellPricePerSecond: 10n ** 10n,
+                masterChainBitPricePerSecond: 10n ** 10n,
+                masterChainCellPricePerSecond: 10n ** 10n,
+            }),
+        )
 
         const {ammPool, vaultA, vaultB, initWithLiquidity} = await createJettonAmmPool(blockchain)
 
