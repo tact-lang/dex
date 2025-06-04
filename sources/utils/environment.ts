@@ -21,7 +21,7 @@ import {ExtendedLPJettonWallet} from "../wrappers/ExtendedLPJettonWallet"
 export const createJetton = async (blockchain: Blockchain) => {
     const minterOwner = await blockchain.treasury("jetton-owner")
     const walletOwner = await blockchain.treasury("wallet-owner")
-    const mintAmount = toNano(100)
+    const mintAmount = toNano(100000)
 
     const minter = blockchain.openContract(
         await JettonMinter.fromInit(

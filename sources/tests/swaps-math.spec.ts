@@ -12,6 +12,7 @@ const expectEqualTvmToJs = (expected: bigint, got: bigint) => {
     expect(expected).toBeGreaterThanOrEqual(got - 1n)
     expect(expected).toBeLessThanOrEqual(got + 1n)
 }
+const random = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min
 
 // this test suite ensures that swaps math is compatible with uniswap v2 spec
 describe("Swaps math", () => {
@@ -21,9 +22,9 @@ describe("Swaps math", () => {
         const {ammPool, vaultA, vaultB, isSwapped, initWithLiquidity} =
             await createJettonAmmPool(blockchain)
 
-        const initialRatio = 7n
+        const initialRatio = BigInt(random(1, 100))
 
-        const amountARaw = toNano(1)
+        const amountARaw = toNano(random(1, 50))
         const amountBRaw = amountARaw * initialRatio // 1 a == 2 b ratio
 
         const amountA = isSwapped ? amountARaw : amountBRaw
@@ -39,7 +40,7 @@ describe("Swaps math", () => {
         const reserveA = isSwapped ? rightReserve : leftReserve
         const reserveB = isSwapped ? leftReserve : rightReserve
 
-        const amountToSwap = toNano(1)
+        const amountToSwap = toNano(BigInt(random(1, 50)))
         const expectedOutput = await ammPool.getExpectedOut(vaultA.vault.address, amountToSwap)
 
         const res = calculateAmountOut(reserveA, reserveB, AmmPool.PoolFee, amountToSwap)
@@ -54,9 +55,9 @@ describe("Swaps math", () => {
         const {ammPool, vaultA, vaultB, swap, isSwapped, initWithLiquidity} =
             await createJettonAmmPool(blockchain)
 
-        const initialRatio = 7n
+        const initialRatio = BigInt(random(1, 100))
 
-        const amountARaw = toNano(1)
+        const amountARaw = toNano(random(1, 50))
         const amountBRaw = amountARaw * initialRatio // 1 a == 2 b ratio
 
         const amountA = isSwapped ? amountARaw : amountBRaw
@@ -72,7 +73,7 @@ describe("Swaps math", () => {
         const reserveA = isSwapped ? rightReserve : leftReserve
         const reserveB = isSwapped ? leftReserve : rightReserve
 
-        const amountToSwap = toNano(1)
+        const amountToSwap = toNano(random(1, 50))
         const expectedOutput = await ammPool.getExpectedOut(vaultA.vault.address, amountToSwap)
 
         const res = calculateSwapResult(reserveA, reserveB, AmmPool.PoolFee, amountToSwap, 0n)
