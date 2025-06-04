@@ -1,7 +1,6 @@
 import "./vault-interface";
-import "../math";
+import "../utils/math";
 import "../core/messages.tact";
-import "../core/liquidity-deposit";
 import "../core/amm-pool";
 import "../utils/utils";
 
