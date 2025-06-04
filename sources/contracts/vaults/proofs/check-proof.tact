@@ -1,5 +1,4 @@
 import "./tep-89-discovery-proxy";
-import "./calculate-jetton-wallet";
 import "../../utils/utils";
 
 struct JettonMasterState {

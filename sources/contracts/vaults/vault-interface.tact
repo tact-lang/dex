@@ -1,4 +1,3 @@
-import "../core/liquidity-deposit.tact";
 import "../core/messages.tact";
 
 struct SwapStep {
