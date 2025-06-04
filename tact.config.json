@@ -2,7 +2,7 @@
     "projects": [
         {
             "name": "DEX",
-            "path": "./sources/contracts/factory.tact",
+            "path": "./sources/contracts/infra/factory.tact",
             "output": "./sources/output",
             "mode": "full",
             "options": {
