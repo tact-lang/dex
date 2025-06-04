@@ -1,5 +1,5 @@
 import {Blockchain} from "@ton/sandbox"
-import {createJettonAmmPool} from "../utils/environment"
+import {createJettonAmmPool, createTonJettonAmmPool} from "../utils/environment"
 import {toNano} from "@ton/core"
 import {AmmPool} from "../output/DEX_AmmPool"
 // eslint-disable-next-line
@@ -13,12 +13,20 @@ const expectEqualTvmToJs = (expected: bigint, got: bigint) => {
 const random = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min
 
 // this test suite ensures that swaps math is compatible with uniswap v2 spec
-describe("Swaps math", () => {
+describe.each([
+    {
+        name: "Jetton->Jetton",
+        createPool: createJettonAmmPool,
+    },
+    {
+        name: "TON->Jetton",
+        createPool: createTonJettonAmmPool,
+    },
+])("Swaps math for $name", ({createPool}) => {
     test("should correctly return expected out", async () => {
         const blockchain = await Blockchain.create()
 
-        const {ammPool, vaultA, vaultB, isSwapped, initWithLiquidity} =
-            await createJettonAmmPool(blockchain)
+        const {ammPool, vaultA, vaultB, isSwapped, initWithLiquidity} = await createPool(blockchain)
 
         const initialRatio = BigInt(random(1, 100))
 
@@ -51,7 +59,7 @@ describe("Swaps math", () => {
         const blockchain = await Blockchain.create()
 
         const {ammPool, vaultA, vaultB, swap, isSwapped, initWithLiquidity} =
-            await createJettonAmmPool(blockchain)
+            await createPool(blockchain)
 
         const initialRatio = BigInt(random(1, 100))
 
@@ -101,7 +109,7 @@ describe("Swaps math", () => {
         const blockchain = await Blockchain.create()
 
         const {ammPool, vaultA, vaultB, swap, isSwapped, initWithLiquidity} =
-            await createJettonAmmPool(blockchain)
+            await createPool(blockchain)
 
         const initialRatio = BigInt(random(1, 100))
 
