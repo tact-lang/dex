@@ -109,3 +109,23 @@ export const calculateLiquidityWithdraw = (
         totalSupply: mintedLpTokenTotalSupply - burnAmount,
     }
 }
+
+/*
+https://github.com/Uniswap/v2-periphery/blob/master/contracts/libraries/UniswapV2Library.sol#L43
+ uint amountInWithFee = amountIn.mul(997);
+ uint numerator = amountInWithFee.mul(reserveOut);
+ uint denominator = reserveIn.mul(1000).add(amountInWithFee);
+ amountOut = numerator / denominator;
+*/
+export const calculateAmountOut = (
+    tokenAReserveBefore: bigint,
+    tokenBReserveBefore: bigint,
+    poolFee: bigint,
+    tokenAIn: bigint,
+) => {
+    const amountInWithFee = tokenAIn * (1000n - poolFee)
+    const numerator = amountInWithFee * tokenBReserveBefore
+    const denominator = tokenAReserveBefore * 1000n + amountInWithFee
+
+    return numerator / denominator
+}
