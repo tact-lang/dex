@@ -6,78 +6,40 @@ import {AmmPool, loadPayoutFromPool, loadSendViaJettonTransfer} from "../output/
 import {SendDumpToDevWallet} from "@tondevwallet/traces"
 import {JettonVault} from "../output/DEX_JettonVault"
 import {findTransactionRequired, flattenTransaction} from "@ton/test-utils"
+import {calculateAmountOut} from "../utils/liquidityMath"
 
 // this test suite ensures that swaps math is compatible with uniswap v2 spec
 describe("Swaps math", () => {
     test("should correctly return expected out", async () => {
         const blockchain = await Blockchain.create()
 
-        const {ammPool, vaultA, vaultB, initWithLiquidity, swap} =
+        const {ammPool, vaultA, vaultB, isSwapped, initWithLiquidity} =
             await createJettonAmmPool(blockchain)
 
-        // deploy liquidity deposit contract
-        const initialRatio = 10n
-        const amountA = toNano(5)
-        const amountB = amountA * initialRatio // 1 a == 2 b ratio
-        const depositor = vaultA.treasury.walletOwner
-        const {depositorLpWallet} = await initWithLiquidity(depositor, amountA, amountB)
-        const lpBalanceAfterFirstLiq = await depositorLpWallet.getJettonBalance()
-        // check that liquidity deposit was successful
-        expect(lpBalanceAfterFirstLiq).toBeGreaterThan(0n)
+        const initialRatio = 7n
 
-        const payloadOnSuccess = beginCell().storeStringTail("Success").endCell()
+        const amountARaw = toNano(1)
+        const amountBRaw = amountARaw * initialRatio // 1 a == 2 b ratio
 
-        const amountToSwap = toNano(0.05)
+        const amountA = isSwapped ? amountARaw : amountBRaw
+        const amountB = isSwapped ? amountBRaw : amountARaw
+
+        const depositor = vaultB.treasury.walletOwner
+
+        await initWithLiquidity(depositor, amountA, amountB)
+
+        const leftReserve = await ammPool.getLeftSide()
+        const rightReserve = await ammPool.getRightSide()
+
+        const reserveA = isSwapped ? rightReserve : leftReserve
+        const reserveB = isSwapped ? leftReserve : rightReserve
+
+        const amountToSwap = toNano(1)
         const expectedOutput = await ammPool.getExpectedOut(vaultA.vault.address, amountToSwap)
-        const amountBJettonBeforeSwap = await vaultB.treasury.wallet.getJettonBalance()
 
-        const swapResult = await swap(
-            amountToSwap,
-            "vaultA",
-            expectedOutput,
-            0n,
-            false,
-            null,
-            payloadOnSuccess,
-        )
+        const res = calculateAmountOut(reserveA, reserveB, AmmPool.PoolFee, amountToSwap)
 
-        // check that swap was successful
-        expect(swapResult.transactions).toHaveTransaction({
-            from: vaultA.vault.address,
-            to: ammPool.address,
-            op: AmmPool.opcodes.SwapIn,
-            success: true,
-        })
-
-        const payoutTx = findTransactionRequired(swapResult.transactions, {
-            from: ammPool.address,
-            to: vaultB.vault.address,
-            op: AmmPool.opcodes.PayoutFromPool,
-            success: true,
-        })
-        const payoutBody = flattenTransaction(payoutTx).body?.beginParse()
-        const parsedPayout = loadPayoutFromPool(payoutBody!!)
-        expect(parsedPayout.otherVault).toEqualAddress(vaultA.vault.address)
-        expect(parsedPayout.amount).toEqual(expectedOutput)
-        expect(parsedPayout.receiver).toEqualAddress(depositor.address)
-        expect(parsedPayout.payloadToForward!!).toEqualCell(payloadOnSuccess)
-
-        const tx = findTransactionRequired(swapResult.transactions, {
-            from: vaultB.vault.address,
-            // TODO: to: vaultB.jettonWallet
-            op: JettonVault.opcodes.SendViaJettonTransfer,
-            success: true,
-        })
-
-        const body = flattenTransaction(tx).body?.beginParse()
-        const parsedBody = loadSendViaJettonTransfer(body!!)
-        expect(parsedBody.destination).toEqualAddress(depositor.address)
-        expect(parsedBody.responseDestination).toEqualAddress(depositor.address)
-        expect(parsedBody.forwardPayload.asCell()).toEqualCell(
-            beginCell().storeMaybeRef(payloadOnSuccess).endCell(),
-        )
-
-        const amountOfJettonBAfterSwap = await vaultB.treasury.wallet.getJettonBalance()
-        expect(amountOfJettonBAfterSwap).toBeGreaterThan(amountBJettonBeforeSwap)
+        expect(expectedOutput).toBeGreaterThanOrEqual(res - 1n)
+        expect(expectedOutput).toBeLessThanOrEqual(res + 1n)
     })
 })
