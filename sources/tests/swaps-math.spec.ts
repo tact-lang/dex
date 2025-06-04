@@ -7,7 +7,7 @@ import {SendDumpToDevWallet} from "@tondevwallet/traces"
 import {JettonVault} from "../output/DEX_JettonVault"
 import {findTransactionRequired, flattenTransaction} from "@ton/test-utils"
 
-// this test suite ensures that swaps math is compatilbe with uniswap v2 spec
+// this test suite ensures that swaps math is compatible with uniswap v2 spec
 describe("Swaps math", () => {
     test("should correctly return expected out", async () => {
         const blockchain = await Blockchain.create()
