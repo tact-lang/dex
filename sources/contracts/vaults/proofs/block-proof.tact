@@ -177,8 +177,41 @@ inline fun getShardAccounts(shardBlockRootHash: Int, shardHeaderProofRaw: Cell, 
     return castToMapFromUint256ToAddr(shardAccounts);
 }
 
-inline fun parseStateInitFromShardAccount(): StateInit? {
-    return null;
+/*
+storage_extra_none$000 = StorageExtraInfo;
+storage_extra_info$001 dict_hash:uint256 = StorageExtraInfo;
+
+storage_used$_ cells:(VarUInteger 7) bits:(VarUInteger 7) = StorageUsed;
+
+storage_info$_ used:StorageUsed storage_extra:StorageExtraInfo last_paid:uint32
+              due_payment:(Maybe Grams) = StorageInfo;
+
+account_none$0 = Account;
+account$1 addr:MsgAddressInt storage_stat:StorageInfo
+          storage:AccountStorage = Account;
+
+account_storage$_ last_trans_lt:uint64
+    balance:CurrencyCollection state:AccountState
+  = AccountStorage;
+
+account_uninit$00 = AccountState;
+account_active$1 _:StateInit = AccountState;
+account_frozen$01 state_hash:bits256 = AccountState;
+
+acc_state_uninit$00 = AccountStatus;
+acc_state_frozen$01 = AccountStatus;
+acc_state_active$10 = AccountStatus;
+acc_state_nonexist$11 = AccountStatus;
+
+account_descr$_ account:^Account last_trans_hash:bits256
+  last_trans_lt:uint64 = ShardAccount;
+ */
+
+
+inline fun parseStateInitFromShardAccount(c: Cell): StateInit? {
+    let account = c.beginParse().loadRef();
+
+
 }
 
 struct BlockId {
@@ -230,5 +263,10 @@ fun getJettonMasterState(proof: StateProof, jettonMaster: Address): StateInit? {
     }
     let shardAccounts = getShardAccounts(shardRootHash!!, proof.shardBlockHeaderProof, proof.shardStateProof);
     let jettonMasterId = parseStdAddress(jettonMaster.asSlice()).address;
+    let shardAccountRaw = shardAccounts.get(jettonMasterId);
+    if(shardAccountRaw == null) {
+        return false;
+    }
+    let shardAccount = parseStateInitFromShardAccount(shardAccountRaw);
     return null;
 }
