@@ -149,7 +149,7 @@ export const calculateSwapResult = (
 
     return {
         amountOut,
-        reserveA: tokenAReserveBefore + amountInWithFee / 1000n,
+        reserveA: tokenAReserveBefore + tokenAIn,
         reserveB: tokenBReserveBefore - amountOut,
     }
 }
