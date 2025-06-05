@@ -264,7 +264,8 @@ asm fun getMcBlockBySeqno(seqno: Int): BlockId {
 // NOTE: This function works only in workchain 0
 fun getJettonMasterState(proof: StateProof, jettonMaster: Address): StateInit {
     let last = getLastMcBlock();
-    // There is only 16 last mc blocks available
+    // There is only 16 last mc blocks available, it is described in TVM upgrade changelog:
+    // https://docs.ton.org/v3/documentation/tvm/changelog/tvm-upgrade-2023-07
     require(last.seqno - proof.mcBlockSeqno <= 16, "Block Proof: mcBlockSeqno is stale");
     let block = getMcBlockBySeqno(proof.mcBlockSeqno);
     // Here we got BlockID. However, shard information is contained in block header, so first we need to proof mc block header
