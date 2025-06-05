@@ -3,11 +3,6 @@ import "./calculate-jetton-wallet";
 import "./block-proof";
 import "../../utils/utils";
 
-struct JettonMasterState {
-    jettonMasterCode: Cell?;
-    jettonMasterData: Cell?;
-}
-
 const PROOF_NO_PROOF_ATTACHED: Int = 0;
 const PROOF_TEP89: Int = 1;
 const PROOF_STATE_INIT: Int = 2;
@@ -30,21 +25,31 @@ inline fun checkProof(jettonMaster: Address, proofType: Int, proof: Slice, msgCe
             bounce: false,
             init: proxyStateInit,
         });
-        // We don't need to save state init, so we just need to exit() quickly
+        // We don't need to save state, so we just need to exit() quickly
         exit();
     } else if (proofType == PROOF_STATE_INIT) {
-        let init = JettonMasterState.fromSlice(proof);
-        let myJettonWallet = calculateJettonWallet(myAddress(), init.jettonMasterData, init.jettonMasterCode, jettonMaster);
-        return
+        let init = StateInit.fromSlice(proof);
+        let myJettonWallet = calculateJettonWallet(myAddress(), init.data, init.code, jettonMaster);
+        require(
             myJettonWallet == sender() &&
             contractAddress(StateInit {
-                code: init.jettonMasterCode!!,
-                data: init.jettonMasterData!!,
-            }) == jettonMaster;
+                code: init.code,
+                data: init.data,
+            }) == jettonMaster,
+            "JettonVault: Invalid state init proof",
+        );
     } else if (proofType == PROOF_STATE_TO_THE_BLOCK) {
         let stateProof = StateProof.fromSlice(proof);
         let init = getJettonMasterState(stateProof, jettonMaster);
-        return init != null;
+        let myJettonWallet = calculateJettonWallet(myAddress(), init.data, init.code, jettonMaster);
+        require(
+            myJettonWallet == sender() &&
+            contractAddress(StateInit {
+                code: init.code,
+                data: init.data,
+            }) == jettonMaster,
+            "JettonVault: Invalid block state proof",
+        );
     }
     return false;
 }

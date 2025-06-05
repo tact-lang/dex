@@ -117,24 +117,18 @@ inline fun findShardInBinTree(cur: Cell): ShardDescr? {
 
 // This function returns proof content if proof matches expected hash
 // and returns null otherwise
-inline fun validateMerkleProof(proofCell: Cell, expectedHash: Int): Cell? {
+inline fun validateMerkleProof(proofCell: Cell, expectedHash: Int): Cell {
     let parsedExotic = proofCell.beginParseExotic();
-    if (!parsedExotic.is_exotic) {
-        return null;
-    }
+    require(parsedExotic.is_exotic, "Block Proof: Merkle proof is not exotic");
     let merkleProof = MerkleProof.fromSlice(parsedExotic.data);
-    if (merkleProof.tag != MerkleProofTag || merkleProof.hash != expectedHash) {
-        return null;
-    }
+    require(merkleProof.tag == MerkleProofTag, "Block Proof: Invalid Merkle proof tag");
+    require(merkleProof.hash == expectedHash, "Block Proof: Invalid Merkle proof hash");
     return merkleProof.content;
 }
 
-inline fun getShardRootHash(mcBlockRootHash: Int, blockHeaderProofRaw: Cell): Int? {
+inline fun getShardRootHash(mcBlockRootHash: Int, blockHeaderProofRaw: Cell): Int {
     let blockHeaderCell = validateMerkleProof(blockHeaderProofRaw, mcBlockRootHash);
-    if (blockHeaderCell == null) {
-        return null;
-    }
-    let blockHeader = BlockHeader.fromCell(blockHeaderCell!!);
+    let blockHeader = BlockHeader.fromCell(blockHeaderCell);
     let mcStateExtra = McStateExtra.fromCell(blockHeader.extra);
     // shardHashes is a hashmap (workchain -> ShardDescr)
     // so we just need to get ShardDescr for workchain 0, as we are working in basechain.
@@ -142,9 +136,7 @@ inline fun getShardRootHash(mcBlockRootHash: Int, blockHeaderProofRaw: Cell): In
     // valid mc block must have ShardDescr for workchain 0
     let binTreeWithShardDescr: Cell = mcStateExtra.shardHashes.get(0)!!;
     let shardDescr = findShardInBinTree(binTreeWithShardDescr);
-    if (shardDescr == null) {
-        return null;
-    }
+    require(shardDescr != null, "Block Proof: Shard description not found in BinTree");
     return shardDescr!!.rootHash;
 }
 
@@ -205,10 +197,34 @@ acc_state_nonexist$11 = AccountStatus;
 
 account_descr$_ account:^Account last_trans_hash:bits256
   last_trans_lt:uint64 = ShardAccount;
+
+_ fixed_prefix_length:(Maybe (## 5)) special:(Maybe TickTock)
+  code:(Maybe ^Cell) data:(Maybe ^Cell)
+  library:(Maybe ^Cell) = StateInit;
  */
 
-inline fun parseStateInitFromShardAccount(c: Cell): StateInit? {
+struct TwoCells {
+    first: Cell;
+    second: Cell;
+}
+
+asm fun getTwoLastRefs(c: Slice): TwoCells {
+    0 PUSHINT
+    2 PUSHINT
+    SCUTLAST
+    LDREF
+    LDREF
+}
+
+inline fun parseStateInitFromShardAccount(c: Cell): StateInit {
     let account = c.beginParse().loadRef();
+    // This account must me AccountActive, so we can parse StateInit from the last 2 refs
+    // That is why we don't support accounts that host some libs in State.
+    let lastTwoRefs = getTwoLastRefs(account.beginParse());
+    return StateInit {
+        code: lastTwoRefs.first,
+        data: lastTwoRefs.second,
+    }
 }
 
 struct BlockId {
@@ -246,24 +262,16 @@ asm fun getMcBlockBySeqno(seqno: Int): BlockId {
 }
 
 // NOTE: This function works only in workchain 0
-fun getJettonMasterState(proof: StateProof, jettonMaster: Address): StateInit? {
+fun getJettonMasterState(proof: StateProof, jettonMaster: Address): StateInit {
     let last = getLastMcBlock();
     // There is only 16 last mc blocks available
-    if (last.seqno - proof.mcBlockSeqno > 16) {
-        return null;
-    }
+    require(last.seqno - proof.mcBlockSeqno <= 16, "Block Proof: mcBlockSeqno is stale");
     let block = getMcBlockBySeqno(proof.mcBlockSeqno);
     // Here we got BlockID. However, shard information is contained in block header, so first we need to proof mc block header
     let shardRootHash = getShardRootHash(block.root_hash, proof.mcBlockHeaderProof);
-    if (shardRootHash == null) {
-        return null;
-    }
-    let shardAccounts = getShardAccounts(shardRootHash!!, proof.shardBlockHeaderProof, proof.shardStateProof);
+    let shardAccounts = getShardAccounts(shardRootHash, proof.shardBlockHeaderProof, proof.shardStateProof);
     let jettonMasterId = parseStdAddress(jettonMaster.asSlice()).address;
     let shardAccountRaw = shardAccounts.get(jettonMasterId);
-    if (shardAccountRaw == null) {
-        return false;
-    }
-    let shardAccount = parseStateInitFromShardAccount(shardAccountRaw);
-    return null;
+    require(shardAccountRaw != null, "Block Proof: Shard account for jetton master not found in shard accounts");
+    return parseStateInitFromShardAccount(shardAccountRaw);
 }
