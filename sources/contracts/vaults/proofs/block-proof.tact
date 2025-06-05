@@ -224,7 +224,7 @@ inline fun parseStateInitFromShardAccount(c: Cell): StateInit {
     return StateInit {
         code: lastTwoRefs.first,
         data: lastTwoRefs.second,
-    }
+    };
 }
 
 struct BlockId {
