@@ -352,8 +352,12 @@ const createLiquidityDepositSetup = (
                 ),
             )
 
-            if ((await blockchain.getContract(ammPool.address)).balance > 0n) {
-                throw new Error("AmmPool balance should be 0 after withdraw")
+            const balance = (await blockchain.getContract(liquidityDeposit.address)).balance
+
+            if (balance > 0n) {
+                throw new Error(
+                    `AmmPool balance should be 0 after withdraw, and its: ${balance.toString()}`,
+                )
             }
 
             return withdrawResult
