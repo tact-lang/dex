@@ -262,8 +262,12 @@ contract AmmPool(
             // So we just need to kinda fuzz it with corner cases
             let amountInWithFee = muldiv(msg.amount, 1000 - self.PoolFee, 1000);
 
-            newAmountIn = inBalance + amountInWithFee;
-            newAmountOut = muldiv(outBalance, inBalance, newAmountIn);
+            // https://github.com/Uniswap/v2-core/blob/master/contracts/UniswapV2Pair.sol#L185
+            // update reserveIn with the actual amount
+            // calculate reserveOut using amount with fee
+            newAmountIn = inBalance + msg.amount;
+            let reserveInWithFee = inBalance + amountInWithFee;
+            newAmountOut = muldiv(outBalance, inBalance, reserveInWithFee);
             let amountToPay = outBalance - newAmountOut;
 
             if (amountToPay < msg.params.desiredAmount) {
