@@ -167,4 +167,39 @@ describe.each([
             expectEqualTvmToJs(bReserveAfter, res.reserveB)
         }
     })
+
+    test("should correctly return expected in for exat out", async () => {
+        const blockchain = await Blockchain.create()
+
+        const {ammPool, vaultA, vaultB, isSwapped, initWithLiquidity} = await createPool(blockchain)
+
+        const initialRatio = BigInt(random(1, 100))
+
+        const amountARaw = toNano(random(1, 50))
+        const amountBRaw = amountARaw * initialRatio // 1 a == 2 b ratio
+
+        const amountA = isSwapped ? amountARaw : amountBRaw
+        const amountB = isSwapped ? amountBRaw : amountARaw
+
+        const depositor = vaultB.treasury.walletOwner
+
+        await initWithLiquidity(depositor, amountA, amountB)
+
+        const leftReserve = await ammPool.getLeftSide()
+        const rightReserve = await ammPool.getRightSide()
+
+        const reserveA = isSwapped ? rightReserve : leftReserve
+        const reserveB = isSwapped ? leftReserve : rightReserve
+
+        const amountToGetAfterSwap = toNano(BigInt(random(1, 50)))
+        const expectedInput = await ammPool.getNeededInToGetX(
+            vaultA.vault.address,
+            amountToGetAfterSwap,
+        )
+
+        const res = calculateAmountOut(reserveA, reserveB, AmmPool.PoolFee, amountToGetAfterSwap)
+
+        // difference in tvm and js rounding
+        expectEqualTvmToJs(expectedInput, res)
+    })
 })
