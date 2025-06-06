@@ -168,7 +168,7 @@ describe.each([
         }
     })
 
-    test("should correctly return expected in for exat out", async () => {
+    test("should correctly return expected in for exact out", async () => {
         const blockchain = await Blockchain.create()
 
         const {ammPool, vaultA, vaultB, isSwapped, initWithLiquidity} = await createPool(blockchain)
