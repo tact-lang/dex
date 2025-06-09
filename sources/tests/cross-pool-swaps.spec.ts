@@ -347,11 +347,8 @@ describe("Cross-pool Swaps", () => {
             from: vaultA.vault.address,
             to: ammPool.address,
             op: AmmPool.opcodes.SwapIn,
-        })
-        expect(swapResult.transactions).toHaveTransaction({
-            from: vaultA.vault.address,
-            to: ammPool.address,
-            op: AmmPool.opcodes.SwapIn,
+            success: true,
+            exitCode: 0,
         })
 
         // The only transaction from pool must be to vaultB, no next step should be executed

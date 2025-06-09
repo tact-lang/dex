@@ -46,7 +46,7 @@ describe.each([
         const reserveA = isSwapped ? rightReserve : leftReserve
         const reserveB = isSwapped ? leftReserve : rightReserve
 
-        const amountToSwap = toNano(BigInt(random(1, 50)))
+        const amountToSwap = BigInt(random(1, 50))
         const expectedOutput = await ammPool.getExpectedOut(vaultA.vault.address, amountToSwap)
 
         const res = calculateAmountOut(reserveA, reserveB, AmmPool.PoolFee, amountToSwap)
@@ -79,7 +79,7 @@ describe.each([
         const reserveA = isSwapped ? rightReserve : leftReserve
         const reserveB = isSwapped ? leftReserve : rightReserve
 
-        const amountToSwap = toNano(random(1, 50))
+        const amountToSwap = BigInt(random(1, 50))
         const expectedOutput = await ammPool.getExpectedOut(vaultA.vault.address, amountToSwap)
 
         const res = calculateSwapResult(reserveA, reserveB, AmmPool.PoolFee, amountToSwap, 0n)
@@ -133,7 +133,7 @@ describe.each([
             const reserveA = isSwapped ? rightReserve : leftReserve
             const reserveB = isSwapped ? leftReserve : rightReserve
 
-            const amountToSwap = toNano(random(1, 50))
+            const amountToSwap = BigInt(random(1, 50))
             const expectedOutput = await ammPool.getExpectedOut(vaultA.vault.address, amountToSwap)
 
             const res = calculateSwapResult(reserveA, reserveB, AmmPool.PoolFee, amountToSwap, 0n)
@@ -171,7 +171,7 @@ describe.each([
     test("should correctly return expected in for exact out", async () => {
         const blockchain = await Blockchain.create()
 
-        const {ammPool, vaultA, vaultB, isSwapped, initWithLiquidity} = await createPool(blockchain)
+        const {ammPool, vaultB, isSwapped, initWithLiquidity} = await createPool(blockchain)
 
         const initialRatio = BigInt(random(1, 100))
 
@@ -191,7 +191,7 @@ describe.each([
         const reserveA = isSwapped ? rightReserve : leftReserve
         const reserveB = isSwapped ? leftReserve : rightReserve
 
-        const amountToGetAfterSwap = toNano(BigInt(random(1, 50)))
+        const amountToGetAfterSwap = BigInt(random(1, 50))
         const expectedInput = await ammPool.getNeededInToGetX(
             vaultB.vault.address,
             amountToGetAfterSwap,
