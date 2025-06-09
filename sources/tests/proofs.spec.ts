@@ -262,10 +262,10 @@ describe("Proofs", () => {
         const finalWrongJettonBalance = await wrongJetton.wallet.getJettonBalance()
         expect(finalWrongJettonBalance).toEqual(initialWrongJettonBalance)
     })
-    const toSkipStateProofTest = process.env.TESTNET_TONCENTER_KEY === undefined;
+    const toSkipStateProofTest = process.env.TONAPI_KEY === undefined;
     (toSkipStateProofTest ? test.skip : test)("State proof should work correctly", async () => {
-        const TESTNET_TONCENTER_KEY = process.env.TESTNET_TONCENTER_KEY;
-        if (TESTNET_TONCENTER_KEY === undefined) {
+        const TONAPI_KEY = process.env.TONAPI_KEY;
+        if (TONAPI_KEY === undefined) {
             // This will never happen because we skip the test if the key is not set
             throw new Error("Test failure");
         }
@@ -289,10 +289,9 @@ describe("Proofs", () => {
             )
             .endCell()
 
-        const client = new TonClient4({
-            endpoint: 'https://testnet.toncenter.com/api/v2/jsonRPC',
-        });
-        const lastTestnetBlocksId = await client.getLastBlock();
+        const tonweb = new TonWeb();
+        const lastTestnetBlocksId = await tonweb.provider.getMasterchainInfo()
+
         const lastSeqno = lastTestnetBlocksId.last.seqno;
 
         const convertBlockId = (from: Awaited<ReturnType<typeof client.getBlock>>): BlockId => {
@@ -311,7 +310,9 @@ describe("Proofs", () => {
         // We need to fetch the last 16 blocks and pass them to the emulation
         const lastMcBlocks: BlockId[] = []
         for (let i = 0; i < 16; i++) {
-            const block = await client.getBlock(lastSeqno - i);
+            const block = await tonapiClient.liteServer.getRawBlockchainBlock({
+                seqno: lastSeqno - i
+            });
             lastMcBlocks.push(convertBlockId(block));
         }
         if (blockchain.prevBlocks === undefined) {
@@ -320,7 +321,8 @@ describe("Proofs", () => {
         blockchain.prevBlocks.lastMcBlocks = lastMcBlocks;
         const seqnoOfBlockToProofTo = randomInt(lastSeqno - 16, lastSeqno + 1);
 
-        const mcBlockHeaderProof = await client.
+        tonapiClient.liteServer.getRawBlockchainBlock()
+        //const mcBlockHeaderProof = await client.
 
         const sendNotifyWithStateProof = await vaultSetup.treasury.transfer(
             vaultSetup.vault.address,
