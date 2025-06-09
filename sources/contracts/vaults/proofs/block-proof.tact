@@ -102,8 +102,8 @@ inline fun findShardInBinTree(root: Cell, address: Address, shardBitLen: Int): S
     let curCs = root.beginParse();
     // It's std address, but we parse it as VarAddress to get hash part as Slice, not as Int
     let accountId = myParseVarAddress(address.asSlice()).address;
-    repeat(shardBitLen) {
-        if(accountId.loadBool()) {
+    repeat (shardBitLen) {
+        if (accountId.loadBool()) {
             // If the bit is 1, we go to the right child
             curCs = curCs.loadRef().beginParse();
         } else {
