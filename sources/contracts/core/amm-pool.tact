@@ -450,8 +450,8 @@ contract AmmPool(
         }
 
         // https://github.com/Uniswap/v2-periphery/blob/master/contracts/libraries/UniswapV2Library.sol#L53
-        let numenator = newAmountOut * (1000 - self.PoolFee);
-        return muldiv(inBalance, amountOut * 1000, numenator);
+        let numerator = newAmountOut * (1000 - self.PoolFee);
+        return muldiv(inBalance, amountOut * 1000, numerator);
     }
 
     inline fun failLiquidityProvision(msg: LiquidityDeposit) {
