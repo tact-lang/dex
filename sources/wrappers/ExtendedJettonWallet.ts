@@ -1,3 +1,6 @@
+//  SPDX-License-Identifier: MIT
+//  Copyright © 2025 TON Studio
+
 import {ClaimTON, JettonTransfer, JettonWallet} from "../output/Jetton_JettonWallet"
 import {Address, Builder, Cell, ContractProvider, Sender, toNano} from "@ton/core"
 import {JettonBurn, ProvideWalletBalance} from "../output/Jetton_JettonMinter"

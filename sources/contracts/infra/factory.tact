@@ -1,3 +1,6 @@
+//  SPDX-License-Identifier: MIT
+//  Copyright © 2025 TON Studio
+
 import "../utils/math";
 import "../core/amm-pool";
 import "../core/liquidity-deposit";
