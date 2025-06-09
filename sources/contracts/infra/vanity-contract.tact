@@ -1,3 +1,6 @@
+//  SPDX-License-Identifier: MIT
+//  Copyright © 2025 TON Studio
+
 message(0xedafb633) InitVanityContract {
     code: Cell;
     data: Cell;

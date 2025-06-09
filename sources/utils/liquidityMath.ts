@@ -1,3 +1,6 @@
+//  SPDX-License-Identifier: MIT
+//  Copyright © 2025 TON Studio
+
 const bigintSqrt = (value: bigint): bigint => {
     if (value < 0n) {
         throw new Error("Square root of negative numbers is not supported for bigints.")

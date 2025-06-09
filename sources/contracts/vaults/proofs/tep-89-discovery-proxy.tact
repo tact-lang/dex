@@ -1,3 +1,6 @@
+//  SPDX-License-Identifier: MIT
+//  Copyright © 2025 TON Studio
+
 import "../../core/lp-jettons/messages";
 
 // As TEP-89 does not support forwardPayload, we need to use a separate contract

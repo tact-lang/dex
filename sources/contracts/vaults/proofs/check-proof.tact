@@ -1,3 +1,6 @@
+//  SPDX-License-Identifier: MIT
+//  Copyright © 2025 TON Studio
+
 import "./tep-89-discovery-proxy";
 import "../../utils/utils";
 
