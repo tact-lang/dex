@@ -153,3 +153,15 @@ export const calculateSwapResult = (
         reserveB: tokenBReserveBefore - amountOut,
     }
 }
+
+export const calculateAmountIn = (
+    tokenAReserveBefore: bigint,
+    tokenBReserveBefore: bigint,
+    poolFee: bigint,
+    tokenBOut: bigint,
+) => {
+    const numerator = tokenAReserveBefore * tokenBOut * 1000n
+    const denominator = (tokenBReserveBefore - tokenBOut) * (1000n - poolFee)
+
+    return numerator / denominator
+}

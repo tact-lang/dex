@@ -4,7 +4,7 @@ import {toNano} from "@ton/core"
 import {AmmPool} from "../output/DEX_AmmPool"
 // eslint-disable-next-line
 import {SendDumpToDevWallet} from "@tondevwallet/traces"
-import {calculateAmountOut, calculateSwapResult} from "../utils/liquidityMath"
+import {calculateAmountIn, calculateAmountOut, calculateSwapResult} from "../utils/liquidityMath"
 
 const expectEqualTvmToJs = (expected: bigint, got: bigint) => {
     expect(expected).toBeGreaterThanOrEqual(got - 1n)
@@ -193,11 +193,11 @@ describe.each([
 
         const amountToGetAfterSwap = toNano(BigInt(random(1, 50)))
         const expectedInput = await ammPool.getNeededInToGetX(
-            vaultA.vault.address,
+            vaultB.vault.address,
             amountToGetAfterSwap,
         )
 
-        const res = calculateAmountOut(reserveA, reserveB, AmmPool.PoolFee, amountToGetAfterSwap)
+        const res = calculateAmountIn(reserveA, reserveB, AmmPool.PoolFee, amountToGetAfterSwap)
 
         // difference in tvm and js rounding
         expectEqualTvmToJs(expectedInput, res)
