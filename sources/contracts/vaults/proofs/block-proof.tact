@@ -1,3 +1,5 @@
+import "../../utils/aug-hashmap";
+
 struct ParsedExotic {
     data: Slice;
     is_exotic: Bool;
@@ -204,8 +206,8 @@ asm fun getTwoLastRefs(c: Slice): TwoCells {
     LDREF
 }
 
-inline fun parseStateInitFromShardAccount(c: Cell): StateInit {
-    let account = c.beginParse().loadRef();
+inline fun parseStateInitFromShardAccount(c: Slice): StateInit {
+    let account = c.loadRef();
     // This account must me AccountActive, so we can parse StateInit from the last 2 refs
     // That is why we don't support accounts that host some libs in State.
     let lastTwoRefs = getTwoLastRefs(account.beginParse());
@@ -259,8 +261,12 @@ fun getJettonMasterState(proof: StateProof, jettonMaster: Address): StateInit {
     // Here we got BlockID. However, shard information is contained in block header, so first we need to proof mc block header
     let shardRootHash = getShardRootHash(block.root_hash, proof.mcBlockHeaderProof, jettonMaster, proof.shardBitLen);
     let shardAccounts = getShardAccounts(shardRootHash, proof.shardBlockHeaderProof);
-    let jettonMasterId = parseStdAddress(jettonMaster.asSlice()).address;
-    let shardAccountRaw = shardAccounts.get(jettonMasterId);
-    require(shardAccountRaw != null, "Block Proof: Shard account for jetton master not found in shard accounts");
-    return parseStateInitFromShardAccount(shardAccountRaw!!);
+    let jettonMasterId = myParseVarAddress(jettonMaster.asSlice()).address;
+    let res = augHmapLookup(
+        shardAccounts,
+        jettonMasterId,
+        256, // We use 256 bits for address
+    );
+    require(res.found, "Block Proof: Shard account for jetton master not found in shard accounts");
+    return parseStateInitFromShardAccount(res.valueWithExtra!!);
 }
