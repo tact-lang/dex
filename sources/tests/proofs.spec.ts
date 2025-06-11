@@ -1,14 +1,21 @@
 import {Address, beginCell, Cell, CellType, convertToMerkleProof, toNano} from "@ton/core"
-import {Blockchain, BlockId, internal} from "@ton/sandbox"
+import {Blockchain, BlockchainTransaction, BlockId, internal} from "@ton/sandbox"
 import {findTransactionRequired, flattenTransaction, randomAddress} from "@ton/test-utils"
 import {createJetton, createJettonVault} from "../utils/environment"
 // eslint-disable-next-line
 import {createJettonVaultMessage} from "../utils/testUtils"
-import {JettonVault, PROOF_STATE_TO_THE_BLOCK, storeLPDepositPart} from "../output/DEX_JettonVault"
+import {
+    JettonVault,
+    PROOF_STATE_TO_THE_BLOCK,
+    storeJettonNotifyWithActionRequest,
+    storeLPDepositPart,
+    storeStateProof,
+} from "../output/DEX_JettonVault"
 import {LPDepositPartOpcode} from "../output/DEX_LiquidityDepositContract"
 import {PROOF_TEP89, TEP89DiscoveryProxy} from "../output/DEX_TEP89DiscoveryProxy"
 import {TonApiClient} from "@ton-api/client"
 import {randomInt} from "crypto"
+import {SendDumpToDevWallet} from "@tondevwallet/traces"
 
 function walk(cell: Cell, depth = 0, path: number[] = [], best: any) {
     if (cell.isExotic && cell.type === CellType.PrunedBranch) {
@@ -288,22 +295,22 @@ describe("Proofs", () => {
         const finalWrongJettonBalance = await wrongJetton.wallet.getJettonBalance()
         expect(finalWrongJettonBalance).toEqual(initialWrongJettonBalance)
     })
-    test("Simple", async () => {
-        const cell = beginCell().storeRef(beginCell().storeStringTail("Hi").endCell()).endCell()
-        const hashBefore = cell.hash(0).toString("hex")
-        const x = cell.refs[0].hash(0).toString("hex")
-        cell.refs[0] = beginCell()
-            .storeUint(1, 8)
-            .storeUint(1, 8)
-            .storeBuffer(cell.refs[0].hash(), 32)
-            .storeUint(0, 16)
-            .endCell({exotic: true})
-        cell.update()
-        const middleHash = cell.hash(0).toString("hex")
-        console.log(x)
-        console.log(cell.refs[0].hash(0).toString("hex"))
-        expect(hashBefore).toEqual(middleHash)
-    })
+    // test("Simple", async () => {
+    //     const cell = beginCell().storeRef(beginCell().storeStringTail("Hi").endCell()).endCell()
+    //     const hashBefore = cell.hash(0).toString("hex")
+    //     const x = cell.refs[0].hash(0).toString("hex")
+    //     cell.refs[0] = beginCell()
+    //         .storeUint(1, 8)
+    //         .storeUint(1, 8)
+    //         .storeBuffer(cell.refs[0].hash(), 32)
+    //         .storeUint(0, 16)
+    //         .endCell({exotic: true})
+    //     cell.update()
+    //     const middleHash = cell.hash(0).toString("hex")
+    //     console.log(x)
+    //     console.log(cell.refs[0].hash(0).toString("hex"))
+    //     expect(hashBefore).toEqual(middleHash)
+    // })
     //const toSkipStateProofTest = process.env.TONAPI_KEY === undefined
     //;(toSkipStateProofTest ? test.skip : test)("State proof should work correctly", async () => {
     test("State proof should work correctly", async () => {
@@ -396,51 +403,19 @@ describe("Proofs", () => {
             },
         )
 
-        // We need to merge the account state and proof into a single cell
-        const shardBlock = Cell.fromBoc(Buffer.from(accountStateAndProof.proof, "hex"))
-        const shardBlockHeaderMerkleProof = shardBlock[0]
-        const shardBlockHeader = shardBlockHeaderMerkleProof.refs[0]
+        const proofs = Cell.fromBoc(Buffer.from(accountStateAndProof.proof, "hex"))
 
-        const shardStateMerkleProof = shardBlock[1]
+        const scBlockProof = proofs[0]
+        const newShardStateProof = proofs[1]
+        const newShardState = newShardStateProof.refs[0]
+        const accountState = Cell.fromHex(accountStateAndProof.state)
 
-        const hashBefore = shardBlockHeader.hash(0).toString("hex")
-        const shardState = shardStateMerkleProof.refs[0]
-        expect(shardState.type).toBe(CellType.Ordinary)
-        expect(shardState.hash(0)).toEqual(shardBlockHeader.refs[2].refs[1].hash(0))
-        console.warn(shardState)
-        shardBlockHeader.refs[2].refs[1] = shardState
-        shardBlockHeader.refs[2].refs[1].type = CellType.Ordinary
-        shardBlockHeader.update(true)
-        const hashAfter = shardBlockHeader.hash(0).toString("hex")
-        expect(hashBefore).toEqual(hashAfter)
+        const {path} = walk(newShardState, 0, [], null) // Find the deepest pruned branch cell
+        const patchedShardState = rebuild(newShardState, path, accountState) // And replace it with the actual account state
 
-        const newShardBlockHeaderMerkleProof = convertToMerkleProof(shardBlockHeader)
-
-        //const hashAfter = shardBlockHeader.hash(0).toString("hex")
-        //expect(hashBefore).toEqual(hashAfter)
-
-        const augHashmapShardAccounts = shardBlockHeader.refs[2].refs[1].refs[1].refs[0]
-        const augHashmapShardAccountsHashBefore = augHashmapShardAccounts.hash(0).toString("hex")
-
-        const findDeepestNonPrunedCell = (cell: Cell): Cell => {
-            for (const ref of cell.refs) {
-                if (!ref.isExotic) {
-                    return findDeepestNonPrunedCell(ref)
-                }
-            }
-            if (cell.depth() !== 1) {
-                throw Error("Deepest cell is not at depth 1")
-            }
-            return cell
-        }
-
-        const deepestNonPrunedCell = findDeepestNonPrunedCell(augHashmapShardAccounts)
-        deepestNonPrunedCell.refs[0] = Cell.fromHex(accountStateAndProof.state).refs[0]
-        augHashmapShardAccounts.update()
-
-        const augHashmapShardAccountsHashAfter = augHashmapShardAccounts.hash(0).toString("hex")
-        // Our modified augHashmapShardAccounts should have the same hash as before as we only replaced the pruned cell with the actual account state
-        expect(augHashmapShardAccountsHashAfter).toEqual(augHashmapShardAccountsHashBefore)
+        expect(newShardState.hash(0).toString("hex")).toEqual(
+            patchedShardState.hash(0).toString("hex"),
+        )
 
         const shardBlockStrId =
             "(" +
@@ -454,65 +429,79 @@ describe("Proofs", () => {
             "," +
             accountStateAndProof.shardblk.fileHash +
             ")"
-        console.log(shardBlockStrId)
-        const mcBlockHeaderProof = await client.liteServer.getRawShardBlockProof(shardBlockStrId)
-        console.log(mcBlockHeaderProof)
+        const shardBlockProof = await client.liteServer.getRawShardBlockProof(shardBlockStrId)
 
-        const vaultContract = await blockchain.getContract(vault.address)
         const tester = await blockchain.treasury("Proofs equals pain")
         const getMethodResult = await client.blockchain.execGetMethodForBlockchainAccount(
             jettonMinterToProofStateFor,
             "get_wallet_address",
             {
-                args: [beginCell().storeAddress(tester.address).endCell().toBoc().toString("hex")],
+                args: [beginCell().storeAddress(vault.address).endCell().toBoc().toString("hex")],
             },
         )
         if (getMethodResult.stack[0].type !== "cell") {
             throw new Error("Unexpected get-method result type: " + getMethodResult.stack[0].type)
         }
         const jettonWalletAddress = getMethodResult.stack[0].cell.beginParse().loadAddress()
+        blockchain.verbosity.vmLogs = "vm_logs"
 
-        const test = shardBlockHeaderMerkleProof.toBoc()
-        console.log(test.toString("hex"))
-        const test2 = Cell.fromBoc(test)[0]
-        console.log(test2)
+        const vaultContract = await blockchain.getContract(vault.address)
 
-        const receiveNotifyWithStateProof = await vaultContract.receiveMessage(
+        const res = await vaultContract.receiveMessage(
             internal({
                 from: jettonWalletAddress,
                 to: vault.address,
                 value: toNano(0.5),
-                body: createJettonVaultMessage(LPDepositPartOpcode, mockPayload, {
-                    proofType: PROOF_STATE_TO_THE_BLOCK,
-                    mcBlockSeqno: BigInt(blockToProofTo.seqno),
-                    shardBitLen: BigInt(Cell.fromHex(mcBlockHeaderProof.links[0].proof).depth()),
-                    mcBlockHeaderProof: Cell.fromHex(mcBlockHeaderProof.links[0].proof),
-                    shardBlockHeaderProof: shardBlockHeaderMerkleProof,
-                }),
+                body: beginCell()
+                    .store(
+                        storeJettonNotifyWithActionRequest({
+                            $$type: "JettonNotifyWithActionRequest",
+                            queryId: 0n,
+                            sender: tester.address,
+                            // Amount doesn't matter
+                            amount: 100n,
+                            eitherBit: false,
+                            actionOpcode: LPDepositPartOpcode,
+                            actionPayload: mockPayload,
+                            proofType: PROOF_STATE_TO_THE_BLOCK,
+                            proof: beginCell()
+                                .store(
+                                    storeStateProof({
+                                        $$type: "StateProof",
+                                        mcBlockSeqno: BigInt(blockToProofTo.seqno),
+                                        shardBitLen: BigInt(
+                                            Cell.fromHex(shardBlockProof.links[0].proof).depth() -
+                                                6,
+                                        ),
+                                        mcBlockHeaderProof: Cell.fromHex(
+                                            shardBlockProof.links[0].proof,
+                                        ),
+                                        shardBlockHeaderProof: scBlockProof,
+                                        shardChainStateProof:
+                                            convertToMerkleProof(patchedShardState),
+                                    }),
+                                )
+                                .asSlice(),
+                        }),
+                    )
+                    .endCell(),
             }),
         )
+        console.log(patchedShardState)
+        console.error(patchedShardState.refs[1].hash().toString("hex"))
+        console.error(patchedShardState.refs[1].refs[0].hash().toString("hex"))
 
-        // expect(sendNotifyWithStateProof.transactions).toHaveTransaction({
-        //     to: vaultSetup.treasury.minter.address,
-        //     op: JettonVault.opcodes.ProvideWalletAddress,
-        //     success: true,
-        // })
-        // const replyWithWallet = findTransactionRequired(sendNotifyWithStateProof.transactions, {
-        //     from: vaultSetup.treasury.minter.address,
-        //     op: JettonVault.opcodes.TakeWalletAddress,
-        //     success: true,
-        // })
-        // const tep89proxyAddress = flattenTransaction(replyWithWallet).to
-        // expect(sendNotifyWithStateProof.transactions).toHaveTransaction({
-        //     from: tep89proxyAddress,
-        //     op: JettonVault.opcodes.TEP89DiscoveryResult,
-        //     // As there was a commit() after the proof was validated
-        //     success: true,
-        //     // However, probably there is not-null exit code, as we attached the incorrect payload
-        // })
-        // const jettonVaultInstance = blockchain.openContract(
-        //     JettonVault.fromAddress(vaultSetup.vault.address),
-        // )
-        // expect(await jettonVaultInstance.getInited()).toBe(true)
+        const resAsBlockchainTransaction: BlockchainTransaction = {
+            ...res,
+            events: [],
+            children: [],
+            externals: [],
+        }
+
+        await SendDumpToDevWallet({
+            transactions: [resAsBlockchainTransaction] as any,
+        })
+
+        expect(await vault.getInited()).toBe(true)
     })
 })

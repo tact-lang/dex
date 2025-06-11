@@ -17,15 +17,18 @@ const MerkleProofTag: Int = 3;
 struct MerkleProof {
     tag: Int as uint8;
     hash: Int as uint256;
+    depth: Int as uint16;
     content: Cell;
 }
 
 const MerkleUpdateTag: Int = 4;
 struct MerkleUpdate {
     tag: Int as uint8;
-    prevHash: Int as uint256;
+    _prevHash: Int as uint256;
     newHash: Int as uint256;
-    prevState: Cell;
+    _oldDepth: Int as uint16;
+    _newDepth: Int as uint16;
+    _prevState: Cell;
     newState: Cell;
 }
 
@@ -44,7 +47,8 @@ struct BlockHeader {
     _info: Cell;
     _valueFlow: Cell;
     stateUpdate: Cell;
-    extra: Cell;
+    extra: Slice as remaining; // This is a Cell, but we will parse it later
+    // The reason for this is a bug in Tact serialization of 4-refs struct
 }
 
 /*
@@ -84,9 +88,10 @@ shard_descr_new#a seq_no:uint32 reg_mc_seqno:uint32
  */
 
 struct ShardDescr {
+    // #a or #b is a tag for ShardDescr (4 bits)
     // seq_no:uint32 reg_mc_seqno:uint32
     // start_lt:uint64 end_lt:uint64
-    _unusedBits: Int as uint192;
+    _unusedBits: Int as uint196;
     rootHash: Int as uint256;
     // Won't parse remaining here to save gas
     // Moreover there can be different ShardDescr and we can't express that without unions
@@ -107,12 +112,13 @@ inline fun findShardInBinTree(root: Cell, address: Address, shardBitLen: Int): S
     repeat (shardBitLen) {
         if (accountId.loadBool()) {
             // If the bit is 1, we go to the right child
-            curCs = curCs.loadRef().beginParse();
+            curCs = curCs.preloadIthRef(1).beginParse();
         } else {
             // If the bit is 0, we go to the left child
-            curCs = curCs.loadRef().beginParse();
+            curCs = curCs.preloadIthRef(0).beginParse();
         }
     }
+    curCs.skipBits(1); // We need to skip 1 bit - leaf tag of the tree node
     return ShardDescr.fromSlice(curCs);
 }
 
@@ -131,7 +137,7 @@ inline fun validateMerkleProof(proofCell: Cell, expectedHash: Int): Cell {
 inline fun getShardRootHash(mcBlockRootHash: Int, blockHeaderProofRaw: Cell, jettonMaster: Address, shardBitLen: Int): Int {
     let blockHeaderCell = validateMerkleProof(blockHeaderProofRaw, mcBlockRootHash);
     let blockHeader = BlockHeader.fromCell(blockHeaderCell);
-    let mcBlockExtra = McBlockExtra.fromCell(blockHeader.extra);
+    let mcBlockExtra = McBlockExtra.fromCell(blockHeader.extra.loadRef().beginParse().preloadIthRef(3));
     // shardHashes is a hashmap (workchain -> ShardDescr)
     // so we just need to get ShardDescr for workchain 0, as we are working in basechain.
     // We can use non-null assertation as we already proved that is is a valid block and
@@ -141,22 +147,22 @@ inline fun getShardRootHash(mcBlockRootHash: Int, blockHeaderProofRaw: Cell, jet
     return shardDescr.rootHash;
 }
 
-inline fun getShardAccounts(shardBlockRootHash: Int, shardHeaderProofRaw: Cell): Cell {
+inline fun getShardAccounts(shardBlockRootHash: Int, shardHeaderProofRaw: Cell, shardChainStateProof: Cell): Cell {
     let shardBlockHeaderCell = validateMerkleProof(shardHeaderProofRaw, shardBlockRootHash);
     let shardHeader = BlockHeader.fromCell(shardBlockHeaderCell);
     let shardStateUpdate = shardHeader.stateUpdate.beginParseExotic();
-    require(!shardStateUpdate.is_exotic, "Block Proof: Shard state update is not exotic");
+    require(shardStateUpdate.is_exotic, "Block Proof: Shard state update is not exotic");
     let shardUpdate = MerkleUpdate.fromSlice(shardStateUpdate.data);
     require(shardUpdate.tag == MerkleUpdateTag, "Block Proof: Invalid Merkle update tag");
     // We compose proof in quite unusual way. To not proof ShardState separately, we embed the ShardState into
     // the MerkleUpdate directly.
     // So, needed ShardState is in the second ref of the MerkleUpdate.
-    let shardState = shardUpdate.newState;
+    let shardState = validateMerkleProof(shardChainStateProof, shardUpdate.newHash);
     // We will assume, that ShardState is ShardStateUnsplit
     // Probably we need to handle this behaviour on the backend to not provide splitted shard
     // Tlb Schemes for Shard State: https://github.com/ton-blockchain/ton/blob/26761a1d139402ef343081810677d2582c3eff51/crypto/block/block.tlb#L416-L433
     // Link above is explaining why do we need to skip 1 ref and load the 2nd one to get ShardAccounts
-    return shardState.beginParse().preloadIthRef(2);
+    return shardState.beginParse().preloadIthRef(1);
 }
 
 /*
@@ -204,9 +210,10 @@ asm fun getTwoLastRefs(c: Slice): TwoCells {
     SCUTLAST
     LDREF
     LDREF
+    DROP
 }
 
-inline fun parseStateInitFromShardAccount(c: Slice): StateInit {
+inline fun parseStateFromShardAccount(c: Slice): StateInit {
     let account = c.loadRef();
     // This account must me AccountActive, so we can parse StateInit from the last 2 refs
     // That is why we don't support accounts that host some libs in State.
@@ -232,13 +239,13 @@ struct StateProof {
     shardBitLen: Int as uint8; // This is the length of shard in bits
     mcBlockHeaderProof: Cell; // This is a Merkle Proof Cell
     shardBlockHeaderProof: Cell; // This is a Merkle Proof Cell
+    shardChainStateProof: Cell; // This is a Merkle Proof Cell
 }
 
 asm fun getLastMcBlock(): BlockId {
     PREVMCBLOCKS
-    16 PUSHINT
-    // We use UNTUPLEVAR because UNTUPLE supports only the 0 <= n <= 15
-    UNTUPLEVAR
+    15 INDEX
+    5 UNTUPLE
 }
 
 asm fun getMcBlockBySeqno(seqno: Int): BlockId {
@@ -246,7 +253,7 @@ asm fun getMcBlockBySeqno(seqno: Int): BlockId {
     TPOP
     2 INDEX //  [ wc:Integer shard:Integer seqno:Integer root_hash:Integer file_hash:Integer ] = BlockId;
     ROT
-    SUB NEGATE 16 ADDCONST
+    SUB 15 ADDCONST
     INDEXVAR
     5 UNTUPLE
 }
@@ -260,13 +267,14 @@ fun getJettonMasterState(proof: StateProof, jettonMaster: Address): StateInit {
     let block = getMcBlockBySeqno(proof.mcBlockSeqno);
     // Here we got BlockID. However, shard information is contained in block header, so first we need to proof mc block header
     let shardRootHash = getShardRootHash(block.root_hash, proof.mcBlockHeaderProof, jettonMaster, proof.shardBitLen);
-    let shardAccounts = getShardAccounts(shardRootHash, proof.shardBlockHeaderProof);
+    let shardAccounts = getShardAccounts(shardRootHash, proof.shardBlockHeaderProof, proof.shardChainStateProof);
     let jettonMasterId = myParseVarAddress(jettonMaster.asSlice()).address;
+    let augHashmap = shardAccounts.beginParse().loadRef();
     let res = augHmapLookup(
-        shardAccounts,
+        augHashmap,
         jettonMasterId,
         256, // We use 256 bits for address
     );
     require(res.found, "Block Proof: Shard account for jetton master not found in shard accounts");
-    return parseStateInitFromShardAccount(res.valueWithExtra!!);
+    return parseStateFromShardAccount(res.valueWithExtra!!);
 }

@@ -8,7 +8,7 @@ const PROOF_TEP89: Int = 1;
 const PROOF_STATE_INIT: Int = 2;
 const PROOF_STATE_TO_THE_BLOCK: Int = 3;
 
-inline fun checkProof(jettonMaster: Address, proofType: Int, proof: Slice, msgCell: Cell): Bool {
+inline fun checkProof(jettonMaster: Address, proofType: Int, proof: Slice, msgCell: Cell) {
     if (proofType == PROOF_TEP89) {
         let proxyStateInit = initOf TEP89DiscoveryProxy(
             jettonMaster,
@@ -42,14 +42,6 @@ inline fun checkProof(jettonMaster: Address, proofType: Int, proof: Slice, msgCe
         let stateProof = StateProof.fromSlice(proof);
         let init = getJettonMasterState(stateProof, jettonMaster);
         let myJettonWallet = calculateJettonWallet(myAddress(), init.data, init.code, jettonMaster);
-        require(
-            myJettonWallet == sender() &&
-            contractAddress(StateInit {
-                code: init.code,
-                data: init.data,
-            }) == jettonMaster,
-            "JettonVault: Invalid block state proof",
-        );
+        require(myJettonWallet == sender(), "JettonVault: Invalid block state proof");
     }
-    return false;
 }

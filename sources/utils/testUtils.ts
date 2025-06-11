@@ -38,6 +38,7 @@ export type StateProof = {
     shardBitLen: bigint
     mcBlockHeaderProof: Cell
     shardBlockHeaderProof: Cell
+    shardChainStateProof: Cell
 }
 
 export type Proof = NoProof | TEP89Proof | StateInitProof | StateProof
@@ -62,6 +63,7 @@ function storeProof(proof: Proof) {
                         shardBitLen: proof.shardBitLen,
                         mcBlockHeaderProof: proof.mcBlockHeaderProof,
                         shardBlockHeaderProof: proof.shardBlockHeaderProof,
+                        shardChainStateProof: proof.shardChainStateProof,
                     }),
                 )
                 break
