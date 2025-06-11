@@ -265,8 +265,12 @@ contract AmmPool(
             // So we just need to kinda fuzz it with corner cases
             let amountInWithFee = muldiv(msg.amount, 1000 - self.PoolFee, 1000);
 
-            newAmountIn = inBalance + amountInWithFee;
-            newAmountOut = muldiv(outBalance, inBalance, newAmountIn);
+            // https://github.com/Uniswap/v2-core/blob/master/contracts/UniswapV2Pair.sol#L185
+            // update reserveIn with the actual amount
+            // calculate reserveOut using amount with fee
+            newAmountIn = inBalance + msg.amount;
+            let reserveInWithFee = inBalance + amountInWithFee;
+            newAmountOut = muldiv(outBalance, inBalance, reserveInWithFee);
             let amountToPay = outBalance - newAmountOut;
 
             if (amountToPay < msg.params.desiredAmount) {
@@ -321,12 +325,11 @@ contract AmmPool(
                 returnFunds(inVault, msg.receiver, outVault, msg.amount, msg.params.payloadOnFailure);
                 require(false, "Pool: Desired amount out is greater than pool reserves");
             }
-            let neededAmountIn = muldiv(inBalance, outBalance, newAmountOut);
-            // newAmountOut <= outBalance => neededAmountIn >= inBalance;
-            let amountToBeTaken = neededAmountIn - inBalance;
-            // In exactOut swaps we take fee here, not in the beginning.
-            // This is done because in this case user won't need to calculate fee by themselves, if they want exactly X tokens out.
-            let amountToBeTakenWithFee = muldiv(amountToBeTaken, 1000 + self.PoolFee, 1000);
+
+            // https://github.com/Uniswap/v2-periphery/blob/master/contracts/libraries/UniswapV2Library.sol#L53
+            let numerator = newAmountOut * (1000 - self.PoolFee);
+            let amountToBeTakenWithFee = muldiv(inBalance, msg.params.desiredAmount * 1000, numerator);
+
             if (amountToBeTakenWithFee > msg.amount) {
                 returnFunds(inVault, msg.receiver, outVault, msg.amount, msg.params.payloadOnFailure);
                 require(false, "Pool: Amount of tokens sent is insufficient for exactOut swap");
@@ -447,13 +450,10 @@ contract AmmPool(
         if (newAmountOut <= 0) {
             require(false, "Pool: Desired amount out is greater than pool reserves");
         }
-        let neededAmountIn = muldiv(inBalance, outBalance, newAmountOut);
-        // newAmountOut <= outBalance => neededAmountIn >= inBalance
-        let amountToBeTaken = neededAmountIn - inBalance;
-        // In exactOut swaps we take fee here, not in the beginning.
-        // This is done because in this case user won't need to calculate fee by themselves, if they want exactly X tokens out.
-        let amountToBeTakenWithFee = muldiv(amountToBeTaken, 1000 + self.PoolFee, 1000);
-        return amountToBeTakenWithFee;
+
+        // https://github.com/Uniswap/v2-periphery/blob/master/contracts/libraries/UniswapV2Library.sol#L53
+        let numerator = newAmountOut * (1000 - self.PoolFee);
+        return muldiv(inBalance, amountOut * 1000, numerator);
     }
 
     inline fun failLiquidityProvision(msg: LiquidityDeposit) {

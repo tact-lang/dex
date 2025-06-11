@@ -24,7 +24,7 @@ import {ExtendedLPJettonWallet} from "../wrappers/ExtendedLPJettonWallet"
 export const createJetton = async (blockchain: Blockchain) => {
     const minterOwner = await blockchain.treasury("jetton-owner")
     const walletOwner = await blockchain.treasury("wallet-owner")
-    const mintAmount = toNano(100)
+    const mintAmount = toNano(100000)
 
     const minter = blockchain.openContract(
         await JettonMinter.fromInit(
@@ -355,8 +355,12 @@ const createLiquidityDepositSetup = (
                 ),
             )
 
-            if ((await blockchain.getContract(ammPool.address)).balance > 0n) {
-                throw new Error("AmmPool balance should be 0 after withdraw")
+            const balance = (await blockchain.getContract(liquidityDeposit.address)).balance
+
+            if (balance > 0n) {
+                throw new Error(
+                    `AmmPool balance should be 0 after withdraw, and its: ${balance.toString()}`,
+                )
             }
 
             return withdrawResult
