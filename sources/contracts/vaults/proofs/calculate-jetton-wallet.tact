@@ -11,7 +11,6 @@ asm fun calculateJettonWallet(owner: Address, jettonData: Cell, jettonCode: Cell
     1 TUPLE // Make it singleton back
     // owner md mc c7
     ROTREV
-    DUMPSTK
     CTOS            // owner_addr c7 md mc"
     2 PUSHINT       // owner_addr c7 md mc args"
     103289 PUSHINT  // owner_addr c7 md mc args get_jwa_method_id"

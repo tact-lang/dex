@@ -43,5 +43,7 @@ inline fun checkProof(jettonMaster: Address, proofType: Int, proof: Slice, msgCe
         let init = getJettonMasterState(stateProof, jettonMaster);
         let myJettonWallet = calculateJettonWallet(myAddress(), init.data, init.code, jettonMaster);
         require(myJettonWallet == sender(), "JettonVault: Invalid block state proof");
+    } else {
+        require(false, "JettonVault: Unsupported proof type");
     }
 }

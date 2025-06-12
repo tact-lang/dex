@@ -47,8 +47,8 @@ struct BlockHeader {
     _info: Cell;
     _valueFlow: Cell;
     stateUpdate: Cell;
-    extra: Slice as remaining; // This is a Cell, but we will parse it later
     // The reason for this is a bug in Tact serialization of 4-refs struct
+    extra: Slice as remaining; // This is a Cell, but we will parse it later
 }
 
 /*
@@ -66,6 +66,7 @@ masterchain_block_extra#cca5
   config:key_block?ConfigParams
 = McBlockExtra;
  */
+
 struct McBlockExtra {
     _unusedBits: Int as uint17; // Tag and 1 bit for key_block
     // shardHashes is a hashmap (workchain -> ShardDescr)
@@ -85,7 +86,7 @@ shard_descr_new#a seq_no:uint32 reg_mc_seqno:uint32
   split_merge_at:FutureSplitMerge
   ^[ fees_collected:CurrencyCollection
      funds_created:CurrencyCollection ] = ShardDescr;
- */
+*/
 
 struct ShardDescr {
     // #a or #b is a tag for ShardDescr (4 bits)
@@ -197,7 +198,7 @@ account_descr$_ account:^Account last_trans_hash:bits256
 _ fixed_prefix_length:(Maybe (## 5)) special:(Maybe TickTock)
   code:(Maybe ^Cell) data:(Maybe ^Cell)
   library:(Maybe ^Cell) = StateInit;
- */
+*/
 
 struct TwoCells {
     first: Cell;
@@ -244,16 +245,18 @@ struct StateProof {
 
 asm fun getLastMcBlock(): BlockId {
     PREVMCBLOCKS
-    15 INDEX
+    0 INDEX
     5 UNTUPLE
 }
 
+// PREVMCBLOCK has 16 last mc block as tuple
 asm fun getMcBlockBySeqno(seqno: Int): BlockId {
     PREVMCBLOCKS
-    TPOP
+    DUP
+    0 INDEX
     2 INDEX //  [ wc:Integer shard:Integer seqno:Integer root_hash:Integer file_hash:Integer ] = BlockId;
     ROT
-    SUB 15 ADDCONST
+    SUB
     INDEXVAR
     5 UNTUPLE
 }
