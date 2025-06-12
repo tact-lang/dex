@@ -1,5 +1,5 @@
 import {Address, beginCell, Cell, CellType, convertToMerkleProof, toNano} from "@ton/core"
-import {Blockchain, BlockchainTransaction, BlockId, internal} from "@ton/sandbox"
+import {Blockchain, BlockId, internal} from "@ton/sandbox"
 import {findTransactionRequired, flattenTransaction, randomAddress} from "@ton/test-utils"
 import {createJetton, createJettonVault} from "../utils/environment"
 // eslint-disable-next-line
