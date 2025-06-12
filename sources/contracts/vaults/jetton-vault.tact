@@ -43,11 +43,10 @@ contract JettonVault(
     receive(msg: JettonNotifyWithActionRequest) {
         if (self.jettonWallet == null) {
             // This function proofs that jetton wallet is valid
-            // This function throws if proof is invalid and tries to send Jettons back
-            let proofCheckRes = checkProof(self.jettonMaster, msg.proofType, msg.proof, msg.toCell());
-
-            // Proof is not valid, or not supported, let's try to send jettons back
-            if (!proofCheckRes) {
+            // This function throws if proof is invalid
+            try {
+                checkProof(self.jettonMaster, msg.proofType, msg.proof, msg.toCell());
+            } catch (error) {
                 message(MessageParameters {
                     mode: SendRemainingValue | SendIgnoreErrors,
                     body: SendViaJettonTransfer {
@@ -64,7 +63,7 @@ contract JettonVault(
                     bounce: true,
                 });
                 commit();
-                require(false, "JettonVault: Proof is invalid");
+                throw(error);
             }
             self.jettonWallet = sender();
 

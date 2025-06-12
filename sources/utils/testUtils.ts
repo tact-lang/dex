@@ -15,6 +15,8 @@ import {
     PROOF_TEP89,
     PROOF_STATE_INIT,
     storeLiquidityWithdrawParameters,
+    PROOF_STATE_TO_THE_BLOCK,
+    storeStateProof,
 } from "../output/DEX_JettonVault"
 import {storeAddLiquidityPartTon, storeSwapRequestTon} from "../output/DEX_TonVault"
 import {randomBytes} from "node:crypto"
@@ -33,7 +35,16 @@ export type StateInitProof = {
     data: Cell
 }
 
-export type Proof = NoProof | TEP89Proof | StateInitProof
+export type StateProof = {
+    proofType: 3n
+    mcBlockSeqno: bigint
+    shardBitLen: bigint
+    mcBlockHeaderProof: Cell
+    shardBlockHeaderProof: Cell
+    shardChainStateProof: Cell
+}
+
+export type Proof = NoProof | TEP89Proof | StateInitProof | StateProof
 
 function storeProof(proof: Proof) {
     return (b: Builder) => {
@@ -44,8 +55,20 @@ function storeProof(proof: Proof) {
             case PROOF_TEP89:
                 break
             case PROOF_STATE_INIT:
-                b.storeMaybeRef(proof.code)
-                b.storeMaybeRef(proof.data)
+                b.storeRef(proof.code)
+                b.storeRef(proof.data)
+                break
+            case PROOF_STATE_TO_THE_BLOCK:
+                b.store(
+                    storeStateProof({
+                        $$type: "StateProof",
+                        mcBlockSeqno: proof.mcBlockSeqno,
+                        shardBitLen: proof.shardBitLen,
+                        mcBlockHeaderProof: proof.mcBlockHeaderProof,
+                        shardBlockHeaderProof: proof.shardBlockHeaderProof,
+                        shardChainStateProof: proof.shardChainStateProof,
+                    }),
+                )
                 break
             default:
                 throw new Error("Unknown proof type")
