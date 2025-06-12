@@ -273,7 +273,7 @@ fun getJettonMasterState(proof: StateProof, jettonMaster: Address): StateInit {
     let shardAccounts = getShardAccounts(shardRootHash, proof.shardBlockHeaderProof, proof.shardChainStateProof);
     let jettonMasterId = myParseVarAddress(jettonMaster.asSlice()).address;
     let augHashmap = shardAccounts.beginParse().loadRef();
-    let res = augHmapLookup(
+    let res = augHashmapLookup(
         augHashmap,
         jettonMasterId,
         256, // We use 256 bits for address

@@ -24,7 +24,7 @@
  * Result structure for augmented hashmap lookup operations.
  * Contains the lookup result and success status.
  */
-struct AugHmapLookupResult {
+struct AugHashmapLookupResult {
     valueWithExtra: Slice?;
     found: Bool;
 }
@@ -33,7 +33,7 @@ struct AugHmapLookupResult {
  * Internal structure for hashmap label parsing results.
  * Used during traversal of hashmap edges to extract key path information.
  */
-struct ParseHmapLabelResult {
+struct ParseHashmapLabelResult {
     self: Slice;
     label: Int;
     labelLength: Int;
@@ -60,7 +60,7 @@ asm fun cellIf(condition: Bool, thenValue: Cell, elseValue: Cell): Cell { CONDSE
  * hml_same$11 {m:#} v:Bit n:(#<= m) = HmLabel ~n m;
  * ```
  */
-inline extends fun parseHmapLabel(self: Slice, m: Int): ParseHmapLabelResult {
+inline extends fun parseHashmapLabel(self: Slice, m: Int): ParseHashmapLabelResult {
     // Check first bit to determine label type
     if (!self.loadBit()) {
         // hml_short$0: Unary length encoding
@@ -69,7 +69,7 @@ inline extends fun parseHmapLabel(self: Slice, m: Int): ParseHmapLabelResult {
         require(n <= m, "Label length exceeds maximum");
 
         let s = self.loadUint(n);
-        return ParseHmapLabelResult {
+        return ParseHashmapLabelResult {
             self,
             label: s,
             labelLength: n,
@@ -82,7 +82,7 @@ inline extends fun parseHmapLabel(self: Slice, m: Int): ParseHmapLabelResult {
         let bitSize = m.getBitSize();
         let n = self.loadUint(bitSize);
         let s = self.loadUint(n);
-        return ParseHmapLabelResult {
+        return ParseHashmapLabelResult {
             self,
             label: s,
             labelLength: n,
@@ -94,7 +94,7 @@ inline extends fun parseHmapLabel(self: Slice, m: Int): ParseHmapLabelResult {
     let bitSize = m.getBitSize();
     let n = self.loadUint(bitSize);
     let s = intIf(v, (1 << n) - 1, 0);
-    return ParseHmapLabelResult {
+    return ParseHashmapLabelResult {
         self,
         label: s,
         labelLength: n,
@@ -113,10 +113,10 @@ inline extends fun parseHmapLabel(self: Slice, m: Int): ParseHmapLabelResult {
  * 3. Compare key prefixes with edge labels
  * 4. Return value when key is fully consumed or not found
  */
-inline fun augHmapLookup(dict: Cell?, key: Slice, keyLen: Int): AugHmapLookupResult {
+inline fun augHashmapLookup(dict: Cell?, key: Slice, keyLen: Int): AugHashmapLookupResult {
     // Handle empty hashmap or invalid key length
     if (keyLen != key.bits() || dict == null) {
-        return AugHmapLookupResult {
+        return AugHashmapLookupResult {
             valueWithExtra: null,
             found: false,
         };
@@ -129,11 +129,11 @@ inline fun augHmapLookup(dict: Cell?, key: Slice, keyLen: Int): AugHmapLookupRes
     // Traverse hashmap tree structure
     while (true) {
         let edge = currentCell.beginParse();
-        let labelResult = edge.parseHmapLabel(n);
+        let labelResult = edge.parseHashmapLabel(n);
 
         // Check if key matches edge label
         if (currentKey.preloadUint(labelResult.labelLength) != labelResult.label) {
-            return AugHmapLookupResult {
+            return AugHashmapLookupResult {
                 valueWithExtra: null,
                 found: false,
             };
@@ -143,7 +143,7 @@ inline fun augHmapLookup(dict: Cell?, key: Slice, keyLen: Int): AugHmapLookupRes
 
         // Key fully consumed - found the value
         if (n <= 0) {
-            return AugHmapLookupResult {
+            return AugHashmapLookupResult {
                 valueWithExtra: edge,
                 found: true,
             };
@@ -159,7 +159,7 @@ inline fun augHmapLookup(dict: Cell?, key: Slice, keyLen: Int): AugHmapLookupRes
         n -= 1;
     }
 
-    return AugHmapLookupResult {
+    return AugHashmapLookupResult {
         valueWithExtra: null,
         found: false,
     };
