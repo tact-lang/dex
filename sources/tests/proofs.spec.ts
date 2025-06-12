@@ -295,22 +295,7 @@ describe("Proofs", () => {
         const finalWrongJettonBalance = await wrongJetton.wallet.getJettonBalance()
         expect(finalWrongJettonBalance).toEqual(initialWrongJettonBalance)
     })
-    // test("Simple", async () => {
-    //     const cell = beginCell().storeRef(beginCell().storeStringTail("Hi").endCell()).endCell()
-    //     const hashBefore = cell.hash(0).toString("hex")
-    //     const x = cell.refs[0].hash(0).toString("hex")
-    //     cell.refs[0] = beginCell()
-    //         .storeUint(1, 8)
-    //         .storeUint(1, 8)
-    //         .storeBuffer(cell.refs[0].hash(), 32)
-    //         .storeUint(0, 16)
-    //         .endCell({exotic: true})
-    //     cell.update()
-    //     const middleHash = cell.hash(0).toString("hex")
-    //     console.log(x)
-    //     console.log(cell.refs[0].hash(0).toString("hex"))
-    //     expect(hashBefore).toEqual(middleHash)
-    // })
+
     test("State proof should work correctly", async () => {
         const TONAPI_KEY = process.env.TONAPI_KEY
         if (TONAPI_KEY === undefined) {
