@@ -1,3 +1,6 @@
+//  SPDX-License-Identifier: MIT
+//  Copyright © 2025 TON Studio
+
 /**
  * Augmented Hashmap Implementation for TON Blockchain
  *

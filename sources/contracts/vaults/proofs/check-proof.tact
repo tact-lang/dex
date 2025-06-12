@@ -2,7 +2,6 @@
 //  Copyright © 2025 TON Studio
 
 import "./tep-89-discovery-proxy";
-import "./calculate-jetton-wallet";
 import "./block-proof";
 import "../../utils/utils";
 
