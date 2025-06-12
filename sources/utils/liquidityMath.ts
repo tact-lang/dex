@@ -1,3 +1,6 @@
+//  SPDX-License-Identifier: MIT
+//  Copyright © 2025 TON Studio
+
 const bigintSqrt = (value: bigint): bigint => {
     if (value < 0n) {
         throw new Error("Square root of negative numbers is not supported for bigints.")
@@ -108,4 +111,60 @@ export const calculateLiquidityWithdraw = (
         amountB,
         totalSupply: mintedLpTokenTotalSupply - burnAmount,
     }
+}
+
+// https://github.com/Uniswap/v2-periphery/blob/master/contracts/libraries/UniswapV2Library.sol#L43
+export const calculateAmountOut = (
+    tokenAReserveBefore: bigint,
+    tokenBReserveBefore: bigint,
+    poolFee: bigint,
+    tokenAIn: bigint,
+) => {
+    const amountInWithFee = tokenAIn * (1000n - poolFee)
+    const numerator = amountInWithFee * tokenBReserveBefore
+    const denominator = tokenAReserveBefore * 1000n + amountInWithFee
+
+    return numerator / denominator
+}
+
+type SwapResult = {
+    reserveA: bigint
+    reserveB: bigint
+    amountOut: bigint
+}
+
+export const calculateSwapResult = (
+    tokenAReserveBefore: bigint,
+    tokenBReserveBefore: bigint,
+    poolFee: bigint,
+    tokenAIn: bigint,
+    minAmountOut: bigint,
+): SwapResult => {
+    const amountInWithFee = tokenAIn * (1000n - poolFee)
+    const numerator = amountInWithFee * tokenBReserveBefore
+    const denominator = tokenAReserveBefore * 1000n + amountInWithFee
+
+    const amountOut = numerator / denominator
+
+    if (amountOut < minAmountOut) {
+        throw new Error("Could not satisfy min amount out")
+    }
+
+    return {
+        amountOut,
+        reserveA: tokenAReserveBefore + tokenAIn,
+        reserveB: tokenBReserveBefore - amountOut,
+    }
+}
+
+export const calculateAmountIn = (
+    tokenAReserveBefore: bigint,
+    tokenBReserveBefore: bigint,
+    poolFee: bigint,
+    tokenBOut: bigint,
+) => {
+    const numerator = tokenAReserveBefore * tokenBOut * 1000n
+    const denominator = (tokenBReserveBefore - tokenBOut) * (1000n - poolFee)
+
+    return numerator / denominator
 }

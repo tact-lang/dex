@@ -1,3 +1,6 @@
+//  SPDX-License-Identifier: MIT
+//  Copyright © 2025 TON Studio
+
 import {Blockchain, GetMethodError, SandboxContract} from "@ton/sandbox"
 import {createJettonAmmPool, createTonJettonAmmPool} from "../utils/environment"
 import {Address, beginCell, toNano, TupleBuilder} from "@ton/core"

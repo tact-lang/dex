@@ -1,19 +1,9 @@
+//  SPDX-License-Identifier: MIT
+//  Copyright © 2025 TON Studio
+
 import "./amm-pool";
-import "../math";
+import "../utils/math";
 import "./messages";
-
-message(0xe7a3475f) PartHasBeenDeposited {
-    depositor: Address;
-    amount: Int as coins;
-    additionalParams: AdditionalParams;
-}
-
-struct AdditionalParams {
-    minAmountToDeposit: Int as coins;
-    lpTimeout: Int as uint32;
-    payloadOnSuccess: Cell? = null;
-    payloadOnFailure: Cell? = null;
-}
 
 contract LiquidityDepositContract(
     leftVault: Address, // To be deterministic, leftVault address must be less than rightVault address

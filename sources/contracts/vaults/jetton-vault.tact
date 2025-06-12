@@ -1,5 +1,8 @@
+//  SPDX-License-Identifier: MIT
+//  Copyright © 2025 TON Studio
+
 import "../core/amm-pool";
-import "../math";
+import "../utils/math";
 import "./vault-interface";
 import "../core/messages";
 // for compilation

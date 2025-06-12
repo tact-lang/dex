@@ -1,3 +1,6 @@
+//  SPDX-License-Identifier: MIT
+//  Copyright © 2025 TON Studio
+
 import "./messages";
 
 // VENDOR LOCK: These jetton base implementation were copied from the tact-lang/jetton repository.

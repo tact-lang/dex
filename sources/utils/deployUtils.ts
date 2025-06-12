@@ -1,3 +1,6 @@
+//  SPDX-License-Identifier: MIT
+//  Copyright © 2025 TON Studio
+
 import {Dictionary, beginCell, Cell, Address} from "@ton/core"
 import {Sha256} from "@aws-crypto/sha256-js"
 

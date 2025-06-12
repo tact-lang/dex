@@ -1,8 +1,11 @@
-import "./math";
-import "./core/amm-pool";
-import "./core/liquidity-deposit";
-import "./vaults/jetton-vault";
-import "./utils/utils";
+//  SPDX-License-Identifier: MIT
+//  Copyright © 2025 TON Studio
+
+import "../utils/math";
+import "../core/amm-pool";
+import "../core/liquidity-deposit";
+import "../vaults/jetton-vault";
+import "../utils/utils";
 
 const AmmPoolAddrRequestId: Int = 0x46389573;
 struct AmmPoolParams {

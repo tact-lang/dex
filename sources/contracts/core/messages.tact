@@ -1,3 +1,6 @@
+//  SPDX-License-Identifier: MIT
+//  Copyright © 2025 TON Studio
+
 import "../vaults/vault-interface";
 import "./liquidity-deposit";
 
@@ -65,4 +68,17 @@ message(0x178d4519) MintViaJettonTransferInternal {
     responseDestination: Address?;
     forwardTonAmount: Int as coins;
     forwardPayload: Slice as remaining;
+}
+
+message(0xe7a3475f) PartHasBeenDeposited {
+    depositor: Address;
+    amount: Int as coins;
+    additionalParams: AdditionalParams;
+}
+
+struct AdditionalParams {
+    minAmountToDeposit: Int as coins;
+    lpTimeout: Int as uint32;
+    payloadOnSuccess: Cell? = null;
+    payloadOnFailure: Cell? = null;
 }

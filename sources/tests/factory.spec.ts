@@ -1,3 +1,6 @@
+//  SPDX-License-Identifier: MIT
+//  Copyright © 2025 TON Studio
+
 import {toNano, beginCell} from "@ton/core"
 import {Blockchain, SandboxContract, TreasuryContract} from "@ton/sandbox"
 import {findTransactionRequired, flattenTransaction, randomAddress} from "@ton/test-utils"
