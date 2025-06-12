@@ -141,7 +141,7 @@ inline fun getShardRootHash(mcBlockRootHash: Int, blockHeaderProofRaw: Cell, jet
     let mcBlockExtra = McBlockExtra.fromCell(blockHeader.extra.loadRef().beginParse().preloadIthRef(3));
     // shardHashes is a hashmap (workchain -> ShardDescr)
     // so we just need to get ShardDescr for workchain 0, as we are working in basechain.
-    // We can use non-null assertation as we already proved that is is a valid block and
+    // We can use non-null assertion as we already proved that is is a valid block and
     // valid mc block must have ShardDescr for workchain 0
     let binTreeWithShardDescr: Cell = mcBlockExtra.shardHashes.get(0)!!;
     let shardDescr = findShardInBinTree(binTreeWithShardDescr, jettonMaster, shardBitLen);
@@ -160,7 +160,7 @@ inline fun getShardAccounts(shardBlockRootHash: Int, shardHeaderProofRaw: Cell, 
     // So, needed ShardState is in the second ref of the MerkleUpdate.
     let shardState = validateMerkleProof(shardChainStateProof, shardUpdate.newHash);
     // We will assume, that ShardState is ShardStateUnsplit
-    // Probably we need to handle this behaviour on the backend to not provide splitted shard
+    // Probably we need to handle this behavior on the backend to not provide split shard
     // Tlb Schemes for Shard State: https://github.com/ton-blockchain/ton/blob/26761a1d139402ef343081810677d2582c3eff51/crypto/block/block.tlb#L416-L433
     // Link above is explaining why do we need to skip 1 ref and load the 2nd one to get ShardAccounts
     return shardState.beginParse().preloadIthRef(1);
@@ -249,7 +249,7 @@ asm fun getLastMcBlock(): BlockId {
     5 UNTUPLE
 }
 
-// PREVMCBLOCK has 16 last mc block as tuple
+// PREVMCBLOCKS has 16 last mc block as tuple
 asm fun getMcBlockBySeqno(seqno: Int): BlockId {
     PREVMCBLOCKS
     DUP
