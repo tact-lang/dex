@@ -43,8 +43,7 @@ contract JettonVault(
             // This function throws if proof is invalid
             try {
                 checkProof(self.jettonMaster, msg.proofType, msg.proof, msg.toCell());
-            }
-            catch (error) {
+            } catch (error) {
                 message(MessageParameters {
                     mode: SendRemainingValue | SendIgnoreErrors,
                     body: SendViaJettonTransfer {
