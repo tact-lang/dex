@@ -41,6 +41,16 @@ struct SwapParameters {
     nextStep: SwapStep? = null;
 }
 
+extends inline fun numberOfHops(self: SwapParameters?) {
+    // If there is no nextStep, or it is exactOut swap, then we will have only one swap on first AmmPool.
+    if (self == null || self.isExactOutType == true) {
+        return 1;
+    } else {
+        // 1 usual swap + 1 next step + nextStep's depth
+        return self.nextStep.nextStep.depth() + 2;
+    }
+}
+
 const LPDepositPartOpcode: Int = 0x64c08bfc;
 struct LPDepositPart {
     // TODO: We should add an option to deploy liquidity deposit contract here

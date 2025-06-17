@@ -1,6 +1,6 @@
 //  SPDX-License-Identifier: MIT
 //  Copyright © 2025 TON Studio
-
+const Basechain: Int = 0;
 asm fun emptyAddress(): Address { b{00} PUSHSLICE }
 
 asm fun sliceWithOneZeroBit(): Slice {
@@ -22,6 +22,13 @@ asm fun exit() { <{ }> PUSHCONT CALLCC }
 // It's still a good way to send 2 messages with nearly equal value.
 inline fun getHalfOfMsgValue(): Int {
     return (context().value - getComputeFee(gasConsumed(), false)) / 2;
+}
+
+asm fun getFreezeLimit(): Int {
+    // Retrieve basechain gas prices from c7
+    21 GETPARAM
+    // get freeze_due_limit from https://tonviewer.com/config#21
+    7 INDEX
 }
 
 // helper function to calculate jetton wallet address synchronously
