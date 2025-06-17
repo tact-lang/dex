@@ -362,7 +362,7 @@ describe("Proofs", () => {
         const lastMcBlocks: BlockId[] = []
         for (let i = 0; i < 16; i++) {
             const block = await client.blockchain.getBlockchainBlock(
-                "(-1,8000000000000000," + (lastSeqno - i) + ")",
+                `(-1,8000000000000000,${lastSeqno - i})`,
             )
             lastMcBlocks.push(convertToBlockId(block))
         }

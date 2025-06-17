@@ -156,8 +156,10 @@ inline fun getShardAccounts(shardBlockRootHash: Int, shardHeaderProofRaw: Cell, 
     let shardHeader = BlockHeader.fromCell(shardBlockHeaderCell);
     let shardStateUpdate = shardHeader.stateUpdate.beginParseExotic();
     require(shardStateUpdate.is_exotic, "Block Proof: Shard state update is not exotic");
+
     let shardUpdate = MerkleUpdate.fromSlice(shardStateUpdate.data);
     require(shardUpdate.tag == MerkleUpdateTag, "Block Proof: Invalid Merkle update tag");
+
     // We compose proof in quite unusual way. To not proof ShardState separately, we embed the ShardState into
     // the MerkleUpdate directly.
     // So, needed ShardState is in the second ref of the MerkleUpdate.
@@ -232,15 +234,15 @@ struct BlockId {
     workchain: Int;
     shard: Int;
     seqno: Int;
-    root_hash: Int;
-    file_hash: Int;
+    rootHash: Int;
+    fileHash: Int;
 }
 
 struct StateProof {
     // https://github.com/ton-blockchain/ton/blob/26761a1d139402ef343081810677d2582c3eff51/crypto/block/block.tlb#L411
     // Using this value we will get BlockID (using PREVMCBLOCKS instruction)
     mcBlockSeqno: Int as uint32;
-    shardBitLen: Int as uint8; // This is the length of shard in bits
+    shardBitLen: Int as uint8; // This is the length of Jetton Master's shard prefix in bits
     mcBlockHeaderProof: Cell; // This is a Merkle Proof Cell
     shardBlockHeaderProof: Cell; // This is a Merkle Proof Cell
     shardChainStateProof: Cell; // This is a Merkle Proof Cell
@@ -271,6 +273,7 @@ fun getJettonMasterState(proof: StateProof, jettonMaster: Address): StateInit {
     // https://docs.ton.org/v3/documentation/tvm/changelog/tvm-upgrade-2023-07
     require(last.seqno - proof.mcBlockSeqno <= 16, "Block Proof: mcBlockSeqno is stale");
     let block = getMcBlockBySeqno(proof.mcBlockSeqno);
+
     // Here we got BlockID. However, shard information is contained in block header, so first we need to proof mc block header
     let shardRootHash = getShardRootHash(block.root_hash, proof.mcBlockHeaderProof, jettonMaster, proof.shardBitLen);
     let shardAccounts = getShardAccounts(shardRootHash, proof.shardBlockHeaderProof, proof.shardChainStateProof);
