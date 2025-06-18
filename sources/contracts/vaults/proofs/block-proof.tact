@@ -5,7 +5,7 @@ import "../../utils/aug-hashmap";
 
 struct ParsedExotic {
     data: Slice;
-    is_exotic: Bool;
+    isExotic: Bool;
 }
 
 asm extends fun beginParseExotic(self: Cell): ParsedExotic {
@@ -130,7 +130,7 @@ inline fun findShardInBinTree(root: Cell, address: Address, shardBitLen: Int): S
 // and returns null otherwise
 inline fun validateMerkleProof(proofCell: Cell, expectedHash: Int): Cell {
     let parsedExotic = proofCell.beginParseExotic();
-    require(parsedExotic.is_exotic, "Block Proof: Merkle proof is not exotic");
+    require(parsedExotic.isExotic, "Block Proof: Merkle proof is not exotic");
     let merkleProof = MerkleProof.fromSlice(parsedExotic.data);
     require(merkleProof.tag == MerkleProofTag, "Block Proof: Invalid Merkle proof tag");
     require(merkleProof.hash == expectedHash, "Block Proof: Invalid Merkle proof hash");
@@ -141,6 +141,15 @@ inline fun validateMerkleProof(proofCell: Cell, expectedHash: Int): Cell {
 inline fun getShardRootHash(mcBlockRootHash: Int, blockHeaderProofRaw: Cell, jettonMaster: Address, shardBitLen: Int): Int {
     let blockHeaderCell = validateMerkleProof(blockHeaderProofRaw, mcBlockRootHash);
     let blockHeader = BlockHeader.fromCell(blockHeaderCell);
+
+    //block_extra in_msg_descr:^InMsgDescr
+    //out_msg_descr:^OutMsgDescr
+    //account_blocks:^ShardAccountBlocks
+    //rand_seed:bits256
+    //created_by:bits256
+    //custom:(Maybe ^McBlockExtra) = BlockExtra;
+
+    // Here we load McBlockExtra from BlockExtra, that is why we load 3rd ref
     let mcBlockExtra = McBlockExtra.fromCell(blockHeader.extra.loadRef().beginParse().preloadIthRef(3));
     // shardHashes is a hashmap (workchain -> ShardDescr)
     // so we just need to get ShardDescr for workchain 0, as we are working in basechain.
@@ -155,7 +164,7 @@ inline fun getShardAccounts(shardBlockRootHash: Int, shardHeaderProofRaw: Cell, 
     let shardBlockHeaderCell = validateMerkleProof(shardHeaderProofRaw, shardBlockRootHash);
     let shardHeader = BlockHeader.fromCell(shardBlockHeaderCell);
     let shardStateUpdate = shardHeader.stateUpdate.beginParseExotic();
-    require(shardStateUpdate.is_exotic, "Block Proof: Shard state update is not exotic");
+    require(shardStateUpdate.isExotic, "Block Proof: Shard state update is not exotic");
 
     let shardUpdate = MerkleUpdate.fromSlice(shardStateUpdate.data);
     require(shardUpdate.tag == MerkleUpdateTag, "Block Proof: Invalid Merkle update tag");
@@ -169,6 +178,20 @@ inline fun getShardAccounts(shardBlockRootHash: Int, shardHeaderProofRaw: Cell, 
     // Tlb Schemes for Shard State: https://github.com/ton-blockchain/ton/blob/26761a1d139402ef343081810677d2582c3eff51/crypto/block/block.tlb#L416-L433
     // Link above is explaining why do we need to skip 1 ref and load the 2nd one to get ShardAccounts
     return shardState.beginParse().preloadIthRef(1);
+}
+
+struct TwoCells {
+    first: Cell;
+    second: Cell;
+}
+
+asm fun getTwoLastRefs(c: Slice): TwoCells {
+0 PUSHINT
+2 PUSHINT
+SCUTLAST
+LDREF
+LDREF
+DROP
 }
 
 /*
@@ -204,21 +227,6 @@ _ fixed_prefix_length:(Maybe (## 5)) special:(Maybe TickTock)
   code:(Maybe ^Cell) data:(Maybe ^Cell)
   library:(Maybe ^Cell) = StateInit;
 */
-
-struct TwoCells {
-    first: Cell;
-    second: Cell;
-}
-
-asm fun getTwoLastRefs(c: Slice): TwoCells {
-    0 PUSHINT
-    2 PUSHINT
-    SCUTLAST
-    LDREF
-    LDREF
-    DROP
-}
-
 inline fun parseStateFromShardAccount(c: Slice): StateInit {
     let account = c.loadRef();
     // This account must me AccountActive, so we can parse StateInit from the last 2 refs
@@ -250,7 +258,10 @@ struct StateProof {
 
 asm fun getLastMcBlock(): BlockId {
     PREVMCBLOCKS
+    // Get the latest block
     0 INDEX
+    // Unpack a tuple
+    // [ wc:Integer shard:Integer seqno:Integer root_hash:Integer file_hash:Integer ]
     5 UNTUPLE
 }
 
@@ -275,15 +286,15 @@ fun getJettonMasterState(proof: StateProof, jettonMaster: Address): StateInit {
     let block = getMcBlockBySeqno(proof.mcBlockSeqno);
 
     // Here we got BlockID. However, shard information is contained in block header, so first we need to proof mc block header
-    let shardRootHash = getShardRootHash(block.root_hash, proof.mcBlockHeaderProof, jettonMaster, proof.shardBitLen);
+    let shardRootHash = getShardRootHash(block.rootHash, proof.mcBlockHeaderProof, jettonMaster, proof.shardBitLen);
     let shardAccounts = getShardAccounts(shardRootHash, proof.shardBlockHeaderProof, proof.shardChainStateProof);
     let jettonMasterId = myParseVarAddress(jettonMaster.asSlice()).address;
     let augHashmap = shardAccounts.beginParse().loadRef();
-    let res = augHashmapLookup(
+    let shardAccountLookupResult = augHashmapLookup(
         augHashmap,
         jettonMasterId,
         256, // We use 256 bits for address
     );
-    require(res.found, "Block Proof: Shard account for jetton master not found in shard accounts");
-    return parseStateFromShardAccount(res.valueWithExtra!!);
+    require(shardAccountLookupResult.found, "Block Proof: Shard account for jetton master not found in shard accounts");
+    return parseStateFromShardAccount(shardAccountLookupResult.valueWithExtra!!);
 }

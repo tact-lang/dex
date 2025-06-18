@@ -20,6 +20,7 @@ import {PROOF_TEP89, TEP89DiscoveryProxy} from "../output/DEX_TEP89DiscoveryProx
 import {TonApiClient} from "@ton-api/client"
 import {randomInt} from "crypto"
 
+// This functions finds the path deepest pruned Cell
 function walk(cell: Cell, depth = 0, path: number[] = [], best: any) {
     if (cell.isExotic && cell.type === CellType.PrunedBranch) {
         if (!best || depth > best.depth) best = {path, depth}
@@ -30,6 +31,8 @@ function walk(cell: Cell, depth = 0, path: number[] = [], best: any) {
     return best
 }
 
+// This function takes the path from the function above and replaces deepest cell (in the path)
+// With the needed cell
 function rebuild(cell: Cell, path: number[], replacement: Cell): Cell {
     if (path.length === 0) {
         return replacement
@@ -302,8 +305,7 @@ describe("Proofs", () => {
     test("State proof should work correctly", async () => {
         const TONAPI_KEY = process.env.TONAPI_KEY
         if (TONAPI_KEY === undefined) {
-            // This will never happen because we skip the test if the key is not set
-            console.error("TONAPI_KEY is not set. Please set it to run this test.")
+            console.warn("TONAPI_KEY is not set. Please set it to run this test.")
             return
         }
         const blockchain = await Blockchain.create()
@@ -374,14 +376,7 @@ describe("Proofs", () => {
         }
 
         const blockToProofTo = lastMcBlocks[randomInt(0, 16)]
-        const blockToProofToStrId =
-            "(-1,8000000000000000," +
-            blockToProofTo.seqno +
-            "," +
-            blockToProofTo.rootHash.toString("hex") +
-            "," +
-            blockToProofTo.fileHash.toString("hex") +
-            ")"
+        const blockToProofToStrId = `(-1,8000000000000000,${blockToProofTo.seqno},${blockToProofTo.rootHash.toString("hex")},${blockToProofTo.fileHash.toString("hex")})`
 
         const accountStateAndProof = await client.liteServer.getRawAccountState(
             jettonMinterToProofStateFor,
@@ -404,18 +399,7 @@ describe("Proofs", () => {
             patchedShardState.hash(0).toString("hex"),
         )
 
-        const shardBlockStrId =
-            "(" +
-            accountStateAndProof.shardblk.workchain +
-            "," +
-            accountStateAndProof.shardblk.shard +
-            "," +
-            accountStateAndProof.shardblk.seqno +
-            "," +
-            accountStateAndProof.shardblk.rootHash +
-            "," +
-            accountStateAndProof.shardblk.fileHash +
-            ")"
+        const shardBlockStrId = `(${accountStateAndProof.shardblk.workchain},${accountStateAndProof.shardblk.shard},${accountStateAndProof.shardblk.seqno},${accountStateAndProof.shardblk.rootHash},${accountStateAndProof.shardblk.fileHash})`
         const shardBlockProof = await client.liteServer.getRawShardBlockProof(shardBlockStrId)
 
         const tester = await blockchain.treasury("Proofs equals pain")
@@ -477,6 +461,8 @@ describe("Proofs", () => {
             }),
         )
 
+        // We only need to test that the vault has been successfully initialised.
+        // Moreover, it is a sufficient check because we do not trust any data from the message and validate everything via hashes
         expect(await vault.getInited()).toBe(true)
     })
 })
