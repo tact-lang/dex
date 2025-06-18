@@ -41,7 +41,6 @@ contract JettonVault(
     jettonWallet: Address?, // Should be deployed with null
 ) with VaultInterface {
     receive(msg: JettonNotifyWithActionRequest) {
-        // TODO Fee handling for proofs
         if (self.jettonWallet == null) {
             // This function proofs that jetton wallet is valid
             // This function throws if proof is invalid and tries to send Jettons back
