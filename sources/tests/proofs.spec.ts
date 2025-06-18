@@ -20,7 +20,7 @@ import {PROOF_TEP89, TEP89DiscoveryProxy} from "../output/DEX_TEP89DiscoveryProx
 import {TonApiClient} from "@ton-api/client"
 import {randomInt} from "crypto"
 
-// This functions finds the path deepest pruned Cell
+// This function finds the path deepest pruned Cell
 function walk(cell: Cell, depth = 0, path: number[] = [], best: any) {
     if (cell.isExotic && cell.type === CellType.PrunedBranch) {
         if (!best || depth > best.depth) best = {path, depth}
