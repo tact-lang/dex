@@ -31,7 +31,7 @@ function walk(cell: Cell, depth = 0, path: number[] = [], best: any) {
     return best
 }
 
-// This function takes the path from the function above and replaces deepest cell (in the path)
+// This function takes the path from the function above and replaces the deepest cell (in the path)
 // With the needed cell
 function rebuild(cell: Cell, path: number[], replacement: Cell): Cell {
     if (path.length === 0) {
