@@ -33,6 +33,8 @@ Tact dex support the total of 3 kinds of swaps:
 
 Swap messages differ from one vault to another, however they have similar part that is called `SwapRequest`.
 
+### Swap request struct
+
 TLB for this common part looks like this:
 
 ```tlb
@@ -71,9 +73,22 @@ Let's break down the meaning of fields in these structs:
 
 - `nextStep` is optional inline struct for multihop swaps, described [here](#multihop-swaps)
 
+Given this common struct, we can look at how different vault swap messages are created.
+
+### Jetton vault swap message
+
+You need to construct swap message in such way if you want to swap jettons -> some other asset.
+
+To create jetton swap message, `forwardPayload` in jetton transfer should be stored inline and look like this:
+
+```tlb
+_#bfa68001 swapRequest:^SwapRequest = SwapRequestForwardPayload;
+```
+
+
 ## Multihop swaps
 
-asd
+multihop info
 
 ## Payload semantics
 
