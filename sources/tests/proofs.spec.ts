@@ -23,7 +23,6 @@ import allAccountStateAndProof from "./offline-data/16_last_proofs.json"
 import shardBlockProofs from "./offline-data/shardProofs.json"
 import {lastMcBlocks} from "./offline-data/last-mc-blocks"
 import {randomInt} from "crypto"
-import * as fs from "node:fs"
 
 // This function finds the path deepest pruned Cell
 function walk(cell: Cell, depth = 0, path: number[] = [], best: any) {
