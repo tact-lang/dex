@@ -27,7 +27,7 @@ Tact dex support the total of 3 kinds of swaps:
     - refund value-in to the sender if the value-in is less that what is needed for specified exact amount-out;
     - perform the swap _and_ refund some of the value-in to the sender - this would happen if constant product formula inside amm pool had shifted the other way and value-in is greater than what is needed for exact value-out;
 3. `ExactIn multihop` swaps
-    Someone can argue that this is not really 3rd kind but more like 2.5, because the semantics of these swaps is similar to exact-in swaps, the only difference is that after the successful swap value-out is sent not to the receiver, but to the another pool, as next swap message with `swap-params`.
+   Someone can argue that this is not really 3rd kind but more like 2.5, because the semantics of these swaps is similar to exact-in swaps, the only difference is that after the successful swap value-out is sent not to the receiver, but to the another pool, as next swap message with `swap-params`.
 
 ## Swap message
 
