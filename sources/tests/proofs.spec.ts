@@ -347,79 +347,81 @@ describe("Proofs", () => {
             prevKeyBlock: lastMcBlocks[0],
         }
 
-        const blockNum = randomInt(0, 16)
-        const blockToProofTo = lastMcBlocks[blockNum]
-        const accountStateAndProof = allAccountStateAndProof[blockNum]
+        for (let blockNum = 0; blockNum < 16; ++blockNum) {
+            const blockToProofTo = lastMcBlocks[blockNum]
+            const accountStateAndProof = allAccountStateAndProof[blockNum]
 
-        const proofs = Cell.fromBoc(Buffer.from(accountStateAndProof.proof, "hex"))
+            const proofs = Cell.fromBoc(Buffer.from(accountStateAndProof.proof, "hex"))
 
-        const scBlockProof = proofs[0]
-        const newShardStateProof = proofs[1]
-        const newShardState = newShardStateProof.refs[0]
-        const accountState = Cell.fromHex(accountStateAndProof.state)
+            const scBlockProof = proofs[0]
+            const newShardStateProof = proofs[1]
+            const newShardState = newShardStateProof.refs[0]
+            const accountState = Cell.fromHex(accountStateAndProof.state)
 
-        const {path} = walk(newShardState, 0, [], null) // Find the deepest pruned branch cell
-        const patchedShardState = rebuild(newShardState, path, accountState) // And replace it with the actual account state
+            const {path} = walk(newShardState, 0, [], null) // Find the deepest pruned branch cell
+            const patchedShardState = rebuild(newShardState, path, accountState) // And replace it with the actual account state
 
-        expect(newShardState.hash(0).toString("hex")).toEqual(
-            patchedShardState.hash(0).toString("hex"),
-        )
+            expect(newShardState.hash(0).toString("hex")).toEqual(
+                patchedShardState.hash(0).toString("hex"),
+            )
 
-        const shardBlockProof = shardBlockProofs[blockNum]
-        const tester = await blockchain.treasury("Proofs equals pain")
-        const jettonWalletAddress = Address.parse(
-            "EQDGGcNiffkfkbKtaFrlJEy6xJFsJw0FkYtqpCqFjY_AF7EE",
-        )
+            const shardBlockProof = shardBlockProofs[blockNum]
+            const tester = await blockchain.treasury("Proofs equals pain")
+            const jettonWalletAddress = Address.parse(
+                "EQDGGcNiffkfkbKtaFrlJEy6xJFsJw0FkYtqpCqFjY_AF7EE",
+            )
 
-        const vaultContract = await blockchain.getContract(vault.address)
+            const vaultContract = await blockchain.getContract(vault.address)
 
-        const _res = await vaultContract.receiveMessage(
-            internal({
-                from: jettonWalletAddress,
-                to: vault.address,
-                value: toNano(0.5),
-                body: beginCell()
-                    .store(
-                        storeJettonNotifyWithActionRequest({
-                            $$type: "JettonNotifyWithActionRequest",
-                            queryId: 0n,
-                            sender: tester.address,
-                            // Amount doesn't matter
-                            amount: 100n,
-                            eitherBit: false,
-                            actionOpcode: LPDepositPartOpcode,
-                            actionPayload: mockPayload,
-                            proofType: PROOF_STATE_TO_THE_BLOCK,
-                            proof: beginCell()
-                                .store(
-                                    storeStateProof({
-                                        $$type: "StateProof",
-                                        mcBlockSeqno: BigInt(blockToProofTo.seqno),
-                                        shardBitLen: BigInt(
-                                            Cell.fromHex(shardBlockProof.links[0].proof).depth() -
-                                                6,
-                                            // Subtracting 6 be unobvious, but actually what we need here is the depth of BinTree here
-                                            // _ (HashmapE 32 ^(BinTree ShardDescr)) = ShardHashes;
-                                            // But shardBlockProof.links[0].proof is Merkle proof made of a masterchain block
-                                        ),
-                                        mcBlockHeaderProof: Cell.fromHex(
-                                            shardBlockProof.links[0].proof,
-                                        ),
-                                        shardBlockHeaderProof: scBlockProof,
-                                        shardChainStateProof:
-                                            convertToMerkleProof(patchedShardState),
-                                    }),
-                                )
-                                .asSlice(),
-                        }),
-                    )
-                    .endCell(),
-            }),
-        )
+            const _res = await vaultContract.receiveMessage(
+                internal({
+                    from: jettonWalletAddress,
+                    to: vault.address,
+                    value: toNano(0.5),
+                    body: beginCell()
+                        .store(
+                            storeJettonNotifyWithActionRequest({
+                                $$type: "JettonNotifyWithActionRequest",
+                                queryId: 0n,
+                                sender: tester.address,
+                                // Amount doesn't matter
+                                amount: 100n,
+                                eitherBit: false,
+                                actionOpcode: LPDepositPartOpcode,
+                                actionPayload: mockPayload,
+                                proofType: PROOF_STATE_TO_THE_BLOCK,
+                                proof: beginCell()
+                                    .store(
+                                        storeStateProof({
+                                            $$type: "StateProof",
+                                            mcBlockSeqno: BigInt(blockToProofTo.seqno),
+                                            shardBitLen: BigInt(
+                                                Cell.fromHex(
+                                                    shardBlockProof.links[0].proof,
+                                                ).depth() - 6,
+                                                // Subtracting 6 be unobvious, but actually what we need here is the depth of BinTree here
+                                                // _ (HashmapE 32 ^(BinTree ShardDescr)) = ShardHashes;
+                                                // But shardBlockProof.links[0].proof is Merkle proof made of a masterchain block
+                                            ),
+                                            mcBlockHeaderProof: Cell.fromHex(
+                                                shardBlockProof.links[0].proof,
+                                            ),
+                                            shardBlockHeaderProof: scBlockProof,
+                                            shardChainStateProof:
+                                                convertToMerkleProof(patchedShardState),
+                                        }),
+                                    )
+                                    .asSlice(),
+                            }),
+                        )
+                        .endCell(),
+                }),
+            )
 
-        // We only need to test that the vault has been successfully initialized.
-        // Moreover, it is a sufficient check because we do not trust any data from the message and validate everything via hashes
-        expect(await vault.getInited()).toBe(true)
+            // We only need to test that the vault has been successfully initialized.
+            // Moreover, it is a sufficient check because we do not trust any data from the message and validate everything via hashes
+            expect(await vault.getInited()).toBe(true)
+        }
     })
 
     // This test checks exactly the same as the previous one, but it uses real fresh data from the blockchain
