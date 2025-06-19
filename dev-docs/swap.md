@@ -85,7 +85,6 @@ To create jetton swap message, `forwardPayload` in jetton transfer should be sto
 _#bfa68001 swapRequest:^SwapRequest = SwapRequestForwardPayload;
 ```
 
-
 ## Multihop swaps
 
 multihop info
