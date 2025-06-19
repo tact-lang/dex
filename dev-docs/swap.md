@@ -57,4 +57,39 @@ Let's break down the meaning of fields in these structs:
 
 - `params` is inline struct that holds parameters of the swap, now we will look at the fields inside it.
 
-- `isExactOutType` is a boolean field that
+- `isExactOutType` is a boolean field that specifies [swap type](#kinds-of-swaps). True - swap is `exactOut`, false - swap is `exactIn` or `exactIn multihop`.
+
+- `cashbackAddress` is an optional address field that is needed only for `exactOut` swaps. This is the address, where unused tokens will be sent. If the swapType is `exactIn`, this value is ignored. If the swapType is `exactOut`, but this value is null, then unused tokens will be sent to the `receiver` address.
+
+- `desiredAmount` - if swapType is `exactIn`, then `desiredAmount` is minimal amount trader is willing to receive as the result of the swap (amount-out). If swapType is `exactOut`, then `desiredAmount` is the exact value-out that trader wants to receive.
+
+- `timeout` - absolute unix timestamp after which the transaction won't be executed (checked inside the amm pool). Can be specified as 0 to disable timeout check.
+
+- `payloadOnSuccess` is optional reference cell, described [here](#payload-semantics)
+
+- `payloadOnFailure` is optional reference cell, described [here](#payload-semantics)
+
+- `nextStep` is optional inline struct for multihop swaps, described [here](#multihop-swaps)
+
+## Multihop swaps
+
+asd
+
+## Payload semantics
+
+In Tact dex it is possible to attach `payloadOnSuccess` and `payloadOnFailure` to swap messages as optional reference cells. These payloads serve as a way to interact with protocol on-chain and use them as async callbacks or notifications after swaps and/or refunds.
+
+If the user attached them to the swap message, one of this payloads (depended on what action has happened) will be attached in vaults `payout` message (TLB of how the asset is delivered after the vault payout is asset-dependent TODO: add link to vaults section with payout message structs).
+
+**Failure payload** is attached to the payout message when:
+
+- Swap value-in is refunded back to the sender because timeout check failed
+- Swap value-in is refunded back to the sender because there is no liquidity in the pool yet
+- Swap value-in is refunded back to the sender because swap type is `exactIn` and value-out is less than the sender wants (slippage doesn't pass)
+- Swap value-in is refunded back to the sender because swap type is `exactOut` and desired amount-out is greater than pool reserves
+- Swap value-in is refunded back to the sender because swap type is `exactOut` and value-in is insufficient for specified exact value-out
+
+**Success payload** is attached to the payout message when:
+
+- Swap is successful, amount-out is sent to the receiver
+- Swap is successful, swap type is `exactOut` and value-in is more than is needed for specified exact amount-out, so excesses of value-in are refunded to the `cashbackAddress` (`payloadOnSuccess` will be attached both to this refund payout message **and** to the value-out payout message)
