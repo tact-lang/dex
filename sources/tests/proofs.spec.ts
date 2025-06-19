@@ -390,7 +390,7 @@ describe("Proofs", () => {
             const jettonMasterProvider = blockchain.provider(jettonMinterToProofStateFor)
 
             const builder = new TupleBuilder()
-            builder.writeAddress(tester.address)
+            builder.writeAddress(vault.address)
             const getMethodResult = await jettonMasterProvider.get(
                 "get_wallet_address",
                 builder.build(),
@@ -443,7 +443,6 @@ describe("Proofs", () => {
                         .endCell(),
                 }),
             )
-
             // We only need to test that the vault has been successfully initialized.
             // Moreover, it is a sufficient check because we do not trust any data from the message and validate everything via hashes
             expect(await vault.getInited()).toBe(true)
