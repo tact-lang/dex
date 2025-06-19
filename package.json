@@ -24,6 +24,7 @@
         "@tact-lang/compiler": "1.6.13",
         "@tact-lang/ton-jest": "^0.0.4",
         "@ton/core": "^0.61.0",
+        "@ton-api/client": "^0.4.0",
         "@ton/crypto": "^3.2.0",
         "@ton/sandbox": "^0.32.2",
         "@ton/test-utils": "^0.7.0",
