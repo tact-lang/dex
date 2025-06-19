@@ -422,8 +422,9 @@ describe("Proofs", () => {
         expect(await vault.getInited()).toBe(true)
     })
 
-    // This test is skipped as it needs TONAPI_KEY to work
-    // And also it is much slower than the previous one
+    // This test checks exactly the same as the previous one, but it uses real fresh data from the blockchain
+    // It is skipped as it needs TONAPI_KEY to work
+    // And it is much slower than the previous one
     test.skip("State proof should work correctly if constructed in real time", async () => {
         const TONAPI_KEY = process.env.TONAPI_KEY
         if (TONAPI_KEY === undefined) {
