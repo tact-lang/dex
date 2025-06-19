@@ -8,7 +8,6 @@ import {
     CellType,
     convertToMerkleProof,
     loadAccount,
-    loadShardAccount,
     toNano,
     TupleBuilder,
 } from "@ton/core"
