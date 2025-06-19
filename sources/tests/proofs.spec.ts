@@ -17,8 +17,13 @@ import {
 } from "../output/DEX_JettonVault"
 import {LPDepositPartOpcode} from "../output/DEX_LiquidityDepositContract"
 import {PROOF_TEP89, TEP89DiscoveryProxy} from "../output/DEX_TEP89DiscoveryProxy"
-import {TonApiClient} from "@ton-api/client"
+// eslint-disable-next-line
+import {GetRawAccountStateData, TonApiClient} from "@ton-api/client"
+import allAccountStateAndProof from "./offline-data/16_last_proofs.json"
+import shardBlockProofs from "./offline-data/shardProofs.json"
+import {lastMcBlocks} from "./offline-data/last-mc-blocks"
 import {randomInt} from "crypto"
+import * as fs from "node:fs"
 
 // This function finds the path deepest pruned Cell
 function walk(cell: Cell, depth = 0, path: number[] = [], best: any) {
@@ -303,11 +308,6 @@ describe("Proofs", () => {
     })
 
     test("State proof should work correctly", async () => {
-        const TONAPI_KEY = process.env.TONAPI_KEY
-        if (TONAPI_KEY === undefined) {
-            console.warn("TONAPI_KEY is not set. Please set it to run this test.")
-            return
-        }
         const blockchain = await Blockchain.create()
         const jettonMinterToProofStateFor = Address.parse(
             "EQBlqsm144Dq6SjbPI4jjZvA1hqTIP3CvHovbIfW_t-SCALE",
@@ -343,47 +343,15 @@ describe("Proofs", () => {
             )
             .endCell()
 
-        const client = new TonApiClient({
-            apiKey: TONAPI_KEY,
-        })
-        const lastTestnetBlocksId = await client.blockchain.getBlockchainMasterchainHead()
-        const lastSeqno = lastTestnetBlocksId.seqno
-
-        const convertToBlockId = (
-            from: Awaited<ReturnType<typeof client.blockchain.getBlockchainBlock>>,
-        ): BlockId => {
-            return {
-                workchain: from.workchainId,
-                shard: BigInt("0x" + from.shard),
-                seqno: from.seqno,
-                rootHash: Buffer.from(from.rootHash, "hex"),
-                fileHash: Buffer.from(from.fileHash, "hex"),
-            }
-        }
-        // We need to fetch the last 16 blocks and pass them to the emulation
-        const lastMcBlocks: BlockId[] = []
-        for (let i = 0; i < 16; i++) {
-            const block = await client.blockchain.getBlockchainBlock(
-                `(-1,8000000000000000,${lastSeqno - i})`,
-            )
-            lastMcBlocks.push(convertToBlockId(block))
-        }
-
         blockchain.prevBlocks = {
             lastMcBlocks: lastMcBlocks,
             // Not real prevKeyBlock, but we won't use that so does not matter
             prevKeyBlock: lastMcBlocks[0],
         }
 
-        const blockToProofTo = lastMcBlocks[randomInt(0, 16)]
-        const blockToProofToStrId = `(-1,8000000000000000,${blockToProofTo.seqno},${blockToProofTo.rootHash.toString("hex")},${blockToProofTo.fileHash.toString("hex")})`
-
-        const accountStateAndProof = await client.liteServer.getRawAccountState(
-            jettonMinterToProofStateFor,
-            {
-                target_block: blockToProofToStrId,
-            },
-        )
+        const blockNum = randomInt(0, 16)
+        const blockToProofTo = lastMcBlocks[blockNum]
+        const accountStateAndProof = allAccountStateAndProof[blockNum]
 
         const proofs = Cell.fromBoc(Buffer.from(accountStateAndProof.proof, "hex"))
 
@@ -399,24 +367,14 @@ describe("Proofs", () => {
             patchedShardState.hash(0).toString("hex"),
         )
 
-        const shardBlockStrId = `(${accountStateAndProof.shardblk.workchain},${accountStateAndProof.shardblk.shard},${accountStateAndProof.shardblk.seqno},${accountStateAndProof.shardblk.rootHash},${accountStateAndProof.shardblk.fileHash})`
-        const shardBlockProof = await client.liteServer.getRawShardBlockProof(shardBlockStrId)
-
+        const shardBlockProof = shardBlockProofs[blockNum]
         const tester = await blockchain.treasury("Proofs equals pain")
-        const getMethodResult = await client.blockchain.execGetMethodForBlockchainAccount(
-            jettonMinterToProofStateFor,
-            "get_wallet_address",
-            {
-                args: [beginCell().storeAddress(vault.address).endCell().toBoc().toString("hex")],
-            },
+        const jettonWalletAddress = Address.parse(
+            "EQDGGcNiffkfkbKtaFrlJEy6xJFsJw0FkYtqpCqFjY_AF7EE",
         )
-        if (getMethodResult.stack[0].type !== "cell") {
-            throw new Error("Unexpected get-method result type: " + getMethodResult.stack[0].type)
-        }
-        const jettonWalletAddress = getMethodResult.stack[0].cell.beginParse().loadAddress()
 
         const vaultContract = await blockchain.getContract(vault.address)
-        //blockchain.verbosity.vmLogs = "vm_logs_verbose"
+
         const _res = await vaultContract.receiveMessage(
             internal({
                 from: jettonWalletAddress,
@@ -465,4 +423,8 @@ describe("Proofs", () => {
         // Moreover, it is a sufficient check because we do not trust any data from the message and validate everything via hashes
         expect(await vault.getInited()).toBe(true)
     })
+
+    // This test is skipped as it needs TONAPI_KEY to work
+    // And also it is much slower than the previous one
+    test.skip("State proof should work correctly if constructed in real time", async () => {})
 })
