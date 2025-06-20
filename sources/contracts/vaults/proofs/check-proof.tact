@@ -2,20 +2,15 @@
 //  Copyright © 2025 TON Studio
 
 import "./tep-89-discovery-proxy";
+import "./block-proof";
 import "../../utils/utils";
-
-struct JettonMasterState {
-    jettonMasterCode: Cell?;
-    jettonMasterData: Cell?;
-}
 
 const PROOF_NO_PROOF_ATTACHED: Int = 0;
 const PROOF_TEP89: Int = 1;
 const PROOF_STATE_INIT: Int = 2;
 const PROOF_STATE_TO_THE_BLOCK: Int = 3;
-const PROOF_JETTON_BURN: Int = 4;
 
-inline fun checkProof(jettonMaster: Address, proofType: Int, proof: Slice, msgCell: Cell): Bool {
+inline fun checkProof(jettonMaster: Address, proofType: Int, proof: Slice, msgCell: Cell) {
     if (proofType == PROOF_TEP89) {
         let proxyStateInit = initOf TEP89DiscoveryProxy(
             jettonMaster,
@@ -32,26 +27,25 @@ inline fun checkProof(jettonMaster: Address, proofType: Int, proof: Slice, msgCe
             bounce: false,
             init: proxyStateInit,
         });
-        // We don't need to save state init, so we just need to exit() quickly
+        // We don't need to save state, so we just need to exit() quickly
         exit();
     } else if (proofType == PROOF_STATE_INIT) {
-        let init = JettonMasterState.fromSlice(proof);
-        let myJettonWallet = calculateJettonWallet(myAddress(), init.jettonMasterData, init.jettonMasterCode, jettonMaster);
+        let init = StateInit.fromSlice(proof);
+        let myJettonWallet = calculateJettonWallet(myAddress(), init.data, init.code, jettonMaster);
         require(
             myJettonWallet == sender() &&
             contractAddress(StateInit {
-                code: init.jettonMasterCode!!,
-                data: init.jettonMasterData!!,
+                code: init.code,
+                data: init.data,
             }) == jettonMaster,
-            "JettonVault: StateInit proof is invalid",
+            "JettonVault: Invalid state init proof",
         );
-        return true;
     } else if (proofType == PROOF_STATE_TO_THE_BLOCK) {
-        require(false, "JettonVault: State proof is not supported");
-        return true;
-    } else if (proofType == PROOF_JETTON_BURN) {
-        require(false, "JettonVault: Burn proof is not supported");
-        return true;
+        let stateProof = StateProof.fromSlice(proof);
+        let init = getJettonMasterState(stateProof, jettonMaster);
+        let myJettonWallet = calculateJettonWallet(myAddress(), init.data, init.code, jettonMaster);
+        require(myJettonWallet == sender(), "JettonVault: Invalid block state proof");
+    } else {
+        require(false, "JettonVault: Unsupported proof type");
     }
-    return false;
 }
