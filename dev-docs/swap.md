@@ -158,7 +158,6 @@ _ pool:MsgAddress
 
 This field is the beginning of the linked list, where every next node is next swap step in the swap chain. `pool` is the next pool that you want to send your asset to, note that specified pool should include previous step asset as one of its own (in other words you can't do swap chain TON -> USDT and then BOLT -> TON, since you can only send USDT to some other pool with USDT as one of the assets in it).
 
-
 ## Payload semantics
 
 In Tact dex it is possible to attach `payloadOnSuccess` and `payloadOnFailure` to swap messages as optional reference cells. These payloads serve as a way to interact with protocol on-chain and use them as async callbacks or notifications after swaps and/or refunds.
