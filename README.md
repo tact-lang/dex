@@ -1,6 +1,6 @@
-# OpenDeFi Library: Decentralized Exchange (DEX)
+# OpenDeFi Library: Decentralized Exchange in Tact - TDex
 
-A decentralized exchange (DEX) on the TON blockchain providing efficient exchange of various token types with a high degree of asset abstraction.
+TDex: A decentralized exchange (DEX) on the TON blockchain providing efficient exchange of various token types with a high degree of asset abstraction.
 
 ## Project Goals
 
@@ -14,6 +14,15 @@ A decentralized exchange (DEX) on the TON blockchain providing efficient exchang
 - Smart contracts for Vaults of various asset types
 - Automated Market Maker (AMM) Pool contracts
 - Contracts for secure liquidity addition
+
+## How-to and dev docs
+
+Check this docs to learn about how TDex works, its semantics and how to integrate with it.
+
+- [How to swap on TDex](./dev-docs/swap.md)
+- How to manage liquidity, TODO
+- How to work with Factory, TODO
+- How to create new pool and vaults, TODO
 
 ## DEX Architecture
 
@@ -252,7 +261,7 @@ graph LR
 
 ## Project Setup and Development
 
-To start working with the project, install all dependencies:
+To start working with TDex, install all dependencies:
 
 ```shell
 yarn install
@@ -286,7 +295,7 @@ yarn fmt
 
 ## Testing
 
-The project uses Jest for testing. Tests are located in the `sources/tests` directory and cover various aspects of the DEX functionality:
+The project uses Jest for testing. Tests are located in the `sources/tests` directory and cover various aspects of the TDex functionality:
 
 - `amm-pool.spec.ts` - Tests for the AMM Pool functionality
 - `liquidity-deposit.spec.ts` - Tests for liquidity deposit process

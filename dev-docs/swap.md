@@ -1,6 +1,6 @@
 # Swaps
 
-This section of dev-docs focuses on how to perform on-chain asset swaps on Tact dex. Swap essentially is sending asset that you want to swap to it's corresponding vault and attaching message body with swap request details. Vault will then create swap-in message and send it to the Amm pool, which will handle the math and either return the funds if they don't pass the slippage or send payout message to the other vault (sometimes pool will perform this two actions together).
+This section of dev-docs focuses on how to perform on-chain asset swaps on TDex. Swap essentially is sending asset that you want to swap to it's corresponding vault and attaching message body with swap request details. Vault will then create swap-in message and send it to the Amm pool, which will handle the math and either return the funds if they don't pass the slippage or send payout message to the other vault (sometimes pool will perform this two actions together).
 
 ## Prerequisites
 
@@ -9,7 +9,7 @@ In this section and further we will use `asset-in` naming for the asset that we 
 To perform swap, you need:
 
 - Both asset-in and asset-out vaults to be deployed and inited (TODO: add links to doc vaults page)
-- Some liquidity in these assets corresponding pool (you can't swap without liquidity)
+- Some liquidity in the corresponding pool (you can't swap without liquidity)
 - Address of the asset-in vault
 - Address of the target pool
 
@@ -17,7 +17,7 @@ TODO: add section from factory docs page about how to get this addresses
 
 ## Kinds of swaps
 
-Tact dex support the total of 3 kinds of swaps:
+TDex support the total of 3 kinds of swaps:
 
 1. `ExactIn` swaps
    This is default type of swaps that is supported on the major of other dexes. The semantics is that you send some amount-in and specify the **minimum** amount-out that you are willing to receive. The pool uses it's internal math and either perform the swap with amount-out greater or equal to the one you have specified or refunds the in-value back to you.
@@ -27,7 +27,7 @@ Tact dex support the total of 3 kinds of swaps:
     - refund value-in to the sender if the value-in is less that what is needed for specified exact amount-out;
     - perform the swap _and_ refund some of the value-in to the sender - this would happen if constant product formula inside amm pool had shifted the other way and value-in is greater than what is needed for exact value-out;
 3. `ExactIn multihop` swaps
-   Someone can argue that this is not really 3rd kind but more like 2.5, because the semantics of these swaps is similar to exact-in swaps, the only difference is that after the successful swap, value-out is sent not to the receiver, but to the another pool, as next swap message with `swap-params`. As the result, it is possible to perform chain of swaps all inside single transaction trace inside the dex. Important aspect is that if the i-th swap in chain fails (e.g. slippage), the pool will send the result of the last successful swap to the receiver (so for example, if the chain we want to swap is TON -> USDT -> TON and USDT -> TON swap fails because course changed, the user will receive USDT as the swap result);
+   Someone can argue that this is not really 3rd kind but more like 2.5, because the semantics of these swaps is similar to exact-in swaps, the only difference is that after the successful swap, value-out is sent not to the receiver, but to the another pool, as next swap message with `swap-params`. As the result, it is possible to perform chain of swaps all inside single transaction trace inside the dex. Important aspect is that if the i-th swap in chain fails (e.g. slippage), the pool will send the result of the last successful swap to the receiver (so for example, if the chain we want to swap is TON -> USDT -> TON and USDT -> TON swap fails because rate changed, the user will receive USDT as the swap result);
 
 ## Swap message
 
@@ -82,7 +82,7 @@ You need to construct swap message in such way if you want to swap jettons to so
 To create jetton swap message, `forwardPayload` in jetton transfer should be stored **inline** and look like this:
 
 ```tlb
-_#bfa68001 swapRequest:^SwapRequest proofType {proofType = 0} = SwapRequestForwardPayload;
+_#bfa68001 swapRequest:^SwapRequest proofType:(##8) {proofType = 0} = SwapRequestForwardPayload;
 ```
 
 Proof type is part of general jetton vault notification message struct, in Tact it is:
@@ -120,7 +120,7 @@ const swapResult = await userJettonWallet.sendTransfer(
     toNano(1), // attached ton value
     jettonSwapAmount,
     vault.address, // where to send jettons to
-    walletOwner.address, // excesses address ()
+    walletOwner.address, // excesses address
     null, // custom payload
     toNano(0.5), // forward ton amount
     swapForwardPayload, // should be stored inline, meaning
@@ -139,12 +139,12 @@ TLB for ton swap message is quite simple:
 ```tlb
 swap_request_ton#698cba08
     amount:Coins
-    action:SwapRequest = SwapRequestTon;
+    action:SwapRequest = InMsgBody;
 ```
 
 `Amount` is the amount that you want to swap. In you are wondering, why there is no `amount` field in jetton swap message, it's because amount is already specified (and handled) in the jetton notification.
 
-Note, that the value that you attach to the swap message with `SwapRequestTon` should be always be greater than `amount`, because of blockchain fees.
+Note, that the value that you attach to the swap message with `SwapRequestTon` should be always be greater than `amount`, because of blockchain fees. TODO: link fees paragraph
 
 ## Multihop swaps
 
@@ -160,7 +160,7 @@ This field is the beginning of the linked list, where every next node is next sw
 
 ## Payload semantics
 
-In Tact dex it is possible to attach `payloadOnSuccess` and `payloadOnFailure` to swap messages as optional reference cells. These payloads serve as a way to interact with protocol on-chain and use them as async callbacks or notifications after swaps and/or refunds.
+In TDex it is possible to attach `payloadOnSuccess` and `payloadOnFailure` to swap messages as optional reference cells. These payloads serve as a way to interact with protocol on-chain and use them as async callbacks or notifications after swaps and/or refunds.
 
 If the user attached them to the swap message, one of this payloads (depended on what action has happened) will be attached in vaults `payout` message (TLB of how the asset is delivered after the vault payout is asset-dependent TODO: add link to vaults section with payout message structs).
 
