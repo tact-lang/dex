@@ -19,7 +19,7 @@ T-Dex: A decentralized exchange (DEX) on the TON blockchain providing efficient 
 
 ## How-to and dev docs
 
-Check this docs to learn about how T-Dex works, its semantics and how to integrate with it.
+Check these docs to learn about how T-Dex works, its semantics and how to integrate with it.
 
 - [How to swap on T-Dex](./dev-docs/swap.md)
 - How to manage liquidity, TODO
