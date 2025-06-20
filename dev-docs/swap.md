@@ -82,8 +82,24 @@ You need to construct swap message in such way if you want to swap jettons to so
 To create jetton swap message, `forwardPayload` in jetton transfer should be stored **inline** and look like this:
 
 ```tlb
-_#bfa68001 swapRequest:^SwapRequest = SwapRequestForwardPayload;
+_#bfa68001 swapRequest:^SwapRequest proofType {proofType = 0} = SwapRequestForwardPayload;
 ```
+
+Proof type is part of general jetton vault notification message struct, in Tact it is:
+
+```tact
+message(0x7362d09c) JettonNotifyWithActionRequest {
+    queryId: Int as uint64;
+    amount: Int as coins;
+    sender: Address;
+    eitherBit: Bool; // Should be 0, so other fields are stored inline
+    actionOpcode: Int as uint32;
+    actionPayload: Cell; // Obligatory ref
+    proofType: Int as uint8; // 0 - No proof attached, 1 - TEP-89, 2 - StateInit, 3 - State, 4 - Jetton Burn
+    proof: Slice as remaining;
+```
+
+So, for simple transfer, you should just store 0 as uint8 after the `SwapRequest` ref cell.
 
 Then, you need to send jetton transfer message with such forward payload to the jetton vault.
 
@@ -132,7 +148,16 @@ Note, that the value that you attach to the swap message with `SwapRequestTon` s
 
 ## Multihop swaps
 
-multihop info
+To send multihop swap, you will need to send `exactIn` swap with filled `swapStep` field:
+
+```tlb
+_ pool:MsgAddress
+  minAmountOut:Coins
+  nextStep:(Maybe ^SwapStep) = SwapStep;
+```
+
+This field is the beginning of the linked list, where every next node is next swap step in the swap chain. `pool` is the next pool that you want to send your asset to, note that specified pool should include previous step asset as one of its own (in other words you can't do swap chain TON -> USDT and then BOLT -> TON, since you can only send USDT to some other pool with USDT as one of the assets in it).
+
 
 ## Payload semantics
 
