@@ -1,41 +1,41 @@
 # Swaps
 
-This section of dev-docs focuses on how to perform on-chain asset swaps on TDex. Swap essentially is sending asset that you want to swap to it's corresponding vault and attaching message body with swap request details. Vault will then create swap-in message and send it to the Amm pool, which will handle the math and either return the funds if they don't pass the slippage or send payout message to the other vault (sometimes pool will perform this two actions together).
+This section of the dev-docs focuses on how to perform on-chain asset swaps on TDex. A swap essentially involves sending the asset you want to swap to its corresponding vault and attaching a message body with the swap request details. The vault will then create a swap-in message and send it to the AMM pool, which will handle the math and either return the funds if they do not pass the slippage check or send a payout message to the other vault (sometimes the pool will perform both actions together).
 
 ## Prerequisites
 
-In this section and further we will use `asset-in` naming for the asset that we want to swap, and `asset-out` for the asset that we want to get as the result of the swap
+In this section and beyond, we will use `asset-in` to refer to the asset you want to swap, and `asset-out` for the asset you want to receive as the result of the swap.
 
-To perform swap, you need:
+To perform a swap, you need:
 
-- Both asset-in and asset-out vaults to be deployed and inited (TODO: add links to doc vaults page)
-- Some liquidity in the corresponding pool (you can't swap without liquidity)
-- Address of the asset-in vault
-- Address of the target pool
+- Both asset-in and asset-out vaults to be deployed and initialized (TODO: add links to the vaults documentation page)
+- Sufficient liquidity in the corresponding pool (you cannot swap without liquidity)
+- The address of the asset-in vault
+- The address of the target pool
 
-TODO: add section from factory docs page about how to get this addresses
+TODO: add section from the factory docs page about how to obtain these addresses
 
 ## Kinds of swaps
 
-TDex support the total of 3 kinds of swaps:
+TDex supports a total of three kinds of swaps:
 
 1. `ExactIn` swaps
-   This is default type of swaps that is supported on the major of other dexes. The semantics is that you send some amount-in and specify the **minimum** amount-out that you are willing to receive. The pool uses it's internal math and either perform the swap with amount-out greater or equal to the one you have specified or refunds the in-value back to you.
+   This is the default type of swap supported by most other DEXes. The semantics are that you send some amount-in and specify the **minimum** amount-out you are willing to receive. The pool uses its internal math and either performs the swap with an amount-out greater than or equal to what you specified, or refunds the in-value back to you.
 2. `ExactOut` swaps
-   In this kind of swap instead of specifying the minimal out-value that you want to receive, you specify the **exact** out-value that you want to receive. Based on this, the pool will do one of the three possible actions:
-    - just perform the swap if the value-in inside the amm equals exactly the value-out;
-    - refund value-in to the sender if the value-in is less that what is needed for specified exact amount-out;
-    - perform the swap _and_ refund some of the value-in to the sender - this would happen if constant product formula inside amm pool had shifted the other way and value-in is greater than what is needed for exact value-out;
+   In this kind of swap, instead of specifying the minimum out-value you want to receive, you specify the **exact** out-value you want to receive. Based on this, the pool will do one of three possible actions:
+    - Just perform the swap if the value-in inside the AMM equals exactly the value-out;
+    - Refund value-in to the sender if the value-in is less than what is needed for the specified exact amount-out;
+    - Perform the swap _and_ refund some of the value-in to the sender—this would happen if the constant product formula inside the AMM pool shifted the other way and value-in is greater than what is needed for the exact value-out;
 3. `ExactIn multihop` swaps
-   Someone can argue that this is not really 3rd kind but more like 2.5, because the semantics of these swaps is similar to exact-in swaps, the only difference is that after the successful swap, value-out is sent not to the receiver, but to the another pool, as next swap message with `swap-params`. As the result, it is possible to perform chain of swaps all inside single transaction trace inside the dex. Important aspect is that if the i-th swap in chain fails (e.g. slippage), the pool will send the result of the last successful swap to the receiver (so for example, if the chain we want to swap is TON -> USDT -> TON and USDT -> TON swap fails because rate changed, the user will receive USDT as the swap result);
+   Some might argue that this is not really a third kind but more like 2.5, because the semantics of these swaps are similar to exact-in swaps. The only difference is that after a successful swap, the value-out is sent not to the receiver, but to another pool, as the next swap message with `swap-params`. As a result, it is possible to perform a chain of swaps all inside a single transaction trace within the DEX. An important aspect is that if the i-th swap in the chain fails (e.g., due to slippage), the pool will send the result of the last successful swap to the receiver (for example, if the chain you want to swap is TON -> USDT -> TON and the USDT -> TON swap fails because the rate changed, the user will receive USDT as the swap result).
 
 ## Swap message
 
-Swap messages differ from one vault to another, however they have similar part that is called `SwapRequest`.
+Swap messages differ from one vault to another, but they share a similar part called `SwapRequest`.
 
 ### Swap request struct
 
-TLB for this common part looks like this:
+The TLB for this common part looks like this:
 
 ```tlb
 _ isExactOutType:Bool
@@ -51,41 +51,41 @@ _ pool:MsgAddress
   params:SwapParameters = SwapRequest;
 ```
 
-Let's break down the meaning of fields in these structs:
+Let's break down the meaning of the fields in these structs:
 
-- `pool` is straight-forward address of the Amm pool contract for your asset-in and asset-out.
+- `pool` is the address of the AMM pool contract for your asset-in and asset-out.
 
-- `receiver` is an optional address field for the receiver of the swap result. If the sender leaves it as null, it will default to the senders' address.
+- `receiver` is an optional address field for the receiver of the swap result. If the sender leaves it as null, it will default to the sender's address.
 
-- `params` is inline struct that holds parameters of the swap, now we will look at the fields inside it.
+- `params` is an inline struct that holds the parameters of the swap. We will now look at the fields inside it.
 
-- `isExactOutType` is a boolean field that specifies [swap type](#kinds-of-swaps). True - swap is `exactOut`, false - swap is `exactIn` or `exactIn multihop`.
+- `isExactOutType` is a boolean field that specifies the [swap type](#kinds-of-swaps). True means the swap is `exactOut`, false means the swap is `exactIn` or `exactIn multihop`.
 
-- `cashbackAddress` is an optional address field (to set it to null, use `address_none`) that is needed only for `exactOut` swaps. This is the address, where unused tokens will be sent. If the swapType is `exactIn`, this value is ignored. If the swapType is `exactOut`, but this value is null, then unused tokens will be sent to the `receiver` address.
+- `cashbackAddress` is an optional address field (to set it to null, use `address_none`) that is needed only for `exactOut` swaps. This is the address where unused tokens will be sent. If the swap type is `exactIn`, this value is ignored. If the swap type is `exactOut` but this value is null, then unused tokens will be sent to the `receiver` address.
 
-- `desiredAmount` - if swapType is `exactIn`, then `desiredAmount` is minimal amount trader is willing to receive as the result of the swap (amount-out). If swapType is `exactOut`, then `desiredAmount` is the exact value-out that trader wants to receive.
+- `desiredAmount`—if the swap type is `exactIn`, then `desiredAmount` is the minimum amount the trader is willing to receive as the result of the swap (amount-out). If the swap type is `exactOut`, then `desiredAmount` is the exact value-out that the trader wants to receive.
 
-- `timeout` - absolute unix timestamp after which the transaction won't be executed (checked inside the amm pool). Can be specified as 0 to disable timeout check.
+- `timeout`—an absolute Unix timestamp after which the transaction will not be executed (checked inside the AMM pool). Can be specified as 0 to disable the timeout check.
 
-- `payloadOnSuccess` is optional reference cell, described [here](#payload-semantics)
+- `payloadOnSuccess` is an optional reference cell, described [here](#payload-semantics)
 
-- `payloadOnFailure` is optional reference cell, described [here](#payload-semantics)
+- `payloadOnFailure` is an optional reference cell, described [here](#payload-semantics)
 
-- `nextStep` is optional inline struct for multihop swaps, described [here](#multihop-swaps)
+- `nextStep` is an optional inline struct for multihop swaps, described [here](#multihop-swaps)
 
 Given this common struct, we can look at how different vault swap messages are created.
 
 ### Jetton vault swap message
 
-You need to construct swap message in such way if you want to swap jettons to some other asset.
+You need to construct the swap message in this way if you want to swap jettons for another asset.
 
-To create jetton swap message, `forwardPayload` in jetton transfer should be stored **inline** and look like this:
+To create a jetton swap message, the `forwardPayload` in the jetton transfer should be stored **inline** and look like this:
 
 ```tlb
 _#bfa68001 swapRequest:^SwapRequest proofType:(##8) {proofType = 0} = SwapRequestForwardPayload;
 ```
 
-Proof type is part of general jetton vault notification message struct, in Tact it is:
+Proof type is part of the general jetton vault notification message struct. In Tact it is:
 
 ```tact
 message(0x7362d09c) JettonNotifyWithActionRequest {
@@ -99,9 +99,9 @@ message(0x7362d09c) JettonNotifyWithActionRequest {
     proof: Slice as remaining;
 ```
 
-So, for simple transfer, you should just store 0 as uint8 after the `SwapRequest` ref cell.
+So, for a simple transfer, you should just store 0 as uint8 after the `SwapRequest` ref cell.
 
-Then, you need to send jetton transfer message with such forward payload to the jetton vault.
+Then, you need to send a jetton transfer message with such a forward payload to the jetton vault.
 
 ```ts
 const swapForwardPayload = createJettonVaultSwapRequest(
@@ -119,7 +119,7 @@ const swapResult = await userJettonWallet.sendTransfer(
     walletOwner.getSender(),
     toNano(1), // attached ton value
     jettonSwapAmount,
-    vault.address, // where to send jettons to
+    vault.address, // where to send jettons
     walletOwner.address, // excesses address
     null, // custom payload
     toNano(0.5), // forward ton amount
@@ -132,9 +132,9 @@ You can check more details on swap serialization inside [test helpers](../source
 
 ### Ton vault swap message
 
-You need to construct swap message in such way if you want to swap ton to some other asset.
+You need to construct the swap message in this way if you want to swap TON for another asset.
 
-TLB for ton swap message is quite simple:
+The TLB for the TON swap message is quite simple:
 
 ```tlb
 swap_request_ton#698cba08
@@ -142,13 +142,13 @@ swap_request_ton#698cba08
     action:SwapRequest = InMsgBody;
 ```
 
-`Amount` is the amount that you want to swap. In you are wondering, why there is no `amount` field in jetton swap message, it's because amount is already specified (and handled) in the jetton notification.
+`Amount` is the amount you want to swap. If you are wondering why there is no `amount` field in the jetton swap message, it is because the amount is already specified (and handled) in the jetton notification.
 
-Note, that the value that you attach to the swap message with `SwapRequestTon` should be always be greater than `amount`, because of blockchain fees. TODO: link fees paragraph
+Note that the value you attach to the swap message with `SwapRequestTon` should always be greater than `amount`, because of blockchain fees. TODO: link to the fees paragraph
 
 ## Multihop swaps
 
-To send multihop swap, you will need to send `exactIn` swap with filled `swapStep` field:
+To send a multihop swap, you will need to send an `exactIn` swap with the `swapStep` field filled:
 
 ```tlb
 _ pool:MsgAddress
@@ -156,23 +156,23 @@ _ pool:MsgAddress
   nextStep:(Maybe ^SwapStep) = SwapStep;
 ```
 
-This field is the beginning of the linked list, where every next node is next swap step in the swap chain. `pool` is the next pool that you want to send your asset to, note that specified pool should include previous step asset as one of its own (in other words you can't do swap chain TON -> USDT and then BOLT -> TON, since you can only send USDT to some other pool with USDT as one of the assets in it).
+This field is the beginning of a linked list, where each next node is the next swap step in the swap chain. `pool` is the next pool to which you want to send your asset. Note that the specified pool should include the previous step's asset as one of its own (in other words, you cannot do a swap chain TON -> USDT and then BOLT -> TON, since you can only send USDT to another pool that has USDT as one of its assets).
 
 ## Payload semantics
 
-In TDex it is possible to attach `payloadOnSuccess` and `payloadOnFailure` to swap messages as optional reference cells. These payloads serve as a way to interact with protocol on-chain and use them as async callbacks or notifications after swaps and/or refunds.
+In TDex, it is possible to attach `payloadOnSuccess` and `payloadOnFailure` to swap messages as optional reference cells. These payloads serve as a way to interact with the protocol on-chain and use them as async callbacks or notifications after swaps and/or refunds.
 
-If the user attached them to the swap message, one of this payloads (depended on what action has happened) will be attached in vaults `payout` message (TLB of how the asset is delivered after the vault payout is asset-dependent TODO: add link to vaults section with payout message structs).
+If the user attaches them to the swap message, one of these payloads (depending on what action has happened) will be attached in the vault's `payout` message (the TLB of how the asset is delivered after the vault payout is asset-dependent. TODO: add link to the vaults section with payout message structs).
 
 **Failure payload** is attached to the payout message when:
 
-- Swap value-in is refunded back to the sender because timeout check failed
+- Swap value-in is refunded back to the sender because the timeout check failed
 - Swap value-in is refunded back to the sender because there is no liquidity in the pool yet
-- Swap value-in is refunded back to the sender because swap type is `exactIn` and value-out is less than the sender wants (slippage doesn't pass)
-- Swap value-in is refunded back to the sender because swap type is `exactOut` and desired amount-out is greater than pool reserves
-- Swap value-in is refunded back to the sender because swap type is `exactOut` and value-in is insufficient for specified exact value-out
+- Swap value-in is refunded back to the sender because the swap type is `exactIn` and value-out is less than the sender wants (slippage does not pass)
+- Swap value-in is refunded back to the sender because the swap type is `exactOut` and the desired amount-out is greater than pool reserves
+- Swap value-in is refunded back to the sender because the swap type is `exactOut` and value-in is insufficient for the specified exact value-out
 
 **Success payload** is attached to the payout message when:
 
-- Swap is successful, amount-out is sent to the receiver
-- Swap is successful, swap type is `exactOut` and value-in is more than is needed for specified exact amount-out, so excesses of value-in are refunded to the `cashbackAddress` (`payloadOnSuccess` will be attached both to this refund payout message **and** to the value-out payout message)
+- The swap is successful and amount-out is sent to the receiver
+- The swap is successful, the swap type is `exactOut`, and value-in is more than is needed for the specified exact amount-out, so the excess value-in is refunded to the `cashbackAddress` (`payloadOnSuccess` will be attached both to this refund payout message **and** to the value-out payout message)
