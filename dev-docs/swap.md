@@ -27,7 +27,7 @@ Tact dex support the total of 3 kinds of swaps:
     - refund value-in to the sender if the value-in is less that what is needed for specified exact amount-out;
     - perform the swap _and_ refund some of the value-in to the sender - this would happen if constant product formula inside amm pool had shifted the other way and value-in is greater than what is needed for exact value-out;
 3. `ExactIn multihop` swaps
-   Someone can argue that this is not really 3rd kind but more like 2.5, because the semantics of these swaps is similar to exact-in swaps, the only difference is that after the successful swap, value-out is sent not to the receiver, but to the another pool, as next swap message with `swap-params`. As the result, it is possible to perform chain of swaps all inside single transaction trace inside the dex;
+   Someone can argue that this is not really 3rd kind but more like 2.5, because the semantics of these swaps is similar to exact-in swaps, the only difference is that after the successful swap, value-out is sent not to the receiver, but to the another pool, as next swap message with `swap-params`. As the result, it is possible to perform chain of swaps all inside single transaction trace inside the dex. Important aspect is that if the i-th swap in chain fails (e.g. slippage), the pool will send the result of the last successful swap to the receiver (so for example, if the chain we want to swap is TON -> USDT -> TON and USDT -> TON swap fails because course changed, the user will receive USDT as the swap result);
 
 ## Swap message
 
@@ -39,7 +39,7 @@ TLB for this common part looks like this:
 
 ```tlb
 _ isExactOutType:Bool
-  cashbackAddress:(Maybe MsgAddress)
+  cashbackAddress:MsgAddress
   desiredAmount:Coins
   timeout:uint32
   payloadOnSuccess:(Maybe ^Cell)
@@ -61,7 +61,7 @@ Let's break down the meaning of fields in these structs:
 
 - `isExactOutType` is a boolean field that specifies [swap type](#kinds-of-swaps). True - swap is `exactOut`, false - swap is `exactIn` or `exactIn multihop`.
 
-- `cashbackAddress` is an optional address field that is needed only for `exactOut` swaps. This is the address, where unused tokens will be sent. If the swapType is `exactIn`, this value is ignored. If the swapType is `exactOut`, but this value is null, then unused tokens will be sent to the `receiver` address.
+- `cashbackAddress` is an optional address field (to set it to null, use `address_none`) that is needed only for `exactOut` swaps. This is the address, where unused tokens will be sent. If the swapType is `exactIn`, this value is ignored. If the swapType is `exactOut`, but this value is null, then unused tokens will be sent to the `receiver` address.
 
 - `desiredAmount` - if swapType is `exactIn`, then `desiredAmount` is minimal amount trader is willing to receive as the result of the swap (amount-out). If swapType is `exactOut`, then `desiredAmount` is the exact value-out that trader wants to receive.
 
@@ -79,7 +79,7 @@ Given this common struct, we can look at how different vault swap messages are c
 
 You need to construct swap message in such way if you want to swap jettons to some other asset.
 
-To create jetton swap message, `forwardPayload` in jetton transfer should be stored inline and look like this:
+To create jetton swap message, `forwardPayload` in jetton transfer should be stored **inline** and look like this:
 
 ```tlb
 _#bfa68001 swapRequest:^SwapRequest = SwapRequestForwardPayload;
