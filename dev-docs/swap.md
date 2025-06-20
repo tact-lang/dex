@@ -9,7 +9,7 @@ In this section and further we will use `asset-in` naming for the asset that we 
 To perform swap, you need:
 
 - Both asset-in and asset-out vaults to be deployed and inited (TODO: add links to doc vaults page)
-- Some liquidity in this assets` corresponding pool (you can't swap without liquidity)
+- Some liquidity in these assets corresponding pool (you can't swap without liquidity)
 - Address of the asset-in vault
 - Address of the target pool
 
@@ -20,14 +20,14 @@ TODO: add section from factory docs page about how to get this addresses
 Tact dex support the total of 3 kinds of swaps:
 
 1. `ExactIn` swaps
-   This is default type of swaps that is supported on the major of other dexes. The semantics is that you send some amount in and specify the **minimum** amount out that you are willing to receive. The pool uses it's internal math and either perform the swap with amount out greater or even to the one you have specified or refunds the in-value back to you.
+   This is default type of swaps that is supported on the major of other dexes. The semantics is that you send some amount-in and specify the **minimum** amount-out that you are willing to receive. The pool uses it's internal math and either perform the swap with amount-out greater or equal to the one you have specified or refunds the in-value back to you.
 2. `ExactOut` swaps
-   In this kind of swap instead of specifying the minimal out-value that you want to receive, you specify the exact out-value that you want to receive. Based on this, the pool will do one of the three possible actions:
+   In this kind of swap instead of specifying the minimal out-value that you want to receive, you specify the **exact** out-value that you want to receive. Based on this, the pool will do one of the three possible actions:
     - just perform the swap if the value-in inside the amm equals exactly the value-out;
     - refund value-in to the sender if the value-in is less that what is needed for specified exact amount-out;
     - perform the swap _and_ refund some of the value-in to the sender - this would happen if constant product formula inside amm pool had shifted the other way and value-in is greater than what is needed for exact value-out;
 3. `ExactIn multihop` swaps
-   Someone can argue that this is not really 3rd kind but more like 2.5, because the semantics of these swaps is similar to exact-in swaps, the only difference is that after the successful swap value-out is sent not to the receiver, but to the another pool, as next swap message with `swap-params`.
+   Someone can argue that this is not really 3rd kind but more like 2.5, because the semantics of these swaps is similar to exact-in swaps, the only difference is that after the successful swap, value-out is sent not to the receiver, but to the another pool, as next swap message with `swap-params`. As the result, it is possible to perform chain of swaps all inside single transaction trace inside the dex;
 
 ## Swap message
 
@@ -77,13 +77,42 @@ Given this common struct, we can look at how different vault swap messages are c
 
 ### Jetton vault swap message
 
-You need to construct swap message in such way if you want to swap jettons -> some other asset.
+You need to construct swap message in such way if you want to swap jettons to some other asset.
 
 To create jetton swap message, `forwardPayload` in jetton transfer should be stored inline and look like this:
 
 ```tlb
 _#bfa68001 swapRequest:^SwapRequest = SwapRequestForwardPayload;
 ```
+
+Then, you need to send jetton transfer message with such forward payload to the jetton vault.
+
+```ts
+const swapForwardPayload = createJettonVaultSwapRequest(
+    destinationPool,
+    isExactOutType,
+    desiredAmount,
+    timeout,
+    cashbackAddress,
+    payloadOnSuccess,
+    payloadOnFailure,
+    nextStep,
+    receiver,
+)
+const swapResult = await userJettonWallet.sendTransfer(
+    walletOwner.getSender(),
+    toNano(1), // attached ton value
+    jettonSwapAmount,
+    vault.address, // where to send jettons to
+    walletOwner.address, // excesses address ()
+    null, // custom payload
+    toNano(0.5), // forward ton amount
+    swapForwardPayload, // should be stored inline, meaning
+    // builder.storeBit(0).storeSlice(payload)
+)
+```
+
+You can check more details on swap serialization inside [test helpers](../sources/utils/testUtils.ts).
 
 ## Multihop swaps
 
