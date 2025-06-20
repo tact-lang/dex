@@ -114,6 +114,22 @@ const swapResult = await userJettonWallet.sendTransfer(
 
 You can check more details on swap serialization inside [test helpers](../sources/utils/testUtils.ts).
 
+### Ton vault swap message
+
+You need to construct swap message in such way if you want to swap ton to some other asset.
+
+TLB for ton swap message is quite simple:
+
+```tlb
+swap_request_ton#698cba08
+    amount:Coins
+    action:SwapRequest = SwapRequestTon;
+```
+
+`Amount` is the amount that you want to swap. In you are wondering, why there is no `amount` field in jetton swap message, it's because amount is already specified (and handled) in the jetton notification.
+
+Note, that the value that you attach to the swap message with `SwapRequestTon` should be always be greater than `amount`, because of blockchain fees.
+
 ## Multihop swaps
 
 multihop info
