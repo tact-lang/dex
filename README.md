@@ -1,8 +1,12 @@
 # OpenDeFi Library: Decentralized Exchange in Tact, T-Dex
 
-T-Dex: A decentralized exchange (DEX) on the TON blockchain providing efficient exchange of various token types with a high degree of asset abstraction.
+<div align="center">
 
-![T-Dex](./assets/t-dex.png)
+<img src="./assets/t-dex.png" alt="Tyrannosaurus rex holding TON logo" width="400" height="400" />
+
+**T-Dex**: A decentralized exchange (DEX) on the TON blockchain providing<br>efficient exchange of various token types with a high degree of asset abstraction.
+
+</div>
 
 ## Project Goals
 
