@@ -12,14 +12,14 @@ T-Dex uses a two-vault system for each pool (e.g., TON Vault and Jetton Vault). 
 - The AMM pool must exist.
 - You need the addresses of both vaults and the pool.
 
-Note, that in many places all across the T-Dex, **left** and **right** adjectives used to describe asset vaults. Indeed, for determinism in on-chain operations and predictable addresses, vaults should be sorted and used based on their ordering. Vaults are sorted by their contracts addresses. TODO: link vault ordering from vaults docs
+Note that throughout T-Dex documentation, the terms **left** and **right** are used to describe asset vaults. For determinism in on-chain operations and predictable addresses, vaults should be sorted and used based on their contract address ordering. (TODO: link vault ordering from vaults docs)
 
 ### Step-by-step
 
 1. **Deploy the Liquidity Deposit Contract**  
    This contract coordinates the atomic addition of both assets. It is created for each deposit operation and destroyed after use.
 
-TLB for storage and initial data is:
+TLB for storage and initial data:
 
 ```tlb
 _ leftVault:MsgAddress
@@ -33,27 +33,24 @@ _ leftVault:MsgAddress
   rightAdditionalParams:(Maybe AdditionalParams) = LiquidityDepositContractData;
 ```
 
-`contractId` is on-chain salt, so several contracts with similar other parameters could exist. You can use current logical time as good enough salt. Note, that after the
+- `contractId` is an on-chain salt, so several contracts with similar parameters can exist. You can use the current logical time as a salt. After deployment, `status` should always be 0.
+- `status` values:
+  - 0: liquidity provisioning not started
+  - 1: left side is filled
+  - 2: right side is filled
+  - 3: both sides are filled
+- `leftAdditionalParams` and `rightAdditionalParams` should always be null on deploy. These fields are filled when `PartHasBeenDeposited` messages are accepted by the `LiquidityDepositContract`.
 
-`status` should always be 0 on deploy.
-
-- 0 - liquidity provisioning not started
-- 1 - left side is filled
-- 2 - right side is filled
-- 3 - both sides are filled
-
-`leftAdditionalParams` and `rightAdditionalParams` should always be null on deploy. These fields are needed to store the payloads from the vaults, they are filled when `PartHasBeenDeposited` messages are accepted by the `LiquidityDepositContract`.
-
-Initial data example on Typescript using Tact-generated wrappers:
+Initial data example in TypeScript using Tact-generated wrappers:
 
 ```ts
 const LPproviderContract = await LiquidityDepositContract.fromInit(
-    sortedAddresses.lower, // sorted vaults addresses for determinism
+    sortedAddresses.lower, // sorted vault addresses for determinism
     sortedAddresses.higher,
     amountLeft,
     amountRight,
     deployerWallet.address, // deployer is depositor
-    0n, // 0 as contractId salt
+    0n, // contractId salt
     0n, // these 3 fields should always be "0, null, null" on deploy
     null,
     null,
@@ -92,12 +89,12 @@ add_liquidity_part_jetton#64c08bfc
 
 Each side (each asset) has its own `AdditionalParams`.
 
-- `minAmountToDeposit` is minimal amount of this asset that you are willing to add to liquidity. It acts similar to the slippage in `exactIn` swaps. When given minimal amount on both assets, Amm pool tries to find ratio combination that will satisfy current constant product formula and add maximum possible amount (so the refund would be minimal). If it is not possible, both assets will be refunded to initial depositor.
-- `lpTimeout` is an absolute Unix timestamp after which the transaction will not be executed (checked inside the AMM pool). Checks the **maximum** of both asset `lpTimeout` values.
+- `minAmountToDeposit` is the minimum amount of this asset you are willing to add to liquidity. It acts similarly to slippage in `exactIn` swaps. When minimum amounts are given for both assets, the AMM pool tries to find a ratio combination that satisfies the constant product formula and adds the maximum possible amount (so the refund is minimal). If this is not possible, both assets are refunded to the initial depositor.
+- `lpTimeout` is an absolute Unix timestamp after which the transaction will not be executed (checked inside the AMM pool). The maximum of both asset `lpTimeout` values is used.
 - `payloadOnSuccess` is an optional reference cell, described [here](#payload-semantics)
 - `payloadOnFailure` is an optional reference cell, described [here](#payload-semantics)
 
-Same as with the [Jetton swap message](./swap.md#jetton-vault-swap-message), Jetton deposit liquidity message should be stored as inline forward payload in Jetton transfer notification.
+As with the [Jetton swap message](./swap.md#jetton-vault-swap-message), the Jetton deposit liquidity message should be stored as an inline forward payload in the Jetton transfer notification.
 
 3. **Vaults Notify the Liquidity Deposit Contract**  
    Each vault, upon receiving the deposit, sends a `PartHasBeenDeposited` message to the Liquidity Deposit contract.
@@ -108,17 +105,17 @@ Same as with the [Jetton swap message](./swap.md#jetton-vault-swap-message), Jet
 5. **AMM Pool Mints LP Jettons**  
    The pool mints LP jettons to the depositor and, if necessary, returns any excess assets to the user if the deposit ratio was not exact.
 
-Since T-Dex follows Uniswap V2 specification (TODO: add this section and cross-link to it), liquidity provisioning math is the same too.
+T-Dex follows the Uniswap V2 specification (TODO: add this section and cross-link to it), so liquidity provisioning math is the same.
 
-If it is the first time liquidity is being added to the pool, than `sqrt(leftSideReceived * rightSideReceived)` lp token are minted to the depositor.
+If it is the first time liquidity is being added to the pool, then `sqrt(leftSideReceived * rightSideReceived)` LP tokens are minted to the depositor.
 
-If it is **not** the first time, than minted lp tokens follow this formula:
+If it is **not** the first time, minted LP tokens follow this formula:
 
 ```tact
- liquidityTokensToMint = min(
-                muldiv(leftSideReceived, self.totalSupply, self.leftSideReserve -              leftSideReceived),
-                muldiv(rightSideReceived, self.totalSupply, self.rightSideReserve - rightSideReceived),
-            );
+liquidityTokensToMint = min(
+    muldiv(leftSideReceived, self.totalSupply, self.leftSideReserve - leftSideReceived),
+    muldiv(rightSideReceived, self.totalSupply, self.rightSideReserve - rightSideReceived),
+);
 ```
 
 #### Example (Jetton Vault)
@@ -167,31 +164,31 @@ const depositLiquidityResult = await wallet.send({
 
 ### Payload semantics
 
-Similar to [Jetton swap message payloads](./swap.md#payload-semantics), it is possible to attach `payloadOnSuccess` and `payloadOnFailure` to liquidity deposit message as optional reference cells. These payloads serve as a way to interact with the protocol on-chain and use them as async callbacks or notifications after the liquidity deposit operation or refund.
+Similar to [Jetton swap message payloads](./swap.md#payload-semantics), you can attach `payloadOnSuccess` and `payloadOnFailure` to the liquidity deposit message as optional reference cells. These payloads allow you to interact with the protocol on-chain and use them as async callbacks or notifications after the liquidity deposit operation or refund.
 
-If the user attaches them to the swap message, one of these payloads (depending on what action has happened) will be attached in the vault's `payout` message in case of refund (the TLB of how the asset is delivered after the vault payout is asset-dependent. TODO: add link to the vaults section with payout message structs) or it will be attached to LP Jettons mint transfer notification (as reference forward payload, TLB for this follows TEP-74).
+If you attach them to the deposit message, one of these payloads (depending on the outcome) will be attached in the vault's `payout` message in case of refund (the TLB of how the asset is delivered after the vault payout is asset-dependent. TODO: add link to the vaults section with payout message structs) or it will be attached to the LP Jetton mint transfer notification (as a reference forward payload, TLB for this follows TEP-74).
 
-**Failure payload** is attached to the both payout refund messages when:
+**Failure payload** is attached to both payout refund messages when:
 
-- Both deposit values are refunded because the timeout check has failed
+- Both deposit values are refunded because the timeout check failed
 - Both deposit values are refunded because slippage is too high
 
 **Success payload** is attached to the message when:
 
-- Liquidity deposit is successful, both successful payloads are attached to LP Jettons mint transfer notification
+- Liquidity deposit is successful; both successful payloads are attached to the LP Jetton mint transfer notification
 
 ```tact
 let successForwardPayload = beginCell()
-            .storeBit(false) // Either bit equals 0
-            .storeMaybeRef(msg.leftAdditionalParams.payloadOnSuccess)
-            .storeMaybeRef(msg.rightAdditionalParams.payloadOnSuccess)
-            .endCell()
-            .beginParse();
+    .storeBit(false) // Either bit equals 0
+    .storeMaybeRef(msg.leftAdditionalParams.payloadOnSuccess)
+    .storeMaybeRef(msg.rightAdditionalParams.payloadOnSuccess)
+    .endCell()
+    .beginParse();
 ```
 
-- Liquidity deposit is successful, however some funds should be refunded due to constant product invariant, success payload is attached to vault payout message (TLB is asset dependent)
+- Liquidity deposit is successful, but some funds are refunded due to the constant product invariant; the success payload is attached to the vault payout message (TLB is asset dependent)
 
-Note, that if liquidity deposit is successful, but one of the assets should be refunded, successful payload from this assets `AdditionalParams` would be attached to the refund payout message **and** both successful payloads would be attached to LP Jettons mint transfer notification.
+If liquidity deposit is successful but one of the assets is refunded, the success payload from that asset's `AdditionalParams` will be attached to the refund payout message **and** both success payloads will be attached to the LP Jetton mint transfer notification.
 
 ## Removing Liquidity (Withdrawing)
 
@@ -208,7 +205,7 @@ To withdraw your share, you must burn your LP jettons. The AMM pool will send th
         - Receiver address
         - (Optional) Callback payload
 
-TLB for liquidity withdrawal via lp jetton burn:
+TLB for liquidity withdrawal via LP jetton burn:
 
 ```tlb
 _ leftAmountMin:Coins
@@ -224,25 +221,24 @@ lp_withdraw_via_jetton_burn#595f07bc
     customPayload:(Maybe ^Cell) = LPWithdrawViaJettonBurn;
 ```
 
-Let's break down fields:
+Field explanations:
 
-- `leftAmountMin`, `rightAmountMin` are minimal amount of left/right assets to receive. They act like slippage for liquidity withdrawal.
-- `timeout` is absolute unix timestamp for operation cancel.
-- `receiver` is receiver address of withdrawn assets.
-- `liquidityWithdrawPayload` is optional payload to forward with withdrawn assets.
+- `leftAmountMin`, `rightAmountMin`: minimum amounts of left/right assets to receive. They act like slippage for liquidity withdrawal.
+- `timeout`: absolute unix timestamp for operation cancel.
+- `receiver`: address to receive withdrawn assets.
+- `liquidityWithdrawPayload`: optional payload to forward with withdrawn assets.
 
-`LPWithdrawViaJettonBurn` follows TEP-74 for burning Jettons, however `customPayload` should serialize to `LiquidityWithdrawParameters` ref cell. If it is something else or `null`, liquidity withdraw would be stopped. Also, since LP Jetton wallet contract can handle bounces on burn from Jetton minter (which is amm pool), all refunds and operation cancels (due to slippage, timeout or something else) are done via throw+bounce.
+`LPWithdrawViaJettonBurn` follows TEP-74 for burning Jettons. However, `customPayload` should serialize to a `LiquidityWithdrawParameters` ref cell. If it is something else or `null`, liquidity withdrawal will be stopped. Also, since the LP Jetton wallet contract can handle bounces on burn from the Jetton minter (which is the AMM pool), all refunds and operation cancels (due to slippage, timeout, or other reasons) are done via throw+bounce.
 
 2. **AMM Pool Processes Withdrawal**
     - The pool calculates the amounts to return based on your share.
     - If the minimums are met, the pool sends payouts from each vault to your address.
     - If not, the transaction is reverted.
 
-If you have provided `liquidityWithdrawPayload`, it will be attached to payout message:
+If you provide `liquidityWithdrawPayload`, it will be attached to the payout message:
 
-For TON vault, it will be the whole body (empty if null).
-
-For Jetton vault, it will be serialized as reference forward payload in Jetton transfer notification.
+- For TON vault, it will be the whole body (empty if null).
+- For Jetton vault, it will be serialized as a reference forward payload in the Jetton transfer notification.
 
 #### Example
 
@@ -264,4 +260,4 @@ await lpJettonWallet.sendBurn(
 )
 ```
 
-For more details and examples, see the [Vaults documentation](../sources/contracts/vaults/vaultDoc.md) and [typescript testing environment](../sources/utils/environment.ts).
+For more details and examples, see the [Vaults documentation](../sources/contracts/vaults/vaultDoc.md) and [TypeScript testing environment](../sources/utils/environment.ts).
