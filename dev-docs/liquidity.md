@@ -68,8 +68,36 @@ const LPproviderContract = await LiquidityDepositContract.fromInit(
         - The amount to deposit
         - (Optional) Minimum amount to accept, timeout, and callback payloads
 
-    For Jetton vaults, use a jetton transfer with a forward payload created by a helper like `createJettonVaultLiquidityDepositPayload`.  
-    For TON vaults, send a TON transfer with a similar payload.
+For Jetton vaults, use a jetton transfer with a forward payload created by a helper like `createJettonVaultLiquidityDepositPayload`.  
+For TON vaults, send a TON transfer with a similar payload.
+
+TLB for adding liquidity:
+
+```tlb
+_ minAmountToDeposit:Coins
+  lpTimeout:uint32
+  payloadOnSuccess:(Maybe ^Cell)
+  payloadOnFailure:(Maybe ^Cell) = AdditionalParams;
+
+add_liquidity_part_ton#1b434676
+    liquidityDepositContract:MsgAddress
+    amountIn:Coins
+    additionalParams:AdditionalParams = AddLiquidityPartTon;
+
+add_liquidity_part_jetton#64c08bfc
+    liquidityDepositContract:MsgAddress
+    additionalParams:AdditionalParams
+    proofType:(##8) {proofType = 0} = AddLiquidityJettonForwardPayload;
+```
+
+Each side (each asset) has its own `AdditionalParams`.
+
+- `minAmountToDeposit` is minimal amount of this asset that you are willing to add to liquidity. It acts similar to the slippage in `exactIn` swaps. When given minimal amount on both assets, Amm pool tries to find ratio combination that will satisfy current constant product formula and add maximum possible amount (so the refund would be minimal). If it is not possible, both assets will be refunded to initial depositor.
+- `lpTimeout` is an absolute Unix timestamp after which the transaction will not be executed (checked inside the AMM pool). Checks the **maximum** of both asset `lpTimeout` values.
+- `payloadOnSuccess` is an optional reference cell, described [here](#payload-semantics)
+- `payloadOnFailure` is an optional reference cell, described [here](#payload-semantics)
+
+Same as with the [Jetton swap message](./swap.md#jetton-vault-swap-message), Jetton deposit liquidity message should be stored as inline forward payload in Jetton transfer notification.
 
 3. **Vaults Notify the Liquidity Deposit Contract**  
    Each vault, upon receiving the deposit, sends a `PartHasBeenDeposited` message to the Liquidity Deposit contract.
@@ -80,18 +108,31 @@ const LPproviderContract = await LiquidityDepositContract.fromInit(
 5. **AMM Pool Mints LP Jettons**  
    The pool mints LP jettons to the depositor and, if necessary, returns any excess assets to the user if the deposit ratio was not exact.
 
+Since T-Dex follows Uniswap V2 specification (TODO: add this section and cross-link to it), liquidity provisioning math is the same too.
+
+If it is the first time liquidity is being added to the pool, than `sqrt(leftSideReceived * rightSideReceived)` lp token are minted to the depositor.
+
+If it is **not** the first time, than minted lp tokens follow this formula:
+
+```tact
+ liquidityTokensToMint = min(
+                muldiv(leftSideReceived, self.totalSupply, self.leftSideReserve -              leftSideReceived),
+                muldiv(rightSideReceived, self.totalSupply, self.rightSideReserve - rightSideReceived),
+            );
+```
+
 #### Example (Jetton Vault)
 
 ```typescript
 const payload = createJettonVaultLiquidityDepositPayload(
     liquidityDepositContractAddress,
-    /* proofCode, proofData, */ // for advanced use
+    /* proofCode, proofData, */ // for advanced use, TODO: add proof link
     minAmountToDeposit,
     lpTimeout,
     payloadOnSuccess,
     payloadOnFailure,
 )
-await jettonWallet.sendTransfer(
+const depositLiquidityResult = await jettonWallet.sendTransfer(
     provider,
     sender,
     toNano("0.05"), // TON for fees
@@ -116,6 +157,12 @@ const payload = createTonVaultLiquidityDepositPayload(
     lpTimeout,
 )
 // Send TON with this payload to the vault address
+const res = await wallet.send({
+    to: vault.address,
+    value: tonAmount + toNano(0.2), // gas fee
+    bounce: true,
+    body: payload,
+})
 ```
 
 ### Notes
