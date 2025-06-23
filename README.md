@@ -26,7 +26,7 @@
 Check these docs to learn about how T-Dex works, its semantics and how to integrate with it.
 
 - [How to swap on T-Dex](./dev-docs/swap.md)
-- How to manage liquidity, TODO
+- [How to manage liquidity](./dev-docs/liquidity.md)
 - How to work with Factory, TODO
 - How to create new pool and vaults, TODO
 
