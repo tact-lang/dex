@@ -1,4 +1,3 @@
-
 This section explains how to add and remove liquidity in T-Dex, enabling users to participate as liquidity providers and earn a share of trading fees.
 
 ## Overview
@@ -13,20 +12,64 @@ T-Dex uses a two-vault system for each pool (e.g., TON Vault and Jetton Vault). 
 - The AMM pool must exist.
 - You need the addresses of both vaults and the pool.
 
+Note, that in many places all across the T-Dex, **left** and **right** adjectives used to describe asset vaults. Indeed, for determinism in on-chain operations and predictable addresses, vaults should be sorted and used based on their ordering. Vaults are sorted by their contracts addresses. TODO: link vault ordering from vaults docs
+
 ### Step-by-step
 
 1. **Deploy the Liquidity Deposit Contract**  
    This contract coordinates the atomic addition of both assets. It is created for each deposit operation and destroyed after use.
 
-2. **Deposit Asset A and Asset B**  
-   - Send a transfer to each vault (TON or Jetton) with a special payload referencing the Liquidity Deposit contract.
-   - The payload must include:
-     - The address of the Liquidity Deposit contract
-     - The amount to deposit
-     - (Optional) Minimum amount to accept, timeout, and callback payloads
+TLB for storage and initial data is:
 
-   For Jetton vaults, use a jetton transfer with a forward payload created by a helper like `createJettonVaultLiquidityDepositPayload`.  
-   For TON vaults, send a TON transfer with a similar payload.
+```tlb
+_ leftVault:MsgAddress
+  rightVault:MsgAddress
+  leftSideAmount:Coins
+  rightSideAmount:Coins
+  depositor:MsgAddress
+  contractId:uint64
+  status:uint3
+  leftAdditionalParams:(Maybe AdditionalParams)
+  rightAdditionalParams:(Maybe AdditionalParams) = LiquidityDepositContractData;
+```
+
+`contractId` is on-chain salt, so several contracts with similar other parameters could exist. You can use current logical time as good enough salt. Note, that after the
+
+`status` should always be 0 on deploy.
+
+- 0 - liquidity provisioning not started
+- 1 - left side is filled
+- 2 - right side is filled
+- 3 - both sides are filled
+
+`leftAdditionalParams` and `rightAdditionalParams` should always be null on deploy. These fields are needed to store the payloads from the vaults, they are filled when `PartHasBeenDeposited` messages are accepted by the `LiquidityDepositContract`.
+
+Initial data example on Typescript using Tact-generated wrappers:
+
+```ts
+const LPproviderContract = await LiquidityDepositContract.fromInit(
+    sortedAddresses.lower, // sorted vaults addresses for determinism
+    sortedAddresses.higher,
+    amountLeft,
+    amountRight,
+    deployerWallet.address, // deployer is depositor
+    0n, // 0 as contractId salt
+    0n, // these 3 fields should always be "0, null, null" on deploy
+    null,
+    null,
+)
+```
+
+2. **Deposit Asset A and Asset B**
+
+    - Send a transfer to each vault (TON or Jetton) with a special payload referencing the Liquidity Deposit contract.
+    - The payload must include:
+        - The address of the Liquidity Deposit contract
+        - The amount to deposit
+        - (Optional) Minimum amount to accept, timeout, and callback payloads
+
+    For Jetton vaults, use a jetton transfer with a forward payload created by a helper like `createJettonVaultLiquidityDepositPayload`.  
+    For TON vaults, send a TON transfer with a similar payload.
 
 3. **Vaults Notify the Liquidity Deposit Contract**  
    Each vault, upon receiving the deposit, sends a `PartHasBeenDeposited` message to the Liquidity Deposit contract.
@@ -46,8 +89,8 @@ const payload = createJettonVaultLiquidityDepositPayload(
     minAmountToDeposit,
     lpTimeout,
     payloadOnSuccess,
-    payloadOnFailure
-);
+    payloadOnFailure,
+)
 await jettonWallet.sendTransfer(
     provider,
     sender,
@@ -57,8 +100,8 @@ await jettonWallet.sendTransfer(
     responseAddress,
     null,
     toNano("0.01"),
-    payload
-);
+    payload,
+)
 ```
 
 #### Example (TON Vault)
@@ -70,8 +113,8 @@ const payload = createTonVaultLiquidityDepositPayload(
     payloadOnSuccess,
     payloadOnFailure,
     minAmountToDeposit,
-    lpTimeout
-);
+    lpTimeout,
+)
 // Send TON with this payload to the vault address
 ```
 
@@ -87,17 +130,18 @@ To withdraw your share, you must burn your LP jettons. The AMM pool will send th
 ### Step-by-step
 
 1. **Burn LP Jettons**
-   - Use your LP jetton wallet to send a burn message with a special payload to the AMM pool.
-   - The payload should specify:
-     - Minimum amounts of each asset you are willing to receive (to protect against slippage)
-     - Timeout
-     - Receiver address
-     - (Optional) Callback payload
+
+    - Use your LP jetton wallet to send a burn message with a special payload to the AMM pool.
+    - The payload should specify:
+        - Minimum amounts of each asset you are willing to receive (to protect against slippage)
+        - Timeout
+        - Receiver address
+        - (Optional) Callback payload
 
 2. **AMM Pool Processes Withdrawal**
-   - The pool calculates the amounts to return based on your share.
-   - If the minimums are met, the pool sends payouts from each vault to your address.
-   - If not, the transaction is reverted.
+    - The pool calculates the amounts to return based on your share.
+    - If the minimums are met, the pool sends payouts from each vault to your address.
+    - If not, the transaction is reverted.
 
 #### Example
 
@@ -107,16 +151,16 @@ const withdrawPayload = createWithdrawLiquidityBody(
     minAmountRight,
     timeout,
     receiver,
-    successfulPayload
-);
+    successfulPayload,
+)
 await lpJettonWallet.sendBurn(
     provider,
     sender,
     toNano("0.05"), // TON for fees
     lpAmountToBurn,
     receiver,
-    withdrawPayload
-);
+    withdrawPayload,
+)
 ```
 
 ### Notes
