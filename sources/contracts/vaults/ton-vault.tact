@@ -120,7 +120,7 @@ contract TonVault(
 
             deploy(DeployParameters {
                 init: depositorStateInit,
-                mode: SendRemainingValue,
+                mode: SendBounceIfActionFail | SendRemainingBalance,
                 value: 0,
                 body: PartHasBeenDeposited {
                     depositor: sender(),

@@ -9,6 +9,7 @@ import {
     storeLPDepositPart,
     LPDepositPartOpcode,
     SwapStep,
+    LiquidityDepositEitherAddress,
 } from "../output/DEX_AmmPool"
 import {
     PROOF_NO_PROOF_ATTACHED,
@@ -131,6 +132,11 @@ export function createJettonVaultLiquidityDepositPayload(
     lpTimeout: bigint = BigInt(Math.ceil(Date.now() / 1000) + 5 * 60), // 5 minutes
     payloadOnSuccess: Cell | null = null,
     payloadOnFailure: Cell | null = null,
+    liquidityDepositContractData?: {
+        otherVaultAddress: Address
+        otherAmount: bigint
+        id: bigint
+    },
 ) {
     let proof: Proof
     if (proofCode !== undefined && proofData !== undefined) {
@@ -144,18 +150,32 @@ export function createJettonVaultLiquidityDepositPayload(
             proofType: PROOF_NO_PROOF_ATTACHED,
         }
     }
+
+    const eitherData: LiquidityDepositEitherAddress = {
+        $$type: "LiquidityDepositEitherAddress",
+        eitherBit: false,
+        liquidityDepositContract: LPContract,
+        initData: null,
+    }
+
+    if (typeof liquidityDepositContractData !== "undefined") {
+        eitherData.eitherBit = true
+        eitherData.liquidityDepositContract = null
+        eitherData.initData = {
+            $$type: "LiquidityDepositInitData",
+            otherVault: liquidityDepositContractData.otherVaultAddress,
+            otherAmount: liquidityDepositContractData.otherAmount,
+            contractId: liquidityDepositContractData.id,
+        }
+    }
+
     return createJettonVaultMessage(
         LPDepositPartOpcode,
         beginCell()
             .store(
                 storeLPDepositPart({
                     $$type: "LPDepositPart",
-                    liquidityDepositContractData: {
-                        $$type: "LiquidityDepositEitherAddress",
-                        eitherBit: false,
-                        liquidityDepositContract: LPContract,
-                        initData: null,
-                    },
+                    liquidityDepositContractData: eitherData,
                     additionalParams: {
                         $$type: "AdditionalParams",
                         minAmountToDeposit: minAmountToDeposit,
@@ -177,18 +197,36 @@ export function createTonVaultLiquidityDepositPayload(
     payloadOnFailure: Cell | null = null,
     minAmountToDeposit: bigint = 0n,
     lpTimeout: bigint = BigInt(Math.ceil(Date.now() / 1000) + 5 * 60),
+    liquidityDepositContractData?: {
+        otherVaultAddress: Address
+        otherAmount: bigint
+        id: bigint
+    },
 ) {
+    const eitherData: LiquidityDepositEitherAddress = {
+        $$type: "LiquidityDepositEitherAddress",
+        eitherBit: false,
+        liquidityDepositContract: liquidityDepositContractAddress,
+        initData: null,
+    }
+
+    if (typeof liquidityDepositContractData !== "undefined") {
+        eitherData.eitherBit = true
+        eitherData.liquidityDepositContract = null
+        eitherData.initData = {
+            $$type: "LiquidityDepositInitData",
+            otherVault: liquidityDepositContractData.otherVaultAddress,
+            otherAmount: liquidityDepositContractData.otherAmount,
+            contractId: liquidityDepositContractData.id,
+        }
+    }
+
     return beginCell()
         .store(
             storeAddLiquidityPartTon({
                 $$type: "AddLiquidityPartTon",
                 amountIn: amount,
-                liquidityDepositContractData: {
-                    $$type: "LiquidityDepositEitherAddress",
-                    eitherBit: false,
-                    liquidityDepositContract: liquidityDepositContractAddress,
-                    initData: null,
-                },
+                liquidityDepositContractData: eitherData,
                 additionalParams: {
                     $$type: "AdditionalParams",
                     minAmountToDeposit: minAmountToDeposit,
