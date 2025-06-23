@@ -1,6 +1,12 @@
-# OpenDeFi Library: Decentralized Exchange in Tact - TDex
+# OpenDeFi Library: Decentralized Exchange in Tact, T-Dex
 
-TDex: A decentralized exchange (DEX) on the TON blockchain providing efficient exchange of various token types with a high degree of asset abstraction.
+<div align="center">
+
+<img src="./assets/t-dex.png" alt="Tyrannosaurus rex holding TON logo" width="400" height="400" />
+
+**T-Dex**: A decentralized exchange (DEX) on the TON blockchain providing<br>efficient exchange of various token types with a high degree of asset abstraction.
+
+</div>
 
 ## Project Goals
 
@@ -17,9 +23,9 @@ TDex: A decentralized exchange (DEX) on the TON blockchain providing efficient e
 
 ## How-to and dev docs
 
-Check this docs to learn about how TDex works, its semantics and how to integrate with it.
+Check these docs to learn about how T-Dex works, its semantics and how to integrate with it.
 
-- [How to swap on TDex](./dev-docs/swap.md)
+- [How to swap on T-Dex](./dev-docs/swap.md)
 - How to manage liquidity, TODO
 - How to work with Factory, TODO
 - How to create new pool and vaults, TODO
@@ -261,7 +267,7 @@ graph LR
 
 ## Project Setup and Development
 
-To start working with TDex, install all dependencies:
+To start working with T-Dex, install all dependencies:
 
 ```shell
 yarn install
@@ -295,7 +301,7 @@ yarn fmt
 
 ## Testing
 
-The project uses Jest for testing. Tests are located in the `sources/tests` directory and cover various aspects of the TDex functionality:
+The project uses Jest for testing. Tests are located in the `sources/tests` directory and cover various aspects of the T-Dex functionality:
 
 - `amm-pool.spec.ts` - Tests for the AMM Pool functionality
 - `liquidity-deposit.spec.ts` - Tests for liquidity deposit process

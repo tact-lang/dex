@@ -1,6 +1,6 @@
 # Swaps
 
-This section of the dev-docs focuses on how to perform on-chain asset swaps on TDex. A swap essentially involves sending the asset you want to swap to its corresponding vault and attaching a message body with the swap request details. The vault will then create a swap-in message and send it to the AMM pool, which will handle the math and either return the funds if they do not pass the slippage check or send a payout message to the other vault (sometimes the pool will perform both actions together).
+This section of the dev-docs focuses on how to perform on-chain asset swaps on T-Dex. A swap essentially involves sending the asset you want to swap to its corresponding vault and attaching a message body with the swap request details. The vault will then create a swap-in message and send it to the AMM pool, which will handle the math and either return the funds if they do not pass the slippage check or send a payout message to the other vault (sometimes the pool will perform both actions together).
 
 ## Prerequisites
 
@@ -17,7 +17,7 @@ TODO: add section from the factory docs page about how to obtain these addresses
 
 ## Kinds of swaps
 
-TDex supports a total of three kinds of swaps:
+T-Dex supports a total of three kinds of swaps:
 
 1. `ExactIn` swaps
    This is the default type of swap supported by most other DEXes. The semantics are that you send some amount-in and specify the **minimum** amount-out you are willing to receive. The pool uses its internal math and either performs the swap with an amount-out greater than or equal to what you specified, or refunds the in-value back to you.
@@ -160,7 +160,7 @@ This field is the beginning of a linked list, where each next node is the next s
 
 ## Payload semantics
 
-In TDex, it is possible to attach `payloadOnSuccess` and `payloadOnFailure` to swap messages as optional reference cells. These payloads serve as a way to interact with the protocol on-chain and use them as async callbacks or notifications after swaps and/or refunds.
+In T-Dex, it is possible to attach `payloadOnSuccess` and `payloadOnFailure` to swap messages as optional reference cells. These payloads serve as a way to interact with the protocol on-chain and use them as async callbacks or notifications after swaps and/or refunds.
 
 If the user attaches them to the swap message, one of these payloads (depending on what action has happened) will be attached in the vault's `payout` message (the TLB of how the asset is delivered after the vault payout is asset-dependent. TODO: add link to the vaults section with payout message structs).
 
