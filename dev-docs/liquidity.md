@@ -35,10 +35,10 @@ _ leftVault:MsgAddress
 
 - `contractId` is an on-chain salt, so several contracts with similar parameters can exist. You can use the current logical time as a salt. After deployment, `status` should always be 0.
 - `status` values:
-  - 0: liquidity provisioning not started
-  - 1: left side is filled
-  - 2: right side is filled
-  - 3: both sides are filled
+    - 0: liquidity provisioning not started
+    - 1: left side is filled
+    - 2: right side is filled
+    - 3: both sides are filled
 - `leftAdditionalParams` and `rightAdditionalParams` should always be null on deploy. These fields are filled when `PartHasBeenDeposited` messages are accepted by the `LiquidityDepositContract`.
 
 Initial data example in TypeScript using Tact-generated wrappers:
