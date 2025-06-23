@@ -124,6 +124,35 @@ export function createJettonVaultSwapRequest(
     )
 }
 
+const createLiquidityDepositEitherAddress = (
+    LPContract: Address,
+    liquidityDepositContractData?: {
+        otherVaultAddress: Address
+        otherAmount: bigint
+        id: bigint
+    },
+) => {
+    const eitherData: LiquidityDepositEitherAddress = {
+        $$type: "LiquidityDepositEitherAddress",
+        eitherBit: false,
+        liquidityDepositContract: LPContract,
+        initData: null,
+    }
+
+    if (typeof liquidityDepositContractData !== "undefined") {
+        eitherData.eitherBit = true
+        eitherData.liquidityDepositContract = null
+        eitherData.initData = {
+            $$type: "LiquidityDepositInitData",
+            otherVault: liquidityDepositContractData.otherVaultAddress,
+            otherAmount: liquidityDepositContractData.otherAmount,
+            contractId: liquidityDepositContractData.id,
+        }
+    }
+
+    return eitherData
+}
+
 export function createJettonVaultLiquidityDepositPayload(
     LPContract: Address,
     proofCode: Cell | undefined,
@@ -151,23 +180,10 @@ export function createJettonVaultLiquidityDepositPayload(
         }
     }
 
-    const eitherData: LiquidityDepositEitherAddress = {
-        $$type: "LiquidityDepositEitherAddress",
-        eitherBit: false,
-        liquidityDepositContract: LPContract,
-        initData: null,
-    }
-
-    if (typeof liquidityDepositContractData !== "undefined") {
-        eitherData.eitherBit = true
-        eitherData.liquidityDepositContract = null
-        eitherData.initData = {
-            $$type: "LiquidityDepositInitData",
-            otherVault: liquidityDepositContractData.otherVaultAddress,
-            otherAmount: liquidityDepositContractData.otherAmount,
-            contractId: liquidityDepositContractData.id,
-        }
-    }
+    const eitherData: LiquidityDepositEitherAddress = createLiquidityDepositEitherAddress(
+        LPContract,
+        liquidityDepositContractData,
+    )
 
     return createJettonVaultMessage(
         LPDepositPartOpcode,
@@ -203,23 +219,10 @@ export function createTonVaultLiquidityDepositPayload(
         id: bigint
     },
 ) {
-    const eitherData: LiquidityDepositEitherAddress = {
-        $$type: "LiquidityDepositEitherAddress",
-        eitherBit: false,
-        liquidityDepositContract: liquidityDepositContractAddress,
-        initData: null,
-    }
-
-    if (typeof liquidityDepositContractData !== "undefined") {
-        eitherData.eitherBit = true
-        eitherData.liquidityDepositContract = null
-        eitherData.initData = {
-            $$type: "LiquidityDepositInitData",
-            otherVault: liquidityDepositContractData.otherVaultAddress,
-            otherAmount: liquidityDepositContractData.otherAmount,
-            contractId: liquidityDepositContractData.id,
-        }
-    }
+    const eitherData = createLiquidityDepositEitherAddress(
+        liquidityDepositContractAddress,
+        liquidityDepositContractData,
+    )
 
     return beginCell()
         .store(
