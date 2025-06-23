@@ -157,7 +157,7 @@ const payload = createTonVaultLiquidityDepositPayload(
     lpTimeout,
 )
 // Send TON with this payload to the vault address
-const res = await wallet.send({
+const depositLiquidityResult = await wallet.send({
     to: vault.address,
     value: tonAmount + toNano(0.2), // gas fee
     bounce: true,
@@ -165,10 +165,20 @@ const res = await wallet.send({
 })
 ```
 
-### Notes
+### Payload semantics
 
-- If the deposit ratio does not match the current pool ratio, the pool will accept as much as possible and return the excess.
-- The Liquidity Deposit contract ensures atomicity: either both assets are deposited, or the operation fails.
+Similar to [Jetton swap message payloads](./swap.md#payload-semantics), it is possible to attach `payloadOnSuccess` and `payloadOnFailure` to liquidity deposit message as optional reference cells. These payloads serve as a way to interact with the protocol on-chain and use them as async callbacks or notifications after the liquidity deposit operation or refund.
+
+If the user attaches them to the swap message, one of these payloads (depending on what action has happened) will be attached in the vault's `payout` message in case of refund (the TLB of how the asset is delivered after the vault payout is asset-dependent. TODO: add link to the vaults section with payout message structs) or it will be attached to LP Jettons mint transfer notification (as reference forward payload, TLB for this follows TEP-74).
+
+**Failure payload** is attached to the both payout refund messages when:
+
+- Both deposit values are refunded because the timeout check has failed
+- Both deposit values are refunded because slippage is too high
+
+**Success payload** is attached to the LP Jettons mint transfer notification message when:
+
+- Liquidity deposit is successful
 
 ## Removing Liquidity (Withdrawing)
 
@@ -185,10 +195,41 @@ To withdraw your share, you must burn your LP jettons. The AMM pool will send th
         - Receiver address
         - (Optional) Callback payload
 
+TLB for liquidity withdrawal via lp jetton burn:
+
+```tlb
+_ leftAmountMin:Coins
+  rightAmountMin:Coins
+  timeout:uint32
+  receiver:MsgAddress
+  liquidityWithdrawPayload:(Maybe ^Cell) = LiquidityWithdrawParameters;
+
+lp_withdraw_via_jetton_burn#595f07bc
+    queryId:uint64
+    amount:Coins
+    responseDestination:MsgAddress
+    customPayload:(Maybe ^Cell) = LPWithdrawViaJettonBurn;
+```
+
+Let's break down fields:
+
+- `leftAmountMin`, `rightAmountMin` are minimal amount of left/right assets to receive. They act like slippage for liquidity withdrawal.
+- `timeout` is absolute unix timestamp for operation cancel.
+- `receiver` is receiver address of withdrawn assets.
+- `liquidityWithdrawPayload` is optional payload to forward with withdrawn assets.
+
+`LPWithdrawViaJettonBurn` follows TEP-74 for burning Jettons, however `customPayload` should serialize to `LiquidityWithdrawParameters` ref cell. If it is something else or `null`, liquidity withdraw would be stopped. Also, since LP Jetton wallet contract can handle bounces on burn from Jetton minter (which is amm pool), all refunds and operation cancels (due to slippage, timeout or something else) are done via throw+bounce.
+
 2. **AMM Pool Processes Withdrawal**
     - The pool calculates the amounts to return based on your share.
     - If the minimums are met, the pool sends payouts from each vault to your address.
     - If not, the transaction is reverted.
+
+If you have provided `liquidityWithdrawPayload`, it will be attached to payout message:
+
+For TON vault, it will be the whole body (empty if null).
+
+For Jetton vault, it will be serialized as reference forward payload in Jetton transfer notification.
 
 #### Example
 
@@ -210,14 +251,4 @@ await lpJettonWallet.sendBurn(
 )
 ```
 
-### Notes
-
-- You can specify minimum amounts to avoid receiving less than expected due to slippage.
-- The withdrawal is atomic: you receive both assets or the operation fails.
-
-## Summary
-
-- **Add liquidity**: Deposit both assets to their vaults with a reference to the Liquidity Deposit contract. Receive LP jettons.
-- **Remove liquidity**: Burn LP jettons with a withdrawal payload. Receive your share of both assets.
-
-For more details, see the [Vaults documentation](../sources/contracts/vaults/vaultDoc.md) and the [AMM Pool contract](../sources/output/DEX_AmmPool.md).
+For more details and examples, see the [Vaults documentation](../sources/contracts/vaults/vaultDoc.md) and [typescript testing environment](../sources/utils/environment.ts).
