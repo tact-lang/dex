@@ -33,7 +33,7 @@ _ leftVault:MsgAddress
   rightAdditionalParams:(Maybe AdditionalParams) = LiquidityDepositContractData;
 ```
 
-- `contractId` is an on-chain salt, so several contracts with similar parameters can exist. You can use the current logical time as a salt. After deployment, `status` should always be 0.
+- `contractId` is an on-chain salt, so several contracts with similar parameters can exist. You can use your wallet's logical time as a salt. After deployment, `status` should always be 0.
 - `status` values:
     - 0: liquidity provisioning not started
     - 1: left side is filled
@@ -132,12 +132,12 @@ const payload = createJettonVaultLiquidityDepositPayload(
 const depositLiquidityResult = await jettonWallet.sendTransfer(
     provider,
     sender,
-    toNano("0.05"), // TON for fees
+    toNano("0.6"), // TON for fees
     jettonAmount,
     vaultAddress,
     responseAddress,
     null,
-    toNano("0.01"),
+    toNano("0.1"),
     payload,
 )
 ```
@@ -156,7 +156,7 @@ const payload = createTonVaultLiquidityDepositPayload(
 // Send TON with this payload to the vault address
 const depositLiquidityResult = await wallet.send({
     to: vault.address,
-    value: tonAmount + toNano(0.2), // gas fee
+    value: tonAmount + toNano(0.5), // gas fee
     bounce: true,
     body: payload,
 })
@@ -203,7 +203,9 @@ To withdraw your share, you must burn your LP jettons. The AMM pool will send th
         - Minimum amounts of each asset you are willing to receive (to protect against slippage)
         - Timeout
         - Receiver address
-        - (Optional) Callback payload
+        - (Optional) Successful payload
+
+Note, that since jetton burn can be reverted from Jetton master (notification bounce reverts the Jetton wallet balance), there is no `failure payload` in this use-case.
 
 TLB for liquidity withdrawal via LP jetton burn:
 
@@ -253,7 +255,7 @@ const withdrawPayload = createWithdrawLiquidityBody(
 await lpJettonWallet.sendBurn(
     provider,
     sender,
-    toNano("0.05"), // TON for fees
+    toNano("0.5"), // TON for fees
     lpAmountToBurn,
     receiver,
     withdrawPayload,
