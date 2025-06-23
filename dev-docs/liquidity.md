@@ -176,9 +176,22 @@ If the user attaches them to the swap message, one of these payloads (depending 
 - Both deposit values are refunded because the timeout check has failed
 - Both deposit values are refunded because slippage is too high
 
-**Success payload** is attached to the LP Jettons mint transfer notification message when:
+**Success payload** is attached to the message when:
 
-- Liquidity deposit is successful
+- Liquidity deposit is successful, both successful payloads are attached to LP Jettons mint transfer notification
+
+```tact
+let successForwardPayload = beginCell()
+            .storeBit(false) // Either bit equals 0
+            .storeMaybeRef(msg.leftAdditionalParams.payloadOnSuccess)
+            .storeMaybeRef(msg.rightAdditionalParams.payloadOnSuccess)
+            .endCell()
+            .beginParse();
+```
+
+- Liquidity deposit is successful, however some funds should be refunded due to constant product invariant, success payload is attached to vault payout message (TLB is asset dependent)
+
+Note, that if liquidity deposit is successful, but one of the assets should be refunded, successful payload from this assets `AdditionalParams` would be attached to the refund payout message **and** both successful payloads would be attached to LP Jettons mint transfer notification.
 
 ## Removing Liquidity (Withdrawing)
 
