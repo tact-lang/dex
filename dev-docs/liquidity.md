@@ -1,3 +1,5 @@
+# Liquidity management
+
 This section explains how to add and remove liquidity in T-Dex, enabling users to participate as liquidity providers and earn a share of trading fees.
 
 ## Overview
