@@ -41,10 +41,21 @@ struct SwapParameters {
     nextStep: SwapStep? = null;
 }
 
+struct LiquidityDepositInitData {
+    otherVault: Address;
+    otherAmount: Int as coins;
+    contractId: Int as uint64;
+}
+
+struct LiquidityDepositEitherAddress {
+    eitherBit: Bool;
+    liquidityDepositContract: Address?;
+    initData: LiquidityDepositInitData?;
+}
+
 const LPDepositPartOpcode: Int = 0x64c08bfc;
 struct LPDepositPart {
-    // TODO: We should add an option to deploy liquidity deposit contract here
-    liquidityDepositContract: Address;
+    liquidityDepositContractData: LiquidityDepositEitherAddress;
     additionalParams: AdditionalParams;
 }
 
@@ -54,8 +65,8 @@ message(0x698cba08) SwapRequestTon {
 }
 
 message(0x1b434676) AddLiquidityPartTon {
-    liquidityDepositContract: Address;
     amountIn: Int as coins;
+    liquidityDepositContractData: LiquidityDepositEitherAddress;
     additionalParams: AdditionalParams;
 }
 

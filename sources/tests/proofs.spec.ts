@@ -72,7 +72,12 @@ describe("Proofs", () => {
             .store(
                 storeLPDepositPart({
                     $$type: "LPDepositPart",
-                    liquidityDepositContract: randomAddress(0), // Mock LP contract address
+                    liquidityDepositContractData: {
+                        $$type: "LiquidityDepositEitherAddress",
+                        eitherBit: false,
+                        liquidityDepositContract: randomAddress(0), // Mock LP contract address
+                        initData: null,
+                    },
                     additionalParams: {
                         $$type: "AdditionalParams",
                         minAmountToDeposit: 0n,
@@ -130,7 +135,12 @@ describe("Proofs", () => {
             .store(
                 storeLPDepositPart({
                     $$type: "LPDepositPart",
-                    liquidityDepositContract: randomAddress(0), // Mock LP contract address
+                    liquidityDepositContractData: {
+                        $$type: "LiquidityDepositEitherAddress",
+                        eitherBit: false,
+                        liquidityDepositContract: randomAddress(0), // Mock LP contract address
+                        initData: null,
+                    },
                     additionalParams: {
                         $$type: "AdditionalParams",
                         minAmountToDeposit: 0n,
@@ -250,7 +260,12 @@ describe("Proofs", () => {
             .store(
                 storeLPDepositPart({
                     $$type: "LPDepositPart",
-                    liquidityDepositContract: randomAddress(0), // Mock LP contract address
+                    liquidityDepositContractData: {
+                        $$type: "LiquidityDepositEitherAddress",
+                        eitherBit: false,
+                        liquidityDepositContract: randomAddress(0), // Mock LP contract address
+                        initData: null,
+                    },
                     additionalParams: {
                         $$type: "AdditionalParams",
                         minAmountToDeposit: 0n,
@@ -349,7 +364,12 @@ describe("Proofs", () => {
             .store(
                 storeLPDepositPart({
                     $$type: "LPDepositPart",
-                    liquidityDepositContract: randomAddress(0), // Mock LP contract address
+                    liquidityDepositContractData: {
+                        $$type: "LiquidityDepositEitherAddress",
+                        eitherBit: false,
+                        liquidityDepositContract: randomAddress(0), // Mock LP contract address
+                        initData: null,
+                    },
                     additionalParams: {
                         $$type: "AdditionalParams",
                         minAmountToDeposit: 0n,
@@ -480,7 +500,12 @@ describe("Proofs", () => {
             .store(
                 storeLPDepositPart({
                     $$type: "LPDepositPart",
-                    liquidityDepositContract: randomAddress(0), // Mock LP contract address
+                    liquidityDepositContractData: {
+                        $$type: "LiquidityDepositEitherAddress",
+                        eitherBit: false,
+                        liquidityDepositContract: randomAddress(0), // Mock LP contract address
+                        initData: null,
+                    },
                     additionalParams: {
                         $$type: "AdditionalParams",
                         minAmountToDeposit: 0n,
