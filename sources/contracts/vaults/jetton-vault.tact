@@ -178,9 +178,9 @@ inline fun actionHandler(msg: JettonNotifyWithActionRequest): Bool {
         let receiver = action.receiver != null ? action.receiver!! : msg.sender;
         let hops = action.params.numberOfHops();
 
-        let protocolGasFee =
         // number of hops + 2 (for the last vault) * freeze limit = maximum possible storageFee
         // We don't count storage for current vault as JettonNotify was unbounceable and already paid our storage
+        let protocolGasFee =
         (hops + 1) * (getFreezeLimit() + ctx.readForwardFee()) +
         getComputeFee(GasSwapRequestJettonVault, false) +
         getComputeFee(GasAmmPoolSwap, false) * hops +
@@ -216,12 +216,12 @@ inline fun actionHandler(msg: JettonNotifyWithActionRequest): Bool {
     } else if (msg.actionOpcode == LPDepositPartOpcode) {
         let action = LPDepositPart.fromCell(msg.actionPayload);
         let ctx = context();
+        // 1 to LP Deposit contract + 1 to Amm Pool
+        // + 1 to LP Jetton Wallet + 1 for LP Jetton Notify + 1 Jetton excesses (this will be cheaper)
+        // + 1 to Vault (possible excesses)
+        // Note, that LP Provision could fail, but in this case there will be no LP Mint - related operations, but there will be 2 Vault payouts.
+        // So it is safe to use 6 here.
         let protocolGasFee =
-            // 1 to LP Deposit contract + 1 to Amm Pool
-            // + 1 to LP Jetton Wallet + 1 for LP Jetton Notify + 1 Jetton excesses (this will be cheaper)
-            // + 1 to Vault (possible excesses)
-            // Note, that LP Provision could fail, but in this case there will be no LP Mint - related operations, but there will be 2 Vault payouts.
-            // So it is safe to use 6 here.
             6 * ctx.readForwardFee() +
             // Only for Amm Pool and Vault of excesses payout, because notify to this Vault was unbounceable, and LP Deposit Contract will be deployed in this message.
             getFreezeLimit() * 2 +
