@@ -181,24 +181,23 @@ inline fun actionHandler(msg: JettonNotifyWithActionRequest): Bool {
         // number of hops + 2 (for the last vault) * freeze limit = maximum possible storageFee
         // We don't count storage for current vault as JettonNotify was unbounceable and already paid our storage
         let protocolGasFee =
-        (hops + 1) * (getFreezeLimit() + ctx.readForwardFee()) +
-        getComputeFee(GasSwapRequestJettonVault, false) +
-        getComputeFee(GasAmmPoolSwap, false) * hops +
-        getComputeFee(GasPayoutFromAnyVault, false);
+            (hops + 1) * (getFreezeLimit() + ctx.readForwardFee()) +
+            getComputeFee(GasSwapRequestJettonVault, false) +
+            getComputeFee(GasAmmPoolSwap, false) * hops +
+            getComputeFee(GasPayoutFromAnyVault, false);
 
         let restOfValue = ctx.value - protocolGasFee;
-        if(restOfValue < 0) {
+        if (restOfValue < 0) {
             return false;
         }
         // Maybe the vault of the other side is not a JettonVault, but forward from any other Vault is cheaper
         let payoutGasFee = priceOfJettonForward(ctx.readForwardFee(), restOfValue);
 
-        if(parseStdAddress(sender().asSlice()).workchain != Basechain ||
+        if (parseStdAddress(sender().asSlice()).workchain != Basechain ||
             parseStdAddress(receiver.asSlice()).workchain != Basechain ||
             ctx.value <
             protocolGasFee +
-            payoutGasFee
-        ) {
+            payoutGasFee) {
             return false;
         }
         message(MessageParameters {
@@ -208,7 +207,7 @@ inline fun actionHandler(msg: JettonNotifyWithActionRequest): Bool {
             to: action.pool,
             body: SwapIn {
                 amount: msg.amount,
-                receiver: receiver,
+                receiver,
                 params: action.params,
             }.toCell(),
         });
@@ -234,8 +233,6 @@ inline fun actionHandler(msg: JettonNotifyWithActionRequest): Bool {
             getComputeFee(gasForTransfer, false) +
             // There will be at most 1 payout from Vault
             getComputeFee(GasPayoutFromAnyVault, false);
-
-
 
         message(MessageParameters {
             to: action.liquidityDepositContract,
