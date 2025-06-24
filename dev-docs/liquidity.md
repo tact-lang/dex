@@ -16,6 +16,14 @@ T-Dex uses a two-vault system for each pool (e.g., TON Vault and Jetton Vault). 
 
 Note that throughout T-Dex documentation, the terms **left** and **right** are used to describe asset vaults. For determinism in on-chain operations and predictable addresses, vaults should be sorted and used based on their contract address ordering. (TODO: link vault ordering from vaults docs)
 
+There are two ways one can deploy liquidity deposit contract. 
+
+The first one is to deploy liquidity deposit contract with standalone deploy message with state init attached and later only use plain `messages` to communicate liquidity deposit of asset parts.
+
+The second option is to provide additional fields to the vault's liquidity deposit messages (`part_has_been_deposited#e7a3475f`), so they would deploy liquidity deposit contract themselves.
+
+Note, that it is not recommended to use different approach for each one of the vaults - since TON is asynchronous, you can't make sure which liquidity deposit message will come first. So, if you attach state init only to one of the vault messages, it is possible to break an invariant and lose funds. 
+
 ### Step-by-step
 
 1. **Deploy the Liquidity Deposit Contract**  
