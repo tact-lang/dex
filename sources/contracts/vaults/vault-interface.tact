@@ -41,13 +41,13 @@ struct SwapParameters {
     nextStep: SwapStep? = null;
 }
 
-extends inline fun numberOfHops(self: SwapParameters?) {
+extends inline fun numberOfHops(self: SwapParameters): Int {
     // If there is no nextStep, or it is exactOut swap, then we will have only one swap on first AmmPool.
-    if (self == null || self.isExactOutType == true) {
+    if (self.nextStep == null || self.isExactOutType == true) {
         return 1;
     } else {
         // 1 usual swap + 1 next step + nextStep's depth
-        return self.nextStep.nextStep.depth() + 2;
+        return self.nextStep!!.nextStep.depth() + 2;
     }
 }
 

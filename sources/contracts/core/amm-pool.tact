@@ -149,7 +149,9 @@ contract AmmPool(
                 amount: liquidityTokensToMint,
                 sender: myAddress(),
                 responseDestination: msg.depositor,
-                forwardTonAmount: 1, // TODO: We should maximize forwardTonAmount
+                // Thanks to this flag, we can send all TONs in notify
+                sendAllTonsInNotifyFlag: true,
+                forwardTonAmount: 0,
                 forwardPayload,
             }.toCell(),
         });
@@ -245,7 +247,6 @@ contract AmmPool(
                 vaultOrderSwap = true;
             }
         }
-        // TODO: Need to add block functionality (for exact-time listings)
 
         if (inBalance == 0 || outBalance == 0) {
             returnFunds(inVault, msg.receiver, outVault, msg.amount, msg.params.payloadOnFailure);

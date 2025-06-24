@@ -7,6 +7,7 @@ import "../core/messages.tact";
 import "../core/amm-pool";
 import "../utils/utils";
 import "../utils/gas-constants";
+import "../core/lp-jettons/constants";
 
 message(0xf8a7ea5) ReturnJettonsViaJettonTransfer {
     queryId: Int as uint64;
@@ -45,21 +46,34 @@ contract TonVault(
 
     receive(msg: SwapRequestTon) {
         // TODO: exact tests for this
-        let amountForComission = context().value - msg.amount;
+        let amountForFees = context().value - msg.amount;
         let receiver = msg.action.receiver != null ? msg.action.receiver!! : sender();
         // In TON Vault we can simply bounce and the value will be returned to the sender
+        let hops = msg.action.params.numberOfHops();
+        let fwdFee = context().readForwardFee();
+
+        let protocolGasFee =
+            // number of hops + 2 (this and the last vault) * freeze limit = maximum possible storageFee
+
+            (hops + 2) * getFreezeLimit() +
+            (hops + 1) * fwdFee +
+            getComputeFee(GasSwapRequestJettonVault, false) +
+            getComputeFee(GasAmmPoolSwap, false) * hops +
+            getComputeFee(GasPayoutFromAnyVault, false);
+
+        let restOfValue = amountForFees - protocolGasFee;
+        require(restOfValue > 0, "TonVault: Not enough value to pay for swap fees");
+
+        // Maybe the vault of the other side is not a JettonVault, but forward from any other Vault is cheaper
+        let payoutGasFee = priceOfJettonForward(fwdFee, restOfValue);
+
         require(
-            parseStdAddress(sender()).workchain != Basechain ||
+            parseStdAddress(sender().asSlice()).workchain != Basechain ||
             parseStdAddress(receiver.asSlice()).workchain != Basechain ||
-            amountForComission <
-            // number of hops + 2 (for the first and last vault) * freeze limit = maximum possible storageFee
-            (msg.action.params.numberOfHops() + 2) * getFreezeLimit() +
-            // Number of hops + one payout
-            context().readForwardFee() * (msg.action.params.numberOfHops() + 1) +
-            getComputeFee(GasSwapRequestTonVault, false) +
-            getComputeFee(GasAmmPoolSwap, false) +
-            getComputeFee(GasPayoutFromAnyVault, false),
-            "TonVault: Not value to pay for swap fees",
+            amountForFees <
+            protocolGasFee +
+            payoutGasFee,
+            "TonVault: Not enough value to pay for swap fees",
         );
 
         nativeReserve(msg.amount, ReserveExact | ReserveAddOriginalBalance);

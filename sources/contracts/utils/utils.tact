@@ -1,6 +1,6 @@
 //  SPDX-License-Identifier: MIT
 //  Copyright © 2025 TON Studio
-const Basechain: Int = 0;
+
 asm fun emptyAddress(): Address { b{00} PUSHSLICE }
 
 asm fun sliceWithOneZeroBit(): Slice {
@@ -22,9 +22,28 @@ inline fun getHalfOfMsgValue(): Int {
 
 asm fun getFreezeLimit(): Int {
     // Retrieve basechain gas prices from c7
-    21 GETPARAM
+    c7 PUSHCTR
+    FIRST // Unpack singleton from c7
+    21 PUSHINT
+    INDEXVAR
     // get freeze_due_limit from https://tonviewer.com/config#21
     7 INDEX
+}
+
+inline fun priceOfJettonForward(fwdFee: Int, fwdTonAmount: Int): Int {
+    // We know nothing about the jetton, so let's just assume that it fits in some gas limits
+    return
+        fwdTonAmount +
+    // Let's assume that we will always have a Jetton Notify
+        2 * fwdFee +
+    // I've never seen jetton that occupies more than that.
+    // However it is easy to create one :)
+    // If someone lose their money because of this, it's not my fault, we just have a very bad jetton standard
+        getForwardFee(40, 30000, false) +
+    // I don't think there is a jetton that requires more than 30k gas to transfer
+        (2 * getComputeFee(30000, false) +
+    // I've seen that some jettons reserve 0.02 TON for storage so let's assume that
+         ton("0.02"));
 }
 
 // helper function to calculate jetton wallet address synchronously
