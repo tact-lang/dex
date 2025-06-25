@@ -43,7 +43,7 @@ contract JettonVault(
     jettonWallet: Address?, // Should be deployed with null
 ) with VaultInterface {
     receive(msg: JettonNotifyWithActionRequest) {
-        // We don't put any gas constraints when vault is not initialised
+        // We don't put any gas constraints when vault is not initialized
         // Because with any proof type it is impossible to calculate exact fee, as in all kind of proofs we call the
         // jetton master and we don't know exact gas it may consume
         if (self.jettonWallet == null) {
