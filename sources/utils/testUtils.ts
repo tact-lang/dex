@@ -1,14 +1,7 @@
 //  SPDX-License-Identifier: MIT
 //  Copyright © 2025 TON Studio
 
-import {
-    Address,
-    beginCell,
-    Builder,
-    Cell,
-    TransactionComputeVm,
-    TransactionDescriptionGeneric,
-} from "@ton/core"
+import {Address, beginCell, Builder, Cell} from "@ton/core"
 import {
     SwapRequest,
     storeSwapRequest,
