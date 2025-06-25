@@ -1,7 +1,14 @@
 //  SPDX-License-Identifier: MIT
 //  Copyright © 2025 TON Studio
 
-import {Address, beginCell, Builder, Cell} from "@ton/core"
+import {
+    Address,
+    beginCell,
+    Builder,
+    Cell,
+    TransactionComputeVm,
+    TransactionDescriptionGeneric,
+} from "@ton/core"
 import {
     SwapRequest,
     storeSwapRequest,
@@ -20,6 +27,7 @@ import {
 } from "../output/DEX_JettonVault"
 import {storeAddLiquidityPartTon, storeSwapRequestTon} from "../output/DEX_TonVault"
 import {randomBytes} from "node:crypto"
+import {BlockchainTransaction} from "@ton/sandbox"
 
 export type NoProof = {
     proofType: 0n
@@ -255,4 +263,9 @@ export function createWithdrawLiquidityBody(
 export function randomCoins() {
     // 120 bits = 15 bytes
     return BigInt("0x" + randomBytes(15).toString("hex"))
+}
+
+export function getComputeGasForTx(tx: BlockchainTransaction) {
+    return ((tx.description as TransactionDescriptionGeneric).computePhase as TransactionComputeVm)
+        .gasUsed
 }

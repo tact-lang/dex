@@ -5,7 +5,11 @@ import {Blockchain, SandboxContract, SendMessageResult, TreasuryContract} from "
 import {ExtendedJettonMinter as JettonMinter} from "../wrappers/ExtendedJettonMinter"
 import {ExtendedJettonWallet as JettonWallet} from "../wrappers/ExtendedJettonWallet"
 import {Address, beginCell, Cell, SendMode, toNano} from "@ton/core"
-import {JettonVault} from "../output/DEX_JettonVault"
+import {
+    GasLPDepositPartJettonVault,
+    GasSwapRequestJettonVault,
+    JettonVault,
+} from "../output/DEX_JettonVault"
 import {sortAddresses} from "./deployUtils"
 import {AmmPool, SwapStep} from "../output/DEX_AmmPool"
 import {LiquidityDepositContract} from "../output/DEX_LiquidityDepositContract"
@@ -15,9 +19,10 @@ import {
     createTonSwapRequest,
     createTonVaultLiquidityDepositPayload,
     createWithdrawLiquidityBody,
+    getComputeGasForTx,
 } from "./testUtils"
-import {randomAddress} from "@ton/test-utils"
-import {TonVault} from "../output/DEX_TonVault"
+import {findTransactionRequired, flattenTransaction, randomAddress} from "@ton/test-utils"
+import {GasLPDepositPartTonVault, GasSwapRequestTonVault, TonVault} from "../output/DEX_TonVault"
 import {ExtendedLPJettonWallet} from "../wrappers/ExtendedLPJettonWallet"
 
 // TODO: unify common prefix to structs on create setups
@@ -134,7 +139,8 @@ export const createJettonVault: Create<VaultInterface<JettonTreasury>> = async (
         minAmountToDeposit: bigint = 0n,
         lpTimeout: bigint = BigInt(Math.ceil(Date.now() / 1000) + 5 * 60), // 5 minutes
     ) => {
-        return await jetton.transfer(
+        const vaultWasInited = await isInited()
+        const res = await jetton.transfer(
             vault.address,
             amount,
             createJettonVaultLiquidityDepositPayload(
@@ -147,6 +153,15 @@ export const createJettonVault: Create<VaultInterface<JettonTreasury>> = async (
                 payloadOnFailure,
             ),
         )
+        // if the vault was not initialized, it will spend more gas on proof.
+        if (vaultWasInited) {
+            const txOnVault = findTransactionRequired(res.transactions, {
+                on: vault.address,
+                op: JettonVault.opcodes.JettonNotifyWithActionRequest,
+            })
+            expect(getComputeGasForTx(txOnVault)).toBeLessThanOrEqual(GasLPDepositPartJettonVault)
+        }
+        return res
     }
 
     const sendSwapRequest = async (
@@ -161,6 +176,7 @@ export const createJettonVault: Create<VaultInterface<JettonTreasury>> = async (
         nextStep?: SwapStep | null,
         receiver: Address | null = null,
     ) => {
+        const vaultWasInited = await isInited()
         const swapRequest = createJettonVaultSwapRequest(
             destinationPool,
             isExactOutType,
@@ -172,8 +188,16 @@ export const createJettonVault: Create<VaultInterface<JettonTreasury>> = async (
             nextStep,
             receiver,
         )
-
-        return await jetton.transfer(vault.address, amountToSwap, swapRequest)
+        const res = await jetton.transfer(vault.address, amountToSwap, swapRequest)
+        // If vault was not initialized it will spend more gas on proof.
+        if (vaultWasInited) {
+            const txOnVault = findTransactionRequired(res.transactions, {
+                on: vault.address,
+                op: JettonVault.opcodes.JettonNotifyWithActionRequest,
+            })
+            expect(getComputeGasForTx(txOnVault)).toBeLessThanOrEqual(GasSwapRequestJettonVault)
+        }
+        return res
     }
 
     return {
@@ -218,7 +242,7 @@ export const createTonVault: Create<VaultInterface<TonTreasury>> = async (
         minAmountToDeposit: bigint = 0n,
         lpTimeout: bigint = BigInt(Math.ceil(Date.now() / 1000) + 5 * 60), // 5 minutes
     ) => {
-        return await wallet.send({
+        const res = await wallet.send({
             to: vault.address,
             value: amount + toNano(0.2), // fee
             bounce: true,
@@ -231,6 +255,12 @@ export const createTonVault: Create<VaultInterface<TonTreasury>> = async (
                 lpTimeout,
             ),
         })
+        const txOnVault = findTransactionRequired(res.transactions, {
+            on: vault.address,
+            op: TonVault.opcodes.AddLiquidityPartTon,
+        })
+        expect(getComputeGasForTx(txOnVault)).toBeLessThanOrEqual(GasLPDepositPartTonVault)
+        return res
     }
 
     const sendSwapRequest = async (
@@ -258,13 +288,19 @@ export const createTonVault: Create<VaultInterface<TonTreasury>> = async (
             nextStep,
         )
 
-        return await wallet.send({
+        const res = await wallet.send({
             to: vault.address,
             value: amountToSwap + toNano(0.2), // fee
             bounce: true,
             body: swapRequest,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
         })
+        const txOnVault = findTransactionRequired(res.transactions, {
+            on: vault.address,
+            op: TonVault.opcodes.SwapRequestTon,
+        })
+        expect(getComputeGasForTx(txOnVault)).toBeLessThanOrEqual(GasSwapRequestTonVault)
+        return res
     }
 
     return {
