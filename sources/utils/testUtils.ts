@@ -266,6 +266,13 @@ export function randomCoins() {
 }
 
 export function getComputeGasForTx(tx: BlockchainTransaction) {
-    return ((tx.description as TransactionDescriptionGeneric).computePhase as TransactionComputeVm)
-        .gasUsed
+    if (tx.description.type !== "generic") {
+        throw new Error("Transaction description is not generic, got: " + tx.description.type)
+    }
+    if (tx.description.computePhase.type !== "vm") {
+        throw new Error(
+            "Transaction compute phase is not VM, got: " + tx.description.computePhase.type,
+        )
+    }
+    return tx.description.computePhase.gasUsed
 }

@@ -11,8 +11,17 @@ import {
     JettonVault,
 } from "../output/DEX_JettonVault"
 import {sortAddresses} from "./deployUtils"
-import {AmmPool, SwapStep} from "../output/DEX_AmmPool"
-import {LiquidityDepositContract} from "../output/DEX_LiquidityDepositContract"
+import {
+    AmmPool,
+    GasAmmPoolLiquidityDeposit,
+    GasAmmPoolSwap,
+    GasPayoutFromAnyVault,
+    SwapStep,
+} from "../output/DEX_AmmPool"
+import {
+    GasLPDepositContract,
+    LiquidityDepositContract,
+} from "../output/DEX_LiquidityDepositContract"
 import {
     createJettonVaultLiquidityDepositPayload,
     createJettonVaultSwapRequest,
@@ -21,7 +30,7 @@ import {
     createWithdrawLiquidityBody,
     getComputeGasForTx,
 } from "./testUtils"
-import {findTransactionRequired, randomAddress} from "@ton/test-utils"
+import {findTransaction, findTransactionRequired, randomAddress} from "@ton/test-utils"
 import {GasLPDepositPartTonVault, GasSwapRequestTonVault, TonVault} from "../output/DEX_TonVault"
 import {ExtendedLPJettonWallet} from "../wrappers/ExtendedLPJettonWallet"
 
@@ -161,6 +170,25 @@ export const createJettonVault: Create<VaultInterface<JettonTreasury>> = async (
             })
             expect(getComputeGasForTx(txOnVault)).toBeLessThanOrEqual(GasLPDepositPartJettonVault)
         }
+        const txOnLpDepositContract = findTransactionRequired(res.transactions, {
+            on: liquidityDepositContractAddress,
+        })
+        // We should check that tx wasn't skipped
+        if (
+            txOnLpDepositContract.description.type === "generic" &&
+            txOnLpDepositContract.description.computePhase.type === "vm"
+        ) {
+            expect(getComputeGasForTx(txOnLpDepositContract)).toBeLessThanOrEqual(
+                GasLPDepositContract,
+            )
+        }
+        const txOnPool = findTransaction(res.transactions, {
+            from: liquidityDepositContractAddress,
+            op: AmmPool.opcodes.LiquidityDeposit,
+        })
+        if (txOnPool !== undefined) {
+            expect(getComputeGasForTx(txOnPool)).toBeLessThanOrEqual(GasAmmPoolLiquidityDeposit)
+        }
         return res
     }
 
@@ -196,6 +224,19 @@ export const createJettonVault: Create<VaultInterface<JettonTreasury>> = async (
                 op: JettonVault.opcodes.JettonNotifyWithActionRequest,
             })
             expect(getComputeGasForTx(txOnVault)).toBeLessThanOrEqual(GasSwapRequestJettonVault)
+        }
+        const txOnPool = findTransaction(res.transactions, {
+            on: destinationPool,
+            op: AmmPool.opcodes.SwapIn,
+        })
+        if (txOnPool !== undefined) {
+            expect(getComputeGasForTx(txOnPool)).toBeLessThanOrEqual(GasAmmPoolSwap)
+        }
+        const payoutTx = findTransaction(res.transactions, {
+            op: AmmPool.opcodes.PayoutFromPool,
+        })
+        if (payoutTx !== undefined) {
+            expect(getComputeGasForTx(payoutTx)).toBeLessThanOrEqual(GasPayoutFromAnyVault)
         }
         return res
     }
@@ -260,6 +301,24 @@ export const createTonVault: Create<VaultInterface<TonTreasury>> = async (
             op: TonVault.opcodes.AddLiquidityPartTon,
         })
         expect(getComputeGasForTx(txOnVault)).toBeLessThanOrEqual(GasLPDepositPartTonVault)
+        const txOnLpDepositContract = findTransactionRequired(res.transactions, {
+            on: liquidityDepositContractAddress,
+        })
+        if (
+            txOnLpDepositContract.description.type === "generic" &&
+            txOnLpDepositContract.description.computePhase.type === "vm"
+        ) {
+            expect(getComputeGasForTx(txOnLpDepositContract)).toBeLessThanOrEqual(
+                GasLPDepositContract,
+            )
+        }
+        const txOnPool = findTransaction(res.transactions, {
+            from: liquidityDepositContractAddress,
+            op: AmmPool.opcodes.LiquidityDeposit,
+        })
+        if (txOnPool !== undefined) {
+            expect(getComputeGasForTx(txOnPool)).toBeLessThanOrEqual(GasAmmPoolLiquidityDeposit)
+        }
         return res
     }
 
@@ -300,6 +359,19 @@ export const createTonVault: Create<VaultInterface<TonTreasury>> = async (
             op: TonVault.opcodes.SwapRequestTon,
         })
         expect(getComputeGasForTx(txOnVault)).toBeLessThanOrEqual(GasSwapRequestTonVault)
+        const txOnPool = findTransaction(res.transactions, {
+            on: destinationPool,
+            op: AmmPool.opcodes.SwapIn,
+        })
+        if (txOnPool !== undefined) {
+            expect(getComputeGasForTx(txOnPool)).toBeLessThanOrEqual(GasAmmPoolSwap)
+        }
+        const payoutTx = findTransaction(res.transactions, {
+            op: AmmPool.opcodes.PayoutFromPool,
+        })
+        if (payoutTx !== undefined) {
+            expect(getComputeGasForTx(payoutTx)).toBeLessThanOrEqual(GasPayoutFromAnyVault)
+        }
         return res
     }
 

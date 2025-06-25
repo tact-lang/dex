@@ -5,11 +5,11 @@
 const GasSwapRequestTonVault: Int = 11000;
 const GasSwapRequestJettonVault: Int = 13000;
 // This value is a maximum for ExactIn / ExactOut swaps.
-const GasAmmPoolSwap: Int = 5000;
-const GasPayoutFromAnyVault: Int = 7000;
+const GasAmmPoolSwap: Int = 12000;
+const GasPayoutFromAnyVault: Int = 13000;
 
 //-----------------LP-related gas constants-------------------
 const GasLPDepositPartJettonVault: Int = 8000;
 const GasLPDepositPartTonVault: Int = 6000;
-const GasLPDepositContract: Int = 7000;
-const GasAmmPoolLiquidityDeposit: Int = 8000;
+const GasLPDepositContract: Int = 15000;
+const GasAmmPoolLiquidityDeposit: Int = 22000;

@@ -110,6 +110,7 @@ contract TonVault(
 
     receive(msg: AddLiquidityPartTon) {
         // TODO: exact tests for this
+        // TODO: Gas checks on this deposit
         nativeReserve(msg.amountIn, ReserveExact | ReserveAddOriginalBalance);
 
         message(MessageParameters {

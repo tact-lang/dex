@@ -197,8 +197,6 @@ inline fun actionHandler(msg: JettonNotifyWithActionRequest): Bool {
             ctx.value <
             protocolGasFee +
             payoutGasFee) {
-            dump(protocolGasFee);
-            dump(payoutGasFee);
             return false;
         }
         message(MessageParameters {
