@@ -231,7 +231,12 @@ inline fun actionHandler(msg: JettonNotifyWithActionRequest): Bool {
             // Gas for transferring LP Jettons (this gas will be spent on JettonWallet)
             getComputeFee(gasForTransfer, false) +
             // There will be at most 1 payout from Vault
-            getComputeFee(GasPayoutFromAnyVault, false);
+            getComputeFee(GasPayoutFromAnyVault, false) +
+            // Price of forwarding excesses (might be Jettons might be not, but Jettons are the most expensive)
+            priceOfJettonForward(ctx.readForwardFee(), 1);
+        if (ctx.value < protocolGasFee) {
+            return false;
+        }
 
         message(MessageParameters {
             to: action.liquidityDepositContract,

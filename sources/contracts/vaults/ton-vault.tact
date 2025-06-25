@@ -54,7 +54,6 @@ contract TonVault(
 
         let protocolGasFee =
             // number of hops + 2 (this and the last vault) * freeze limit = maximum possible storageFee
-
             (hops + 2) * getFreezeLimit() +
             (hops + 1) * fwdFee +
             getComputeFee(GasSwapRequestJettonVault, false) +
@@ -73,7 +72,7 @@ contract TonVault(
             "TonVault: Not enough value to pay for swap fees",
         );
 
-        nativeReserve(msg.amount, ReserveExact | ReserveAddOriginalBalance);
+        nativeReserve(msg.amount, ReserveExact | ReserveAddOriginalBalance | ReserveBounceIfActionFail);
         message(MessageParameters {
             to: msg.action.pool,
             value: 0,
@@ -110,8 +109,30 @@ contract TonVault(
 
     receive(msg: AddLiquidityPartTon) {
         // TODO: exact tests for this
-        // TODO: Gas checks on this deposit
-        nativeReserve(msg.amountIn, ReserveExact | ReserveAddOriginalBalance);
+        let ctx = context();
+        // 1 to LP Deposit contract + 1 to Amm Pool
+        // + 1 to LP Jetton Wallet + 1 for LP Jetton Notify + 1 Jetton excesses (this will be cheaper)
+        // + 1 to Vault (possible excesses)
+        // Note, that LP Provision could fail, but in this case there will be no LP Mint - related operations, but there will be 2 Vault payouts.
+        // So it is safe to use 6 here.
+        let protocolGasFee =
+            6 * ctx.readForwardFee() +
+            // Amm Pool and Vault of excesses payout + this Vault (incoming message may be bounceable)
+            getFreezeLimit() * 3 +
+            getComputeFee(GasLPDepositPartTonVault, false) +
+            getComputeFee(GasLPDepositContract, false) +
+            getComputeFee(GasAmmPoolLiquidityDeposit, false) +
+            // For LP Jetton Wallet storage Fee
+            minTonsForStorage +
+            // Gas for transferring LP Jettons (this gas will be spent on JettonWallet)
+            getComputeFee(gasForTransfer, false) +
+            // There will be at most 1 payout from Vault
+            getComputeFee(GasPayoutFromAnyVault, false) +
+            // Price of forwarding excesses (might be Jettons might be not, but Jettons are the most expensive)
+            priceOfJettonForward(ctx.readForwardFee(), 1);
+
+        require(ctx.value - msg.amountIn > protocolGasFee, "TonVault: Not enough value to pay for gas");
+        nativeReserve(msg.amountIn, ReserveExact | ReserveAddOriginalBalance | ReserveBounceIfActionFail);
 
         message(MessageParameters {
             to: msg.liquidityDepositContract,

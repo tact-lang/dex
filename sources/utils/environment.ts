@@ -285,7 +285,7 @@ export const createTonVault: Create<VaultInterface<TonTreasury>> = async (
     ) => {
         const res = await wallet.send({
             to: vault.address,
-            value: amount + toNano(0.2), // fee
+            value: amount + toNano(0.5), // fee
             bounce: true,
             body: createTonVaultLiquidityDepositPayload(
                 liquidityDepositContractAddress,
