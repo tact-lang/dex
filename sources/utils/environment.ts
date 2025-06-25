@@ -21,7 +21,7 @@ import {
     createWithdrawLiquidityBody,
     getComputeGasForTx,
 } from "./testUtils"
-import {findTransactionRequired, flattenTransaction, randomAddress} from "@ton/test-utils"
+import {findTransactionRequired, randomAddress} from "@ton/test-utils"
 import {GasLPDepositPartTonVault, GasSwapRequestTonVault, TonVault} from "../output/DEX_TonVault"
 import {ExtendedLPJettonWallet} from "../wrappers/ExtendedLPJettonWallet"
 
