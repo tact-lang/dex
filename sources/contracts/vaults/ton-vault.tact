@@ -54,6 +54,7 @@ contract TonVault(
 
         let protocolGasFee =
             // number of hops + 2 (this and the last vault) * freeze limit = maximum possible storageFee
+
             (hops + 2) * getFreezeLimit() +
             (hops + 1) * fwdFee +
             getComputeFee(GasSwapRequestJettonVault, false) +
