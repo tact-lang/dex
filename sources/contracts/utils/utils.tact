@@ -24,10 +24,17 @@ asm fun getFreezeLimit(): Int {
     // Retrieve basechain gas prices from c7
     c7 PUSHCTR
     FIRST // Unpack singleton from c7
-    21 PUSHINT
-    INDEXVAR
-    // get freeze_due_limit from https://tonviewer.com/config#21
-    7 INDEX
+    // https://docs.ton.org/v3/documentation/tvm/changelog/tvm-upgrade-2024-04
+    // 14: a tuple containing various config parameters as cell slices. If a parameter is absent from the config, its value is null.
+    14 INDEX
+    // get basechain gas prices
+    3 INDEX
+    // Now we have a slice with gas prices
+    // Check param 21 on https://explorer.toncoin.org/config to understand parsing here
+    464 PUSHINT
+    SDSKIPFIRST
+    64 LDU
+    DROP
 }
 
 inline fun priceOfJettonForward(fwdFee: Int, fwdTonAmount: Int): Int {

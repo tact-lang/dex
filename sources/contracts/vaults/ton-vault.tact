@@ -61,11 +61,8 @@ contract TonVault(
             getComputeFee(GasAmmPoolSwap, false) * hops +
             getComputeFee(GasPayoutFromAnyVault, false);
 
-        let restOfValue = amountForFees - protocolGasFee;
-        require(restOfValue > 0, "TonVault: Not enough value to pay for swap fees");
-
         // Maybe the vault of the other side is not a JettonVault, but forward from any other Vault is cheaper
-        let payoutGasFee = priceOfJettonForward(fwdFee, restOfValue);
+        let payoutGasFee = priceOfJettonForward(fwdFee, 1);
 
         require(
             parseStdAddress(sender().asSlice()).workchain != Basechain ||

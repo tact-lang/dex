@@ -32,7 +32,6 @@ describe("Payloads", () => {
         const amountToSwap = toNano(0.05)
         const expectedOutput = await ammPool.getExpectedOut(vaultA.vault.address, amountToSwap)
         const amountBJettonBeforeSwap = await vaultB.treasury.wallet.getJettonBalance()
-
         const swapResult = await swap(
             amountToSwap,
             "vaultA",
@@ -42,7 +41,6 @@ describe("Payloads", () => {
             null,
             payloadOnSuccess,
         )
-
         // check that swap was successful
         expect(swapResult.transactions).toHaveTransaction({
             from: vaultA.vault.address,

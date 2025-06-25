@@ -77,7 +77,7 @@ contract JettonVault(
             commit();
         }
         // Maybe someone messed up with address, so let's try to send jettons back
-        if (sender() != self.jettonWallet) {
+        if (sender() != self.jettonWallet || !actionHandler(msg)) {
             message(MessageParameters {
                 mode: SendRemainingValue | SendIgnoreErrors,
                 body: SendViaJettonTransfer {
@@ -94,9 +94,8 @@ contract JettonVault(
                 bounce: true,
             });
             commit();
-            require(false, "JettonVault: Sender must be jetton wallet");
+            require(false, "JettonVault: Sender must be jetton wallet or too low gas for action");
         }
-        actionHandler(msg);
     }
 
     receive(msg: TEP89DiscoveryResult) {
@@ -107,8 +106,8 @@ contract JettonVault(
         if (msg.expectedJettonWallet == msg.actualJettonWallet) {
             self.jettonWallet = msg.actualJettonWallet;
             commit();
-            actionHandler(action);
-        } else {
+        }
+        if (msg.expectedJettonWallet != msg.actualJettonWallet || !actionHandler(action)) {
             message(MessageParameters {
                 mode: SendRemainingValue | SendIgnoreErrors,
                 body: SendViaJettonTransfer {
@@ -126,7 +125,7 @@ contract JettonVault(
             });
 
             commit();
-            require(false, "JettonVault: Expected and Actual wallets are not equal");
+            require(false, "JettonVault: Expected and Actual wallets are not equal or gas for action is not enough");
         }
     }
 
@@ -191,13 +190,15 @@ inline fun actionHandler(msg: JettonNotifyWithActionRequest): Bool {
             return false;
         }
         // Maybe the vault of the other side is not a JettonVault, but forward from any other Vault is cheaper
-        let payoutGasFee = priceOfJettonForward(ctx.readForwardFee(), restOfValue);
+        let payoutGasFee = priceOfJettonForward(ctx.readForwardFee(), 1);
 
         if (parseStdAddress(sender().asSlice()).workchain != Basechain ||
             parseStdAddress(receiver.asSlice()).workchain != Basechain ||
             ctx.value <
             protocolGasFee +
             payoutGasFee) {
+            dump(protocolGasFee);
+            dump(payoutGasFee);
             return false;
         }
         message(MessageParameters {
