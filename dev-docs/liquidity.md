@@ -81,13 +81,13 @@ To enable this option, you should change deposit asset part.
         initData:(Maybe LiquidityDepositInitData) = LiquidityDepositEitherAddress;
     ```
 
-If you want to deploy liquidity deposit contract yourself, you should set `eitherBit` to false, and provide `liquidityDepositContract` to which `PartHasBeenDeposited` messages will be sent too.
+If you want to deploy the liquidity deposit contract yourself, set `eitherBit` to false and provide the `liquidityDepositContract` address, to which `PartHasBeenDeposited` messages will be sent.
 
-However, if you want `PartHasBeenDeposited` messages to include state init and deploy liquidity deposit contract themselves, you need to set `eitherBit` to true and attach `LiquidityDepositInitData` struct.
+However, if you want `PartHasBeenDeposited` messages to include the state init and deploy the liquidity deposit contract themselves, set `eitherBit` to true and attach the `LiquidityDepositInitData` struct.
 
-- `otherVault` is an address of another asset vault that you deposit liquidity from
-- `otherAmount` is an amount of how much of other asset you want to deposit
-- `contractId` is on-chain salt, can be any number (check full description later)
+- `otherVault` is the address of the other asset vault from which you are depositing liquidity.
+- `otherAmount` is the amount of the other asset you want to deposit.
+- `contractId` is an on-chain salt and can be any number (see the full description later).
 
 2. **Deposit Asset A and Asset B**
 
