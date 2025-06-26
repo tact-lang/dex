@@ -16,17 +16,17 @@ T-Dex uses a two-vault system for each pool (e.g., TON Vault and Jetton Vault). 
 
 Note that throughout T-Dex documentation, the terms **left** and **right** are used to describe asset vaults. For determinism in on-chain operations and predictable addresses, vaults should be sorted and used based on their contract address ordering. (TODO: link vault ordering from vaults docs)
 
-There are two ways one can deploy liquidity deposit contract. 
+There are two ways one can deploy liquidity deposit contract.
 
 The first one is to deploy liquidity deposit contract with standalone deploy message with state init attached and later only use plain `messages` to communicate liquidity deposit of asset parts.
 
 The second option is to provide additional fields to the vault's liquidity deposit messages (`part_has_been_deposited#e7a3475f`), so they would deploy liquidity deposit contract themselves.
 
-Note, that it is not recommended to use different approach for each one of the vaults - since TON is asynchronous, you can't make sure which liquidity deposit message will come first. So, if you attach state init only to one of the vault messages, it is possible to break an invariant and lose funds. 
+Note, that it is not recommended to use different approach for each one of the vaults - since TON is asynchronous, you can't make sure which liquidity deposit message will come first. So, if you attach state init only to one of the vault messages, it is possible to break an invariant and lose funds.
 
 ### Step-by-step
 
-1. **Deploy the Liquidity Deposit Contract**  
+1. First option: **Deploy the Liquidity Deposit Contract**  
    This contract coordinates the atomic addition of both assets. It is created for each deposit operation and destroyed after use.
 
 TLB for storage and initial data:
@@ -67,6 +67,28 @@ const LPproviderContract = await LiquidityDepositContract.fromInit(
 )
 ```
 
+Second option: Let vault `part_has_been_deposited#e7a3475f` messages to deploy liquidity deposit contract.
+
+To enable this option, you should change deposit asset part.
+
+    ```tlb
+    _ otherVault:MsgAddress
+        otherAmount:Coins
+        contractId:uint64 = LiquidityDepositInitData;
+
+    _ eitherBit:Bool
+        liquidityDepositContract:MsgAddress
+        initData:(Maybe LiquidityDepositInitData) = LiquidityDepositEitherAddress;
+    ```
+
+If you want to deploy liquidity deposit contract yourself, you should set `eitherBit` to false, and provide `liquidityDepositContract` to which `PartHasBeenDeposited` messages will be sent too.
+
+However, if you want `PartHasBeenDeposited` messages to include state init and deploy liquidity deposit contract themselves, you need to set `eitherBit` to true and attach `LiquidityDepositInitData` struct.
+
+- `otherVault` is an address of another asset vault that you deposit liquidity from
+- `otherAmount` is an amount of how much of other asset you want to deposit
+- `contractId` is on-chain salt, can be any number (check full description later)
+
 2. **Deposit Asset A and Asset B**
 
     - Send a transfer to each vault (TON or Jetton) with a special payload referencing the Liquidity Deposit contract.
@@ -87,12 +109,12 @@ _ minAmountToDeposit:Coins
   payloadOnFailure:(Maybe ^Cell) = AdditionalParams;
 
 add_liquidity_part_ton#1b434676
-    liquidityDepositContract:MsgAddress
     amountIn:Coins
+    liquidityDepositContractData:LiquidityDepositEitherAddress
     additionalParams:AdditionalParams = AddLiquidityPartTon;
 
 add_liquidity_part_jetton#64c08bfc
-    liquidityDepositContract:MsgAddress
+    liquidityDepositContractData:LiquidityDepositEitherAddress
     additionalParams:AdditionalParams
     proofType:(##8) {proofType = 0} = AddLiquidityJettonForwardPayload;
 ```
