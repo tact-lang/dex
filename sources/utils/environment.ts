@@ -101,6 +101,11 @@ export type VaultInterface<T> = {
         payloadOnFailure?: Cell | null,
         minAmountToDeposit?: bigint,
         lpTimeout?: bigint,
+        liquidityDepositContractData?: {
+            otherVaultAddress: Address
+            otherAmount: bigint
+            id: bigint
+        },
     ) => Promise<SandboxSendResult>
     sendSwapRequest: (
         amountToSwap: bigint,
@@ -147,6 +152,11 @@ export const createJettonVault: Create<VaultInterface<JettonTreasury>> = async (
         payloadOnFailure: Cell | null = null,
         minAmountToDeposit: bigint = 0n,
         lpTimeout: bigint = BigInt(Math.ceil(Date.now() / 1000) + 5 * 60), // 5 minutes
+        liquidityDepositContractData?: {
+            otherVaultAddress: Address
+            otherAmount: bigint
+            id: bigint
+        },
     ) => {
         const vaultWasInited = await isInited()
         const res = await jetton.transfer(
@@ -160,6 +170,7 @@ export const createJettonVault: Create<VaultInterface<JettonTreasury>> = async (
                 lpTimeout,
                 payloadOnSuccess,
                 payloadOnFailure,
+                liquidityDepositContractData,
             ),
         )
         // if the vault was not initialized, it will spend more gas on proof.
@@ -282,6 +293,11 @@ export const createTonVault: Create<VaultInterface<TonTreasury>> = async (
         payloadOnFailure: Cell | null = null,
         minAmountToDeposit: bigint = 0n,
         lpTimeout: bigint = BigInt(Math.ceil(Date.now() / 1000) + 5 * 60), // 5 minutes
+        liquidityDepositContractData?: {
+            otherVaultAddress: Address
+            otherAmount: bigint
+            id: bigint
+        },
     ) => {
         const res = await wallet.send({
             to: vault.address,
@@ -294,6 +310,7 @@ export const createTonVault: Create<VaultInterface<TonTreasury>> = async (
                 payloadOnFailure,
                 minAmountToDeposit,
                 lpTimeout,
+                liquidityDepositContractData,
             ),
         })
         const txOnVault = findTransactionRequired(res.transactions, {

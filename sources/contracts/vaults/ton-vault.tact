@@ -135,17 +135,51 @@ contract TonVault(
         require(ctx.value - msg.amountIn > protocolGasFee, "TonVault: Not enough value to pay for gas");
         nativeReserve(msg.amountIn, ReserveExact | ReserveAddOriginalBalance | ReserveBounceIfActionFail);
 
-        message(MessageParameters {
-            to: msg.liquidityDepositContract,
-            value: 0,
-            mode: SendBounceIfActionFail | SendRemainingBalance,
-            bounce: false,
-            body: PartHasBeenDeposited {
-                additionalParams: msg.additionalParams,
-                amount: msg.amountIn,
-                depositor: sender(),
-            }.toCell(),
-        });
+        if (!msg.liquidityDepositContractData.eitherBit) {
+            message(MessageParameters {
+                to: msg.liquidityDepositContractData.liquidityDepositContract!!,
+                value: 0,
+                mode: SendBounceIfActionFail | SendRemainingBalance,
+                bounce: false,
+                body: PartHasBeenDeposited {
+                    additionalParams: msg.additionalParams,
+                    amount: msg.amountIn,
+                    depositor: sender(),
+                }.toCell(),
+            });
+        } else {
+            let initData = msg.liquidityDepositContractData.initData!!;
+
+            let sorted = sortAddressesAndCoins(
+                myAddress(),
+                initData.otherVault,
+                msg.amountIn,
+                initData.otherAmount,
+            );
+
+            let depositorStateInit = initOf LiquidityDepositContract(
+                sorted.lower,
+                sorted.higher,
+                sorted.lowerCoins,
+                sorted.higherCoins,
+                sender(),
+                initData.contractId,
+                0,
+                null,
+                null,
+            );
+
+            deploy(DeployParameters {
+                init: depositorStateInit,
+                mode: SendBounceIfActionFail | SendRemainingBalance,
+                value: 0,
+                body: PartHasBeenDeposited {
+                    depositor: sender(),
+                    amount: msg.amountIn,
+                    additionalParams: msg.additionalParams,
+                }.toCell(),
+            });
+        }
     }
 
     receive() {

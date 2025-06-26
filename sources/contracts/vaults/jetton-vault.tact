@@ -238,16 +238,50 @@ inline fun actionHandler(msg: JettonNotifyWithActionRequest): Bool {
             return false;
         }
 
-        message(MessageParameters {
-            to: action.liquidityDepositContract,
-            value: 0,
-            mode: SendRemainingValue,
-            body: PartHasBeenDeposited {
-                depositor: msg.sender,
-                amount: msg.amount,
-                additionalParams: action.additionalParams,
-            }.toCell(),
-        });
+        if (!action.liquidityDepositContractData.eitherBit) {
+            message(MessageParameters {
+                to: action.liquidityDepositContractData.liquidityDepositContract!!,
+                value: 0,
+                mode: SendRemainingValue,
+                body: PartHasBeenDeposited {
+                    depositor: msg.sender,
+                    amount: msg.amount,
+                    additionalParams: action.additionalParams,
+                }.toCell(),
+            });
+        } else {
+            let initData = action.liquidityDepositContractData.initData!!;
+
+            let sorted = sortAddressesAndCoins(
+            myAddress(),
+            initData.otherVault,
+            msg.amount,
+            initData.otherAmount,
+            );
+
+            let depositorStateInit = initOf LiquidityDepositContract(
+            sorted.lower,
+            sorted.higher,
+            sorted.lowerCoins,
+            sorted.higherCoins,
+            msg.sender,
+            initData.contractId,
+            0,
+            null,
+            null,
+            );
+
+            deploy(DeployParameters {
+                init: depositorStateInit,
+                mode: SendRemainingValue,
+                value: 0,
+                body: PartHasBeenDeposited {
+                    depositor: msg.sender,
+                    amount: msg.amount,
+                    additionalParams: action.additionalParams,
+                }.toCell(),
+            });
+        }
         return true;
     }
     return false;

@@ -3,7 +3,7 @@
 
 import {toNano} from "@ton/core"
 import {Blockchain} from "@ton/sandbox"
-import {randomAddress} from "@ton/test-utils"
+import {findTransactionRequired, flattenTransaction, randomAddress} from "@ton/test-utils"
 import {AmmPool} from "../output/DEX_AmmPool"
 import {LiquidityDepositContract} from "../output/DEX_LiquidityDepositContract"
 import {
@@ -15,6 +15,7 @@ import {
 import {sortAddresses} from "../utils/deployUtils"
 // eslint-disable-next-line
 import {SendDumpToDevWallet} from "@tondevwallet/traces"
+import {ExtendedLPJettonWallet} from "../wrappers/ExtendedLPJettonWallet"
 
 describe("Liquidity deposit", () => {
     test("Jetton vault should deploy correctly", async () => {
@@ -491,4 +492,73 @@ describe("Liquidity deposit", () => {
         // and we got more LP tokens
         expect(lpBalanceAfterSecond).toBeGreaterThan(lpBalanceAfterFirstLiq)
     })
+
+    test.each([
+        {
+            name: "Jetton->Jetton",
+            createPool: createJettonAmmPool,
+        },
+        {
+            name: "TON->Jetton",
+            createPool: createTonJettonAmmPool,
+        },
+    ])(
+        "should correctly deploy liquidity deposit contract from $name vault",
+        async ({createPool}) => {
+            const blockchain = await Blockchain.create()
+
+            const {vaultB, vaultA, ammPool} = await createPool(blockchain)
+
+            await vaultA.deploy()
+            await vaultB.deploy()
+
+            const amountA = toNano(1)
+            const amountB = toNano(2)
+
+            const addLiquidityWithDeploy = await vaultA.addLiquidity(
+                randomAddress(0),
+                amountA,
+                null,
+                null,
+                0n,
+                0n,
+                {
+                    id: 1n,
+                    otherVaultAddress: vaultB.vault.address,
+                    otherAmount: amountB,
+                },
+            )
+
+            expect(addLiquidityWithDeploy.transactions).toHaveTransaction({
+                from: vaultA.vault.address,
+                // to: liquidity deposit contract address,
+                op: LiquidityDepositContract.opcodes.PartHasBeenDeposited,
+                success: true,
+                deploy: true,
+            })
+
+            const returnFundsTx = flattenTransaction(
+                findTransactionRequired(addLiquidityWithDeploy.transactions, {
+                    from: vaultA.vault.address,
+                    op: LiquidityDepositContract.opcodes.PartHasBeenDeposited,
+                    success: true,
+                    deploy: true,
+                }),
+            )
+
+            const liquidityDepositContractAddress = returnFundsTx.to!
+
+            await vaultB.addLiquidity(liquidityDepositContractAddress, amountB)
+
+            const depositor = vaultB.treasury.walletOwner
+
+            const depositorLpWallet = blockchain.openContract(
+                await ExtendedLPJettonWallet.fromInit(0n, depositor.address, ammPool.address),
+            )
+
+            // check that after second lp deposit, the liquidity was added
+            const lpBalance = await depositorLpWallet.getJettonBalance()
+            expect(lpBalance).toBeGreaterThan(0n)
+        },
+    )
 })
