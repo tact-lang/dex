@@ -4,14 +4,13 @@ This section explains how to add and remove liquidity in T-Dex, enabling users t
 
 ## Overview
 
-T-Dex uses a two-vault system for each pool (e.g., TON Vault and Jetton Vault). To add liquidity, you must deposit both assets into their respective vaults in the correct ratio. In return, you receive LP (liquidity provider) jettons, which represent your share of the pool. To withdraw liquidity, you burn your LP jettons and receive the underlying assets back.
+T-Dex uses asset-abstraction system with vaults for each pool. This means that pool operates assets liquidity independently of vaults type (e.g., TON Vault and Jetton Vault). To add liquidity, you must deposit both assets into their respective vaults in the correct ratio. In return, you receive LP (liquidity provider) jettons, which represent your share of the pool. To withdraw liquidity, you burn your LP jettons and receive the underlying assets back.
 
 ## Adding Liquidity
 
 ### Prerequisites
 
 - Both vaults (for each asset in the pool) must be deployed and initialized.
-- The AMM pool must exist.
 - You need the addresses of both vaults and the pool.
 
 Note that throughout T-Dex documentation, the terms **left** and **right** are used to describe asset vaults. For determinism in on-chain operations and predictable addresses, vaults should be sorted and used based on their contract address ordering. (TODO: link vault ordering from vaults docs)
@@ -20,9 +19,11 @@ There are two ways one can deploy liquidity deposit contract.
 
 The first one is to deploy liquidity deposit contract with standalone deploy message with state init attached and later only use plain `messages` to communicate liquidity deposit of asset parts.
 
-The second option is to provide additional fields to the vault's liquidity deposit messages (`part_has_been_deposited#e7a3475f`), so they would deploy liquidity deposit contract themselves.
+The second option is to provide additional fields to the vault's liquidity deposit messages (`add_liquidity_part_ton#1b434676` or `lp_deposit_part#64c08bfc`), so they would deploy liquidity deposit contract themselves.
 
 Note, that it is not recommended to use different approach for each one of the vaults - since TON is asynchronous, you can't make sure which liquidity deposit message will come first. So, if you attach state init only to one of the vault messages, it is possible to break an invariant and lose funds.
+
+However, deploying lp provider in separate message and then depositing liquidity is totally fine as transactions in TON are sorted based on their LT.
 
 ### Step-by-step
 
@@ -119,10 +120,12 @@ add_liquidity_part_jetton#64c08bfc
     proofType:(##8) {proofType = 0} = AddLiquidityJettonForwardPayload;
 ```
 
+Read more about `proofType`, why it is needed and proof initialization here. (TODO: proof page link)
+
 Each side (each asset) has its own `AdditionalParams`.
 
 - `minAmountToDeposit` is the minimum amount of this asset you are willing to add to liquidity. It acts similarly to slippage in `exactIn` swaps. When minimum amounts are given for both assets, the AMM pool tries to find a ratio combination that satisfies the constant product formula and adds the maximum possible amount (so the refund is minimal). If this is not possible, both assets are refunded to the initial depositor.
-- `lpTimeout` is an absolute Unix timestamp after which the transaction will not be executed (checked inside the AMM pool). The maximum of both asset `lpTimeout` values is used.
+- `lpTimeout` is an absolute Unix timestamp after which the transaction will not be executed (checked inside the AMM pool). The maximum of both assets `lpTimeout` values is used.
 - `payloadOnSuccess` is an optional reference cell, described [here](#payload-semantics)
 - `payloadOnFailure` is an optional reference cell, described [here](#payload-semantics)
 
@@ -218,7 +221,7 @@ let successForwardPayload = beginCell()
     .beginParse();
 ```
 
-- Liquidity deposit is successful, but some funds are refunded due to the constant product invariant; the success payload is attached to the vault payout message (TLB is asset dependent)
+- Liquidity deposit is successful, but some funds are refunded due to the constant product invariant; the success payload is attached to the vault payout message (TLB is asset-dependent)
 
 If liquidity deposit is successful but one of the assets is refunded, the success payload from that asset's `AdditionalParams` will be attached to the refund payout message **and** both success payloads will be attached to the LP Jetton mint transfer notification.
 
