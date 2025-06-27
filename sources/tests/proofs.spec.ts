@@ -191,7 +191,10 @@ describe("Proofs", () => {
             from: tep89proxyAddress,
             op: JettonVault.opcodes.TEP89DiscoveryResult,
             success: true, // Because commit was called
-            exitCode: JettonVault.errors["JettonVault: Expected and Actual wallets are not equal"],
+            exitCode:
+                JettonVault.errors[
+                    "JettonVault: Expected and Actual wallets are not equal or gas for action is not enough"
+                ],
         })
 
         expect(await vaultSetup.isInited()).toBe(false)
@@ -309,8 +312,11 @@ describe("Proofs", () => {
             findTransactionRequired(sendJettonsToWrongVault.transactions, {
                 to: vaultSetup.vault.address,
                 op: JettonVault.opcodes.JettonNotifyWithActionRequest,
-                success: true, // Because commit was called
-                exitCode: JettonVault.errors["JettonVault: Sender must be jetton wallet"],
+                success: true, // Because commit() was called
+                exitCode:
+                    JettonVault.errors[
+                        "JettonVault: Sender must be jetton wallet or too low gas for action"
+                    ],
             }),
         )
 

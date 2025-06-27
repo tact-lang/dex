@@ -7,6 +7,7 @@ import "./utils";
 
 // VENDOR LOCK: These jetton wallet base implementation were copied from the tact-lang/jetton repository.
 // https://github.com/tact-lang/jetton/tree/0e2b51dcd7f91c2db194027ae867c44fb0e0c11b
+// Note, this exact code was further modified to be used as a part of T-Dex LP Jetton implementation.
 
 contract LPJettonWallet(
     balance: Int as coins,
@@ -43,6 +44,7 @@ contract LPJettonWallet(
                 responseDestination: msg.responseDestination,
                 forwardTonAmount: msg.forwardTonAmount,
                 forwardPayload: msg.forwardPayload,
+                sendAllTonsInNotifyFlag: false,
             }.toCell(),
             init: initOf LPJettonWallet(0, msg.destination, self.minter),
         });
@@ -60,6 +62,23 @@ contract LPJettonWallet(
         let ctx: Context = context();
         let msgValue: Int = ctx.value;
         let tonBalanceBeforeMsg = myBalance() - msgValue;
+
+        if (msg.sendAllTonsInNotifyFlag) {
+            nativeReserve(max(tonBalanceBeforeMsg, minTonsForStorage), ReserveAtMost);
+            message(MessageParameters {
+                to: self.owner,
+                value: 0,
+                mode: SendRemainingBalance,
+                bounce: false,
+                body: JettonNotification {
+                    queryId: msg.queryId,
+                    amount: msg.amount,
+                    sender: msg.sender,
+                    forwardPayload: msg.forwardPayload,
+                }.toCell(),
+            });
+            return;
+        }
 
         if (msg.forwardTonAmount > 0) {
             let fwdFee: Int = ctx.readForwardFee();

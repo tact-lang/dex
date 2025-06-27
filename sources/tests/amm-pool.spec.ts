@@ -154,6 +154,7 @@ describe("Amm pool", () => {
             op: AmmPool.opcodes.PayoutFromPool,
             success: true,
         })
+
         expect(withdrawResult.transactions).toHaveTransaction({
             from: ammPool.address,
             to: vaultB.vault.address,

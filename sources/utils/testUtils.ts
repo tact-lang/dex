@@ -21,6 +21,7 @@ import {
 } from "../output/DEX_JettonVault"
 import {storeAddLiquidityPartTon, storeSwapRequestTon} from "../output/DEX_TonVault"
 import {randomBytes} from "node:crypto"
+import {BlockchainTransaction} from "@ton/sandbox"
 
 export type NoProof = {
     proofType: 0n
@@ -306,4 +307,16 @@ export function createWithdrawLiquidityBody(
 export function randomCoins() {
     // 120 bits = 15 bytes
     return BigInt("0x" + randomBytes(15).toString("hex"))
+}
+
+export function getComputeGasForTx(tx: BlockchainTransaction) {
+    if (tx.description.type !== "generic") {
+        throw new Error("Transaction description is not generic, got: " + tx.description.type)
+    }
+    if (tx.description.computePhase.type !== "vm") {
+        throw new Error(
+            "Transaction compute phase is not VM, got: " + tx.description.computePhase.type,
+        )
+    }
+    return tx.description.computePhase.gasUsed
 }

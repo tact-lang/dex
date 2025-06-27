@@ -8,7 +8,7 @@ All `require` statements must include the contract name as a prefix in error mes
 
 **❌ Don't:**
 
-```solidity
+```tact
 require(false, "Liquidity provision failed due to timeout");
 ```
 
@@ -42,3 +42,7 @@ Using unbounceable internal messages provides a significant advantage for handli
     - Additional code to ensure contract storage is paid for
 
 This approach results in cleaner, more efficient code with simplified message handling logic.
+
+## More about StorageFee Handling
+
+- There are no any fees handling in `factory` contract, as adding this will increase gas consumption but won't provide any benefits. (Factory contract can't break any invariants)

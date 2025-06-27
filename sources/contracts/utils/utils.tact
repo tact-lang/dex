@@ -20,6 +20,38 @@ inline fun getHalfOfMsgValue(): Int {
     return (context().value - getComputeFee(gasConsumed(), false)) / 2;
 }
 
+asm fun getFreezeLimit(): Int {
+    // Retrieve basechain gas prices from c7
+    c7 PUSHCTR
+    FIRST // Unpack singleton from c7
+    // https://docs.ton.org/v3/documentation/tvm/changelog/tvm-upgrade-2024-04
+    // 14: a tuple containing various config parameters as cell slices. If a parameter is absent from the config, its value is null.
+    14 INDEX
+    // get basechain gas prices
+    3 INDEX
+    // Now we have a slice with gas prices
+    // Check param 21 on https://explorer.toncoin.org/config to understand parsing here
+    464 PUSHINT
+    SDSKIPFIRST
+    64 LDU
+    DROP
+}
+
+inline fun priceOfJettonForward(fwdFee: Int, fwdTonAmount: Int): Int {
+    // We know nothing about the jetton, so let's just assume that it fits in some gas limits
+    return
+        fwdTonAmount +
+    // Let's assume that we will always have a Jetton Notify
+        2 * fwdFee +
+    // I've never seen jetton that occupies more than that.
+    // However it is easy to create one :)
+        getForwardFee(40, 30000, false) +
+    // I don't think there is a jetton that requires more than 30k gas to transfer
+        (2 * getComputeFee(30000, false) +
+    // I've seen that some jettons reserve 0.02 TON for storage so let's assume that
+         ton("0.02"));
+}
+
 // helper function to calculate jetton wallet address synchronously
 // inside tvm with jetton minter state and data, using RUNVM opcode
 asm fun calculateJettonWallet(owner: Address, jettonData: Cell, jettonCode: Cell, jettonMaster: Address): Address {

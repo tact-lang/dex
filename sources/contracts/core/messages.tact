@@ -65,6 +65,7 @@ message(0x178d4519) MintViaJettonTransferInternal {
     queryId: Int as uint64;
     amount: Int as coins;
     sender: Address;
+    sendAllTonsInNotifyFlag: Bool;
     responseDestination: Address?;
     forwardTonAmount: Int as coins;
     forwardPayload: Slice as remaining;

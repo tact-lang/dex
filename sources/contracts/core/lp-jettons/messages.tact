@@ -3,6 +3,7 @@
 
 // VENDOR LOCK: These jetton wallet base implementation were copied from the tact-lang/jetton repository.
 // https://github.com/tact-lang/jetton/tree/0e2b51dcd7f91c2db194027ae867c44fb0e0c11b
+// Note, this exact code was further modified to be used as a part of T-Dex LP Jetton implementation.
 
 struct JettonData {
     totalSupply: Int;
@@ -41,6 +42,7 @@ message(0x178d4519) JettonTransferInternal {
     queryId: Int as uint64;
     amount: Int as coins;
     sender: Address;
+    sendAllTonsInNotifyFlag: Bool;
     responseDestination: Address?;
     forwardTonAmount: Int as coins;
     forwardPayload: Slice as remaining;
