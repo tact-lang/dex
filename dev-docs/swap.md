@@ -63,9 +63,9 @@ Let's break down the meaning of the fields in these structs:
 
 - `cashbackAddress` is an optional address field (to set it to null, use `address_none`) that is needed only for `exactOut` swaps. This is the address where unused tokens will be sent. If the swap type is `exactIn`, this value is ignored. If the swap type is `exactOut` but this value is null, then unused tokens will be sent to the `receiver` address.
 
-- `desiredAmount`—if the swap type is `exactIn`, then `desiredAmount` is the minimum amount the trader is willing to receive as the result of the swap (amount-out). If the swap type is `exactOut`, then `desiredAmount` is the exact value-out that the trader wants to receive.
+- `desiredAmount`— if the swap type is `exactIn`, then `desiredAmount` is the minimum amount the trader is willing to receive as the result of the swap (amount-out). If the swap type is `exactOut`, then `desiredAmount` is the exact value-out that the trader wants to receive.
 
-- `timeout`—an absolute Unix timestamp after which the transaction will not be executed (checked inside the AMM pool). Can be specified as 0 to disable the timeout check.
+- `timeout`— an absolute Unix timestamp after which the transaction will not be executed (checked inside the AMM pool). Can be specified as 0 to disable the timeout check.
 
 - `payloadOnSuccess` is an optional reference cell, described [here](#payload-semantics)
 
