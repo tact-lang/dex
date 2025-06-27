@@ -45,7 +45,6 @@ inline fun priceOfJettonForward(fwdFee: Int, fwdTonAmount: Int): Int {
         2 * fwdFee +
     // I've never seen jetton that occupies more than that.
     // However it is easy to create one :)
-    // If someone lose their money because of this, it's not my fault, we just have a very bad jetton standard
         getForwardFee(40, 30000, false) +
     // I don't think there is a jetton that requires more than 30k gas to transfer
         (2 * getComputeFee(30000, false) +

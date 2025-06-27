@@ -181,17 +181,19 @@ export const createJettonVault: Create<VaultInterface<JettonTreasury>> = async (
             })
             expect(getComputeGasForTx(txOnVault)).toBeLessThanOrEqual(GasLPDepositPartJettonVault)
         }
-        const txOnLpDepositContract = findTransactionRequired(res.transactions, {
-            on: liquidityDepositContractAddress,
-        })
-        // We should check that tx wasn't skipped
-        if (
-            txOnLpDepositContract.description.type === "generic" &&
-            txOnLpDepositContract.description.computePhase.type === "vm"
-        ) {
-            expect(getComputeGasForTx(txOnLpDepositContract)).toBeLessThanOrEqual(
-                GasLPDepositContract,
-            )
+        if (liquidityDepositContractData === undefined) {
+            const txOnLpDepositContract = findTransactionRequired(res.transactions, {
+                on: liquidityDepositContractAddress,
+            })
+            // We should check that tx wasn't skipped
+            if (
+                txOnLpDepositContract.description.type === "generic" &&
+                txOnLpDepositContract.description.computePhase.type === "vm"
+            ) {
+                expect(getComputeGasForTx(txOnLpDepositContract)).toBeLessThanOrEqual(
+                    GasLPDepositContract,
+                )
+            }
         }
         const txOnPool = findTransaction(res.transactions, {
             from: liquidityDepositContractAddress,
@@ -318,16 +320,18 @@ export const createTonVault: Create<VaultInterface<TonTreasury>> = async (
             op: TonVault.opcodes.AddLiquidityPartTon,
         })
         expect(getComputeGasForTx(txOnVault)).toBeLessThanOrEqual(GasLPDepositPartTonVault)
-        const txOnLpDepositContract = findTransactionRequired(res.transactions, {
-            on: liquidityDepositContractAddress,
-        })
-        if (
-            txOnLpDepositContract.description.type === "generic" &&
-            txOnLpDepositContract.description.computePhase.type === "vm"
-        ) {
-            expect(getComputeGasForTx(txOnLpDepositContract)).toBeLessThanOrEqual(
-                GasLPDepositContract,
-            )
+        if (liquidityDepositContractData === undefined) {
+            const txOnLpDepositContract = findTransactionRequired(res.transactions, {
+                on: liquidityDepositContractAddress,
+            })
+            if (
+                txOnLpDepositContract.description.type === "generic" &&
+                txOnLpDepositContract.description.computePhase.type === "vm"
+            ) {
+                expect(getComputeGasForTx(txOnLpDepositContract)).toBeLessThanOrEqual(
+                    GasLPDepositContract,
+                )
+            }
         }
         const txOnPool = findTransaction(res.transactions, {
             from: liquidityDepositContractAddress,

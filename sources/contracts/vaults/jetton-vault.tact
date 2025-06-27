@@ -253,22 +253,22 @@ inline fun actionHandler(msg: JettonNotifyWithActionRequest): Bool {
             let initData = action.liquidityDepositContractData.initData!!;
 
             let sorted = sortAddressesAndCoins(
-            myAddress(),
-            initData.otherVault,
-            msg.amount,
-            initData.otherAmount,
+                myAddress(),
+                initData.otherVault,
+                msg.amount,
+                initData.otherAmount,
             );
 
             let depositorStateInit = initOf LiquidityDepositContract(
-            sorted.lower,
-            sorted.higher,
-            sorted.lowerCoins,
-            sorted.higherCoins,
-            msg.sender,
-            initData.contractId,
-            0,
-            null,
-            null,
+                sorted.lower,
+                sorted.higher,
+                sorted.lowerCoins,
+                sorted.higherCoins,
+                msg.sender,
+                initData.contractId,
+                0,
+                null,
+                null,
             );
 
             deploy(DeployParameters {

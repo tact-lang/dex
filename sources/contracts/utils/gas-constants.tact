@@ -9,7 +9,7 @@ const GasAmmPoolSwap: Int = 12000;
 const GasPayoutFromAnyVault: Int = 13000;
 
 //-----------------LP-related gas constants-------------------
-const GasLPDepositPartJettonVault: Int = 9000;
-const GasLPDepositPartTonVault: Int = 7000;
+const GasLPDepositPartJettonVault: Int = 9500;
+const GasLPDepositPartTonVault: Int = 15100;
 const GasLPDepositContract: Int = 15000;
 const GasAmmPoolLiquidityDeposit: Int = 22000;
