@@ -297,4 +297,4 @@ await lpJettonWallet.sendBurn(
 )
 ```
 
-For more details and examples, see the [Vaults documentation](../sources/contracts/vaults/vaultDoc.md) and [TypeScript testing environment](../sources/utils/environment.ts).
+For more details and examples, see the [Vaults documentation](../sources/contracts/vaults/vaultDoc.md) and the [TypeScript testing environment](../sources/utils/environment.ts).
