@@ -13,7 +13,7 @@ inline fun buildAmmPoolDataCell(
     rightSideReserve: Int,
     // LP tokens-related field
     totalSupply: Int,
-    jettonContent: Cell?
+    jettonContent: Cell?,
 ): Cell {
     return beginCell()
         .storeAddress(leftVault)
@@ -45,10 +45,10 @@ contract LiquidityDepositContract(
         let sender = sender();
         if (sender == self.leftVault) {
             require(msg.depositor == self.depositor, "LP Deposit: Depositor must be the same");
-            if((self.status & 1) != 0 || msg.amount != self.leftSideAmount) {
+            if ((self.status & 1) != 0 || msg.amount != self.leftSideAmount) {
                 message(MessageParameters {
                     mode: SendRemainingValue,
-                    body: RejectLiquidityPart{
+                    body: RejectLiquidityPart {
                         depositor: msg.depositor,
                         amountToReturn: msg.amount,
                     },
@@ -64,10 +64,10 @@ contract LiquidityDepositContract(
         }
         if (sender == self.rightVault) {
             require(msg.depositor == self.depositor, "LP Deposit: Depositor must be the same");
-            if((self.status & 2) != 0 || msg.amount != self.rightSideAmount) {
+            if ((self.status & 2) != 0 || msg.amount != self.rightSideAmount) {
                 message(MessageParameters {
                     mode: SendRemainingValue,
-                    body: RejectLiquidityPart{
+                    body: RejectLiquidityPart {
                         depositor: msg.depositor,
                         amountToReturn: msg.amount,
                     },

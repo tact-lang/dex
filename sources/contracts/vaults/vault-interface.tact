@@ -102,6 +102,6 @@ trait VaultInterface {
     }
 
     abstract fun handlePayout(msg: PayoutFromPool);
-    
+
     abstract fun handleRejectLP(msg: RejectLiquidityPart);
 }

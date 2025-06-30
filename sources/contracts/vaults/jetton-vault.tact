@@ -280,7 +280,7 @@ inline fun actionHandler(msg: JettonNotifyWithActionRequest): Bool {
                     depositor: msg.sender,
                     amount: msg.amount,
                     additionalParams: action.additionalParams,
-                    ammPoolCode: codeOf AmmPool
+                    ammPoolCode: codeOf AmmPool,
                 }.toCell(),
             });
         }
