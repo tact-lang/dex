@@ -86,17 +86,34 @@ contract Factory() {
     }
 
     // Of course this kind of thing waste gas on extra toCell/fromCell, but we don't care about gas in get-methods
-    get fun ammPoolAddr(params: AmmPoolParams): Address {
-        return performAddrRequest(AmmPoolAddrRequestId, params.toCell());
+    get fun ammPoolAddr(firstVault: Address, secondVault: Address): Address {
+        return performAddrRequest(AmmPoolAddrRequestId, AmmPoolParams {
+            firstVault,
+            secondVault,
+        }.toCell());
     }
 
-    get fun lpDepositAddr(params: LPDepositParams): Address {
-        return performAddrRequest(LPDepositAddrRequestId, params.toCell());
+    get fun lpDepositAddr(
+        firstVault: Address,
+        secondVault: Address,
+        firstAmount: Int,
+        secondAmount: Int,
+        depositor: Address,
+        contractId: Int,
+    ): Address {
+        return performAddrRequest(LPDepositAddrRequestId, LPDepositParams {
+            firstVault,
+            secondVault,
+            firstAmount,
+            secondAmount,
+            depositor,
+            contractId,
+        }.toCell());
     }
 
-    get fun jettonVaultAddr(params: Address): Address {
+    get fun jettonVaultAddr(jettonMaster: Address): Address {
         return performAddrRequest(JettonVaultAddrRequestId, JettonVaultParams {
-            jettonMaster: params,
+            jettonMaster,
         }.toCell());
     }
 }
