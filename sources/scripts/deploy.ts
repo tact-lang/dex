@@ -7,8 +7,13 @@ import {getHttpEndpoint} from "@orbs-network/ton-access"
 import {mnemonicToPrivateKey} from "@ton/crypto"
 import {ExtendedJettonMinter} from "../wrappers/ExtendedJettonMinter"
 import {buildOnchainMetadata, sortAddresses} from "../utils/deployUtils"
-import {JettonVault} from "../output/DEX_JettonVault"
-import {LiquidityDepositContract} from "../output/DEX_LiquidityDepositContract"
+import {
+    JettonNotifyWithActionRequest,
+    JettonVault,
+    PROOF_TEP89,
+    storeLPDepositPart,
+} from "../output/DEX_JettonVault"
+import {LiquidityDepositContract, LPDepositPartOpcode} from "../output/DEX_LiquidityDepositContract"
 import {ExtendedJettonWallet} from "../wrappers/ExtendedJettonWallet"
 import {storeJettonTransfer} from "../output/Jetton_JettonMinter"
 import {createJettonVaultLiquidityDepositPayload} from "../utils/testUtils"
@@ -16,6 +21,7 @@ import {AmmPool} from "../output/DEX_AmmPool"
 import {Factory} from "../output/DEX_Factory"
 import {TonVault} from "../output/DEX_TonVault"
 import {randomAddress} from "@ton/test-utils"
+import {Cell} from "@ton/core"
 
 const main = async () => {
     const mnemonics = process.env.MNEMONICS
@@ -38,13 +44,8 @@ const main = async () => {
 
     const factoryContract = await Factory.fromInit()
     console.log("Factory deployed at", factoryContract.address)
-    const _factory = client.open(factoryContract)
-    // const deployResult = await factory.send(
-    //     deployerWallet.sender(keyPair.secretKey),
-    //     {value: toNano(0.05)},
-    //     null,
-    // )
-    process.exit(0)
+    const factory = client.open(factoryContract)
+    await factory.send(deployerWallet.sender(keyPair.secretKey), {value: toNano(0.05)}, null)
 
     const jettonParamsA = {
         name: "TactTokenA",
@@ -110,7 +111,39 @@ const main = async () => {
     const jettonVaultA = client.open(jettonVaultAContract)
     console.log("Jetton Vault A deployed at", jettonVaultA.address)
 
-    await jettonVaultA.send(deployerWallet.sender(keyPair.secretKey), {value: toNano(0.05)}, null)
+    const mockPayload = beginCell()
+        .store(
+            storeLPDepositPart({
+                $$type: "LPDepositPart",
+                liquidityDepositContractData: {
+                    $$type: "LiquidityDepositEitherAddress",
+                    eitherBit: false,
+                    liquidityDepositContract: randomAddress(0), // Mock LP contract address
+                    initData: null,
+                },
+                additionalParams: {
+                    $$type: "AdditionalParams",
+                    minAmountToDeposit: 0n,
+                    lpTimeout: 0n,
+                    payloadOnSuccess: null,
+                    payloadOnFailure: null,
+                },
+            }),
+        )
+        .endCell()
+
+    const msg: JettonNotifyWithActionRequest = {
+        $$type: "JettonNotifyWithActionRequest",
+        queryId: 0n,
+        amount: 0n,
+        sender: randomAddress(0),
+        eitherBit: false,
+        actionOpcode: LPDepositPartOpcode,
+        actionPayload: mockPayload,
+        proofType: PROOF_TEP89,
+        proof: new Cell().asSlice(),
+    }
+    await jettonVaultA.send(deployerWallet.sender(keyPair.secretKey), {value: toNano(0.05)}, msg)
 
     process.exit(0)
 
