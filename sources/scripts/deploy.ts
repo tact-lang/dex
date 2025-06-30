@@ -39,11 +39,11 @@ const main = async () => {
     const factoryContract = await Factory.fromInit()
     console.log("Factory deployed at", factoryContract.address)
     const factory = client.open(factoryContract)
-    const deployResult = await factory.send(
-        deployerWallet.sender(keyPair.secretKey),
-        {value: toNano(0.05)},
-        null,
-    )
+    // const deployResult = await factory.send(
+    //     deployerWallet.sender(keyPair.secretKey),
+    //     {value: toNano(0.05)},
+    //     null,
+    // )
     process.exit(0)
 
     const jettonParamsA = {
@@ -72,7 +72,7 @@ const main = async () => {
     console.log("Minted Token A", jettonMinterA.address.toString())
 
     const tonVaultContract = await TonVault.fromInit(randomAddress())
-    const tonVault = client.open(tonVaultContract)
+    const _tonVault = client.open(tonVaultContract)
     // const deployResult = await tonVault.send(
     //     deployerWallet.sender(keyPair.secretKey),
     //     {value: toNano(0.05)},
