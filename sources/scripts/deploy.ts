@@ -38,7 +38,7 @@ const main = async () => {
 
     const factoryContract = await Factory.fromInit()
     console.log("Factory deployed at", factoryContract.address)
-    const factory = client.open(factoryContract)
+    const _factory = client.open(factoryContract)
     // const deployResult = await factory.send(
     //     deployerWallet.sender(keyPair.secretKey),
     //     {value: toNano(0.05)},
