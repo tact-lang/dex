@@ -8,6 +8,7 @@ import "../core/amm-pool";
 import "../utils/utils";
 import "../utils/gas-constants";
 import "../core/lp-jettons/constants";
+import "../core/liquidity-deposit";
 
 message(0xf8a7ea5) ReturnJettonsViaJettonTransfer {
     queryId: Int as uint64;
@@ -145,6 +146,7 @@ contract TonVault(
                     additionalParams: msg.additionalParams,
                     amount: msg.amountIn,
                     depositor: sender(),
+                    ammPoolCode: codeOf AmmPool,
                 }.toCell(),
             });
         } else {
@@ -177,6 +179,7 @@ contract TonVault(
                     depositor: sender(),
                     amount: msg.amountIn,
                     additionalParams: msg.additionalParams,
+                    ammPoolCode: codeOf AmmPool,
                 }.toCell(),
             });
         }

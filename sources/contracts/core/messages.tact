@@ -71,12 +71,6 @@ message(0x178d4519) MintViaJettonTransferInternal {
     forwardPayload: Slice as remaining;
 }
 
-message(0xe7a3475f) PartHasBeenDeposited {
-    depositor: Address;
-    amount: Int as coins;
-    additionalParams: AdditionalParams;
-}
-
 struct AdditionalParams {
     minAmountToDeposit: Int as coins;
     lpTimeout: Int as uint32;

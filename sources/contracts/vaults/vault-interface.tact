@@ -80,10 +80,28 @@ message(0x1b434676) AddLiquidityPartTon {
     additionalParams: AdditionalParams;
 }
 
+message(0xe7a3475f) PartHasBeenDeposited {
+    depositor: Address;
+    amount: Int as coins;
+    additionalParams: AdditionalParams;
+    // This field is needed to not add a (LP-Deposit -> AmmPool) dependency
+    ammPoolCode: Cell;
+}
+
+// This message is used when PartHasBeenDeposited is rejected
+// We don't forward any payload in this message because PartHasBeenDeposited may occur only as the result of incorrect
+// user actions.
+message(0xe3b122ab) RejectLiquidityPart {
+    depositor: Address;
+    amountToReturn: Int as coins;
+}
+
 trait VaultInterface {
     receive(msg: PayoutFromPool) {
         self.handlePayout(msg);
     }
 
     abstract fun handlePayout(msg: PayoutFromPool);
+    
+    abstract fun handleRejectLP(msg: RejectLiquidityPart);
 }

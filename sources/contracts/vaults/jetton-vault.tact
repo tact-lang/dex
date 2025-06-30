@@ -247,6 +247,7 @@ inline fun actionHandler(msg: JettonNotifyWithActionRequest): Bool {
                     depositor: msg.sender,
                     amount: msg.amount,
                     additionalParams: action.additionalParams,
+                    ammPoolCode: codeOf AmmPool,
                 }.toCell(),
             });
         } else {
@@ -279,6 +280,7 @@ inline fun actionHandler(msg: JettonNotifyWithActionRequest): Bool {
                     depositor: msg.sender,
                     amount: msg.amount,
                     additionalParams: action.additionalParams,
+                    ammPoolCode: codeOf AmmPool
                 }.toCell(),
             });
         }

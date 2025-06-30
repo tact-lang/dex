@@ -1,9 +1,29 @@
 //  SPDX-License-Identifier: MIT
 //  Copyright © 2025 TON Studio
 
-import "./amm-pool";
 import "../utils/math";
 import "./messages";
+import "../vaults/vault-interface";
+
+// TODO This is here until Tact will have something like `dataOf Contract()`
+inline fun buildAmmPoolDataCell(
+    leftVault: Address,
+    rightVault: Address, // To be deterministic, rightVault address must be greater than leftVault address
+    leftSideReserve: Int,
+    rightSideReserve: Int,
+    // LP tokens-related field
+    totalSupply: Int,
+    jettonContent: Cell?
+): Cell {
+    return beginCell()
+        .storeAddress(leftVault)
+        .storeAddress(rightVault)
+        .storeCoins(leftSideReserve)
+        .storeCoins(rightSideReserve)
+        .storeCoins(totalSupply)
+        .storeMaybeRef(jettonContent)
+        .endCell();
+}
 
 contract LiquidityDepositContract(
     leftVault: Address, // To be deterministic, leftVault address must be less than rightVault address
@@ -24,16 +44,40 @@ contract LiquidityDepositContract(
     receive(msg: PartHasBeenDeposited) {
         let sender = sender();
         if (sender == self.leftVault) {
-            // TODO maybe here we should check that it is not already filled and revert on errors.
-            require(msg.amount == self.leftSideAmount, "LP Deposit: Amount must be equal to leftSide");
             require(msg.depositor == self.depositor, "LP Deposit: Depositor must be the same");
+            if((self.status & 1) != 0 || msg.amount != self.leftSideAmount) {
+                message(MessageParameters {
+                    mode: SendRemainingValue,
+                    body: RejectLiquidityPart{
+                        depositor: msg.depositor,
+                        amountToReturn: msg.amount,
+                    },
+                    value: 0,
+                    to: sender(),
+                    bounce: false,
+                });
+                commit();
+                require(false, "LP Deposit: Left side cannot be filled again or with different amount");
+            }
             self.leftAdditionalParams = msg.additionalParams;
             self.status |= 1;
         }
         if (sender == self.rightVault) {
-            // TODO maybe here we should check that it is not already filled and revert on errors.
-            require(msg.amount == self.rightSideAmount, "LP Deposit: Amount must be equal to rightSide");
             require(msg.depositor == self.depositor, "LP Deposit: Depositor must be the same");
+            if((self.status & 2) != 0 || msg.amount != self.rightSideAmount) {
+                message(MessageParameters {
+                    mode: SendRemainingValue,
+                    body: RejectLiquidityPart{
+                        depositor: msg.depositor,
+                        amountToReturn: msg.amount,
+                    },
+                    value: 0,
+                    to: sender(),
+                    bounce: false,
+                });
+                commit();
+                require(false, "LP Deposit: Right side cannot be filled again or with different amount");
+            }
             self.rightAdditionalParams = msg.additionalParams;
             self.status |= 2;
         }
@@ -46,7 +90,10 @@ contract LiquidityDepositContract(
                 value: 0,
                 bounce: false, // 1. To pay storage fees of AmmPool. 2. We will destroy this contract, so bounce does not have sense.
                 mode: SendRemainingBalance + SendDestroyIfZero, // We don't need to keep this contract alive
-                init: initOf AmmPool(self.leftVault, self.rightVault, 0, 0, 0, null),
+                init: StateInit {
+                    code: msg.ammPoolCode,
+                    data: buildAmmPoolDataCell(self.leftVault, self.rightVault, 0, 0, 0, null),
+                },
                 body: LiquidityDeposit {
                     depositor: self.depositor,
                     contractId: self.contractId,
