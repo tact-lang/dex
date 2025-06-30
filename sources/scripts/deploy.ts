@@ -1,10 +1,10 @@
 //  SPDX-License-Identifier: MIT
 //  Copyright © 2025 TON Studio
 
+import "dotenv/config"
 import {beginCell, toNano, TonClient, WalletContractV4, internal} from "@ton/ton"
 import {getHttpEndpoint} from "@orbs-network/ton-access"
 import {mnemonicToPrivateKey} from "@ton/crypto"
-import "dotenv/config"
 import {ExtendedJettonMinter} from "../wrappers/ExtendedJettonMinter"
 import {buildOnchainMetadata, sortAddresses} from "../utils/deployUtils"
 import {JettonVault} from "../output/DEX_JettonVault"
@@ -13,10 +13,13 @@ import {ExtendedJettonWallet} from "../wrappers/ExtendedJettonWallet"
 import {storeJettonTransfer} from "../output/Jetton_JettonMinter"
 import {createJettonVaultLiquidityDepositPayload} from "../utils/testUtils"
 import {AmmPool} from "../output/DEX_AmmPool"
+import {Factory} from "../output/DEX_Factory"
+import {TonVault} from "../output/DEX_TonVault"
+import {randomAddress} from "@ton/test-utils"
 
 const main = async () => {
     const mnemonics = process.env.MNEMONICS
-    if (!mnemonics) {
+    if (mnemonics === undefined) {
         throw new Error("MNEMONICS is not set")
     }
     const network = "testnet"
@@ -32,6 +35,16 @@ const main = async () => {
         publicKey: keyPair.publicKey,
     })
     const deployerWallet = client.open(deployerWalletContract)
+
+    const factoryContract = await Factory.fromInit()
+    console.log("Factory deployed at", factoryContract.address)
+    const factory = client.open(factoryContract)
+    const deployResult = await factory.send(
+        deployerWallet.sender(keyPair.secretKey),
+        {value: toNano(0.05)},
+        null,
+    )
+    process.exit(0)
 
     const jettonParamsA = {
         name: "TactTokenA",
@@ -56,7 +69,16 @@ const main = async () => {
     //     0n,
     //     toNano(0.05)
     // )
-    console.log("Minted Token A")
+    console.log("Minted Token A", jettonMinterA.address.toString())
+
+    const tonVaultContract = await TonVault.fromInit(randomAddress())
+    const tonVault = client.open(tonVaultContract)
+    // const deployResult = await tonVault.send(
+    //     deployerWallet.sender(keyPair.secretKey),
+    //     {value: toNano(0.05)},
+    //     null,
+    // )
+    // console.log("Ton Vault deployed at", tonVault.address)
 
     const jettonParamsB = {
         name: "TactTokenB",
@@ -88,11 +110,9 @@ const main = async () => {
     const jettonVaultA = client.open(jettonVaultAContract)
     console.log("Jetton Vault A deployed at", jettonVaultA.address)
 
-    // await jettonVaultA.send(
-    //     deployerWallet.sender(keyPair.secretKey),
-    //     {value: toNano(0.05)},
-    //     null
-    // )
+    await jettonVaultA.send(deployerWallet.sender(keyPair.secretKey), {value: toNano(0.05)}, null)
+
+    process.exit(0)
 
     const jettonVaultBContract = await JettonVault.fromInit(jettonMinterB.address, null)
     const jettonVaultB = client.open(jettonVaultBContract)

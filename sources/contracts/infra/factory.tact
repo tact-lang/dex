@@ -94,8 +94,10 @@ contract Factory() {
         return performAddrRequest(LPDepositAddrRequestId, params.toCell());
     }
 
-    get fun jettonVaultAddr(params: JettonVaultParams): Address {
-        return performAddrRequest(JettonVaultAddrRequestId, params.toCell());
+    get fun jettonVaultAddr(params: Address): Address {
+        return performAddrRequest(JettonVaultAddrRequestId, JettonVaultParams {
+            jettonMaster: params,
+        }.toCell());
     }
 }
 
