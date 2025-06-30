@@ -148,6 +148,9 @@ describe("Factory", () => {
 
         expect(reply.first).toEqualAddress(expectedPoolAddress)
         expect(reply.second).toEqualAddress(expectedJettonVaultAddress)
+        expect(expectedJettonVaultAddress).toEqualAddress(
+            await factory.getJettonVaultAddr(randomJettonMaster),
+        )
         expect(reply.third).toEqualAddress(expectedLPDepositAddress)
     })
 })
