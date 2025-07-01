@@ -162,6 +162,7 @@ contract JettonVault(
 
     override fun handleRejectLP(msg: RejectLiquidityPart) {
         let ctx = context();
+        let maxFwdAmount = max(0, ctx.value - priceOfJettonForward(ctx.readForwardFee(), 1));
         message(MessageParameters {
             mode: SendRemainingValue,
             body: SendViaJettonTransfer {
@@ -170,7 +171,7 @@ contract JettonVault(
                 destination: msg.depositor,
                 responseDestination: msg.depositor,
                 customPayload: null,
-                forwardTonAmount: ctx.value - priceOfJettonForward(ctx.value, 1),
+                forwardTonAmount: maxFwdAmount,
                 forwardPayload: sliceWithOneZeroBit(),
             }.toCell(),
             value: 0,
