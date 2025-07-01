@@ -162,6 +162,7 @@ contract JettonVault(
 
     override fun handleRejectLP(msg: RejectLiquidityPart) {
         let ctx = context();
+        // Actually ctx.value - priceOfJettonForward() is always >= 0 because we require ctx.value >= priceOfJettonForward() in LPDepositPart
         let maxFwdAmount = max(0, ctx.value - priceOfJettonForward(ctx.readForwardFee(), 1));
         message(MessageParameters {
             mode: SendRemainingValue,
