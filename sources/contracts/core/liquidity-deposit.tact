@@ -62,7 +62,7 @@ contract LiquidityDepositContract(
             self.leftAdditionalParams = msg.additionalParams;
             self.status |= 1;
         }
-        if (sender == self.rightVault) {
+        else if (sender == self.rightVault) {
             require(msg.depositor == self.depositor, "LP Deposit: Depositor must be the same");
             if ((self.status & 2) != 0 || msg.amount != self.rightSideAmount) {
                 message(MessageParameters {
@@ -81,6 +81,7 @@ contract LiquidityDepositContract(
             self.rightAdditionalParams = msg.additionalParams;
             self.status |= 2;
         }
+        require(self.leftVault != self.rightVault, "LP Deposit: Vaults must be different");
         // Both sides are filled, we can deposit now.
         if (self.status == 3) {
             // We must check, that this account was deployed with sorted vault, otherwise it could be a security issue

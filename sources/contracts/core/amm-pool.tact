@@ -78,8 +78,6 @@ contract AmmPool(
                         otherVault: self.leftVault,
                         amount: msg.rightAmount - expectedRightAmount,
                         receiver: msg.depositor,
-                        // TODO: Maybe we don't need to forward any payload here?
-                        // Or we can even forward both payloads?
                         payloadToForward: msg.rightAdditionalParams.payloadOnSuccess,
                     }.toCell(),
                 });
@@ -99,8 +97,6 @@ contract AmmPool(
                     to: self.leftVault,
                     bounce: false,
                     body: PayoutFromPool {
-                        // TODO: Maybe we don't need to forward any payload here?
-                        // Or we can even forward both payloads?
                         payloadToForward: msg.leftAdditionalParams.payloadOnSuccess,
                         otherVault: self.rightVault,
                         amount: msg.leftAmount - expectedLeftAmount,
@@ -151,6 +147,7 @@ contract AmmPool(
                 responseDestination: msg.depositor,
                 // Thanks to this flag, we can send all TONs in notify
                 sendAllTonsInNotifyFlag: true,
+                // due to the flag above, we can use 0 here
                 forwardTonAmount: 0,
                 forwardPayload,
             }.toCell(),
@@ -421,6 +418,9 @@ contract AmmPool(
             require(false, "Pool: vaultAddress must be one of the vaults");
             return 0;
         }
+
+        require(inBalance != 0 && outBalance != 0, "Pool: reserves must be non-zero");
+
         let amountInWithFee = muldiv(amountIn, 1000 - self.PoolFee, 1000);
         let newAmountIn = inBalance + amountInWithFee;
         let newAmountOut = muldiv(outBalance, inBalance, newAmountIn);
@@ -447,6 +447,9 @@ contract AmmPool(
             require(false, "Pool: vaultOut must be one of the vaults");
             return 0;
         }
+
+        require(inBalance != 0 && outBalance != 0, "Pool: reserves must be non-zero");
+
         let newAmountOut = outBalance - amountOut;
         if (newAmountOut <= 0) {
             require(false, "Pool: Desired amount out is greater than pool reserves");
