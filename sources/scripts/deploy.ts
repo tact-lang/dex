@@ -1,22 +1,31 @@
 //  SPDX-License-Identifier: MIT
 //  Copyright © 2025 TON Studio
 
+import "dotenv/config"
 import {beginCell, toNano, TonClient, WalletContractV4, internal} from "@ton/ton"
 import {getHttpEndpoint} from "@orbs-network/ton-access"
 import {mnemonicToPrivateKey} from "@ton/crypto"
-import "dotenv/config"
 import {ExtendedJettonMinter} from "../wrappers/ExtendedJettonMinter"
 import {buildOnchainMetadata, sortAddresses} from "../utils/deployUtils"
-import {JettonVault} from "../output/DEX_JettonVault"
-import {LiquidityDepositContract} from "../output/DEX_LiquidityDepositContract"
+import {
+    JettonNotifyWithActionRequest,
+    JettonVault,
+    PROOF_TEP89,
+    storeLPDepositPart,
+} from "../output/DEX_JettonVault"
+import {LiquidityDepositContract, LPDepositPartOpcode} from "../output/DEX_LiquidityDepositContract"
 import {ExtendedJettonWallet} from "../wrappers/ExtendedJettonWallet"
 import {storeJettonTransfer} from "../output/Jetton_JettonMinter"
 import {createJettonVaultLiquidityDepositPayload} from "../utils/testUtils"
 import {AmmPool} from "../output/DEX_AmmPool"
+import {Factory} from "../output/DEX_Factory"
+import {TonVault} from "../output/DEX_TonVault"
+import {randomAddress} from "@ton/test-utils"
+import {Cell} from "@ton/core"
 
 const main = async () => {
     const mnemonics = process.env.MNEMONICS
-    if (!mnemonics) {
+    if (mnemonics === undefined) {
         throw new Error("MNEMONICS is not set")
     }
     const network = "testnet"
@@ -32,6 +41,11 @@ const main = async () => {
         publicKey: keyPair.publicKey,
     })
     const deployerWallet = client.open(deployerWalletContract)
+
+    const factoryContract = await Factory.fromInit()
+    console.log("Factory deployed at", factoryContract.address)
+    const factory = client.open(factoryContract)
+    await factory.send(deployerWallet.sender(keyPair.secretKey), {value: toNano(0.05)}, null)
 
     const jettonParamsA = {
         name: "TactTokenA",
@@ -56,7 +70,16 @@ const main = async () => {
     //     0n,
     //     toNano(0.05)
     // )
-    console.log("Minted Token A")
+    console.log("Minted Token A", jettonMinterA.address.toString())
+
+    const tonVaultContract = await TonVault.fromInit(randomAddress())
+    const _tonVault = client.open(tonVaultContract)
+    // const deployResult = await tonVault.send(
+    //     deployerWallet.sender(keyPair.secretKey),
+    //     {value: toNano(0.05)},
+    //     null,
+    // )
+    // console.log("Ton Vault deployed at", tonVault.address)
 
     const jettonParamsB = {
         name: "TactTokenB",
@@ -88,11 +111,41 @@ const main = async () => {
     const jettonVaultA = client.open(jettonVaultAContract)
     console.log("Jetton Vault A deployed at", jettonVaultA.address)
 
-    // await jettonVaultA.send(
-    //     deployerWallet.sender(keyPair.secretKey),
-    //     {value: toNano(0.05)},
-    //     null
-    // )
+    const mockPayload = beginCell()
+        .store(
+            storeLPDepositPart({
+                $$type: "LPDepositPart",
+                liquidityDepositContractData: {
+                    $$type: "LiquidityDepositEitherAddress",
+                    eitherBit: false,
+                    liquidityDepositContract: randomAddress(0), // Mock LP contract address
+                    initData: null,
+                },
+                additionalParams: {
+                    $$type: "AdditionalParams",
+                    minAmountToDeposit: 0n,
+                    lpTimeout: 0n,
+                    payloadOnSuccess: null,
+                    payloadOnFailure: null,
+                },
+            }),
+        )
+        .endCell()
+
+    const msg: JettonNotifyWithActionRequest = {
+        $$type: "JettonNotifyWithActionRequest",
+        queryId: 0n,
+        amount: 0n,
+        sender: randomAddress(0),
+        eitherBit: false,
+        actionOpcode: LPDepositPartOpcode,
+        actionPayload: mockPayload,
+        proofType: PROOF_TEP89,
+        proof: new Cell().asSlice(),
+    }
+    await jettonVaultA.send(deployerWallet.sender(keyPair.secretKey), {value: toNano(0.05)}, msg)
+
+    process.exit(0)
 
     const jettonVaultBContract = await JettonVault.fromInit(jettonMinterB.address, null)
     const jettonVaultB = client.open(jettonVaultBContract)
