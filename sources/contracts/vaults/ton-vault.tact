@@ -185,6 +185,16 @@ contract TonVault(
         }
     }
 
+    override fun handleRejectLP(msg: RejectLiquidityPart) {
+        message(MessageParameters {
+            mode: SendRemainingValue,
+            body: null,
+            value: msg.amountToReturn,
+            to: msg.depositor,
+            bounce: true,
+        })
+    }
+
     receive() {
         cashback(sender());
     }

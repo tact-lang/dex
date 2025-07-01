@@ -51,7 +51,7 @@ contract LiquidityDepositContract(
                     body: RejectLiquidityPart {
                         depositor: msg.depositor,
                         amountToReturn: msg.amount,
-                    },
+                    }.toCell(),
                     value: 0,
                     to: sender(),
                     bounce: false,
@@ -70,7 +70,7 @@ contract LiquidityDepositContract(
                     body: RejectLiquidityPart {
                         depositor: msg.depositor,
                         amountToReturn: msg.amount,
-                    },
+                    }.toCell(),
                     value: 0,
                     to: sender(),
                     bounce: false,

@@ -101,7 +101,11 @@ trait VaultInterface {
         self.handlePayout(msg);
     }
 
-    abstract fun handlePayout(msg: PayoutFromPool);
+    abstract inline fun handlePayout(msg: PayoutFromPool);
 
-    abstract fun handleRejectLP(msg: RejectLiquidityPart);
+    receive(msg: RejectLiquidityPart) {
+        self.handleRejectLP(msg);
+    }
+
+    abstract inline fun handleRejectLP(msg: RejectLiquidityPart);
 }

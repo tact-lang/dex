@@ -160,6 +160,25 @@ contract JettonVault(
         });
     }
 
+    override fun handleRejectLP(msg: RejectLiquidityPart) {
+        let ctx = context();
+        message(MessageParameters {
+            mode: SendRemainingValue,
+            body: SendViaJettonTransfer {
+                queryId: 0,
+                amount: msg.amountToReturn,
+                destination: msg.depositor,
+                responseDestination: msg.depositor,
+                customPayload: null,
+                forwardTonAmount: ctx.value - priceOfJettonForward(ctx.value, 1),
+                forwardPayload: sliceWithOneZeroBit(),
+            }.toCell(),
+            value: 0,
+            to: self.jettonWallet!!,
+            bounce: true,
+        })
+    }
+
     get fun inited(): Bool {
         return self.jettonWallet != null;
     }
