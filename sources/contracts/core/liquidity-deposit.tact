@@ -61,8 +61,7 @@ contract LiquidityDepositContract(
             }
             self.leftAdditionalParams = msg.additionalParams;
             self.status |= 1;
-        }
-        else if (sender == self.rightVault) {
+        } else if (sender == self.rightVault) {
             require(msg.depositor == self.depositor, "LP Deposit: Depositor must be the same");
             if ((self.status & 2) != 0 || msg.amount != self.rightSideAmount) {
                 message(MessageParameters {

@@ -611,12 +611,12 @@ describe("Liquidity deposit", () => {
             })
 
             // add liquidity to vaultA
-            const firstLiqProvidion = await vaultA.addLiquidity(
+            const firstLiqProvision = await vaultA.addLiquidity(
                 liqSetup.liquidityDeposit.address,
                 isSwapped ? amountB : amountA,
             )
 
-            expect(firstLiqProvidion.transactions).toHaveTransaction({
+            expect(firstLiqProvision.transactions).toHaveTransaction({
                 from: vaultA.vault.address,
                 to: liqSetup.liquidityDeposit.address,
                 op: LiquidityDepositContract.opcodes.PartHasBeenDeposited,
