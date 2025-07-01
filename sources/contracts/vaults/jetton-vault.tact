@@ -176,7 +176,7 @@ contract JettonVault(
             value: 0,
             to: self.jettonWallet!!,
             bounce: true,
-        })
+        });
     }
 
     get fun inited(): Bool {

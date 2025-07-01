@@ -192,7 +192,7 @@ contract TonVault(
             value: msg.amountToReturn,
             to: msg.depositor,
             bounce: true,
-        })
+        });
     }
 
     receive() {
