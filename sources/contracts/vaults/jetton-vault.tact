@@ -160,6 +160,27 @@ contract JettonVault(
         });
     }
 
+    override fun handleRejectLP(msg: RejectLiquidityPart) {
+        let ctx = context();
+        // Actually ctx.value - priceOfJettonForward() is always >= 0 because we require ctx.value >= priceOfJettonForward() in LPDepositPart
+        let maxFwdAmount = max(0, ctx.value - priceOfJettonForward(ctx.readForwardFee(), 1));
+        message(MessageParameters {
+            mode: SendRemainingValue,
+            body: SendViaJettonTransfer {
+                queryId: 0,
+                amount: msg.amountToReturn,
+                destination: msg.depositor,
+                responseDestination: msg.depositor,
+                customPayload: null,
+                forwardTonAmount: maxFwdAmount,
+                forwardPayload: sliceWithOneZeroBit(),
+            }.toCell(),
+            value: 0,
+            to: self.jettonWallet!!,
+            bounce: true,
+        });
+    }
+
     get fun inited(): Bool {
         return self.jettonWallet != null;
     }
@@ -247,6 +268,7 @@ inline fun actionHandler(msg: JettonNotifyWithActionRequest): Bool {
                     depositor: msg.sender,
                     amount: msg.amount,
                     additionalParams: action.additionalParams,
+                    ammPoolCode: codeOf AmmPool,
                 }.toCell(),
             });
         } else {
@@ -279,6 +301,7 @@ inline fun actionHandler(msg: JettonNotifyWithActionRequest): Bool {
                     depositor: msg.sender,
                     amount: msg.amount,
                     additionalParams: action.additionalParams,
+                    ammPoolCode: codeOf AmmPool,
                 }.toCell(),
             });
         }

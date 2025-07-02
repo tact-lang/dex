@@ -731,4 +731,52 @@ describe("Amm pool", () => {
             expect(parsedRefundTx.payloadToForward).toEqualCell(payloadOnFailure)
         })
     })
+    test("Amm pool get-methods throw, when there are no reserves", async () => {
+        const blockchain = await Blockchain.create()
+
+        const randomDeployer = await blockchain.treasury(randomAddress().toString())
+        const firstVault = randomAddress()
+        const secondVault = randomAddress()
+        const ammPool = blockchain.openContract(
+            await AmmPool.fromInit(firstVault, secondVault, 0n, 0n, 0n, null),
+        )
+
+        await ammPool.send(randomDeployer.getSender(), {value: toNano(0.01)}, null)
+
+        try {
+            await ammPool.getExpectedOut(firstVault, BigInt(randomInt(0, 100)))
+        } catch (e) {
+            if (!(e instanceof GetMethodError)) {
+                throw e
+            }
+            expect(e.exitCode).toEqual(AmmPool.errors["Pool: No liquidity in pool"])
+        }
+
+        try {
+            await ammPool.getExpectedOut(secondVault, BigInt(randomInt(0, 100)))
+        } catch (e) {
+            if (!(e instanceof GetMethodError)) {
+                throw e
+            }
+            expect(e.exitCode).toEqual(AmmPool.errors["Pool: No liquidity in pool"])
+        }
+
+        try {
+            await ammPool.getNeededInToGetX(firstVault, BigInt(randomInt(0, 100)))
+        } catch (e) {
+            if (!(e instanceof GetMethodError)) {
+                throw e
+            }
+            expect(e.exitCode).toEqual(AmmPool.errors["Pool: No liquidity in pool"])
+        }
+
+        try {
+            await ammPool.getNeededInToGetX(secondVault, BigInt(randomInt(0, 100)))
+        } catch (e) {
+            if (!(e instanceof GetMethodError)) {
+                throw e
+            }
+            expect(e.exitCode).toEqual(AmmPool.errors["Pool: No liquidity in pool"])
+        }
+    })
 })
