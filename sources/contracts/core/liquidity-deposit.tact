@@ -6,23 +6,13 @@ import "./messages";
 import "../vaults/vault-interface";
 
 // TODO This is here until Tact will have something like `dataOf Contract()`
-inline fun buildAmmPoolDataCell(
-    leftVault: Address,
-    rightVault: Address, // To be deterministic, rightVault address must be greater than leftVault address
-    leftSideReserve: Int,
-    rightSideReserve: Int,
-    // LP tokens-related field
-    totalSupply: Int,
-    jettonContent: Cell?,
-): Cell {
-    return beginCell()
-        .storeAddress(leftVault)
-        .storeAddress(rightVault)
-        .storeCoins(leftSideReserve)
-        .storeCoins(rightSideReserve)
-        .storeCoins(totalSupply)
-        .storeMaybeRef(jettonContent)
-        .endCell();
+struct AmmPoolData {
+    leftVault: Address;
+    rightVault: Address; // To be deterministic, rightVault address must be greater than leftVault address
+    leftSideReserve: Int as coins;
+    rightSideReserve: Int as coins;
+    totalSupply: Int as coins;
+    jettonContent: Cell?;
 }
 
 contract LiquidityDepositContract(
@@ -92,7 +82,14 @@ contract LiquidityDepositContract(
                 mode: SendRemainingBalance + SendDestroyIfZero, // We don't need to keep this contract alive
                 init: StateInit {
                     code: msg.ammPoolCode,
-                    data: buildAmmPoolDataCell(self.leftVault, self.rightVault, 0, 0, 0, null),
+                    data: AmmPoolData {
+                        leftVault: self.leftVault,
+                        rightVault: self.rightVault,
+                        leftSideReserve: 0,
+                        rightSideReserve: 0,
+                        totalSupply: 0,
+                        jettonContent: null,
+                    }.toCell(),
                 },
                 body: LiquidityDeposit {
                     depositor: self.depositor,

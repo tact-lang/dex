@@ -419,7 +419,7 @@ contract AmmPool(
             return 0;
         }
 
-        require(inBalance != 0 && outBalance != 0, "Pool: reserves must be non-zero");
+        require(inBalance != 0 && outBalance != 0, "Pool: No liquidity in pool");
 
         let amountInWithFee = muldiv(amountIn, 1000 - self.PoolFee, 1000);
         let newAmountIn = inBalance + amountInWithFee;
@@ -448,7 +448,7 @@ contract AmmPool(
             return 0;
         }
 
-        require(inBalance != 0 && outBalance != 0, "Pool: reserves must be non-zero");
+        require(inBalance != 0 && outBalance != 0, "Pool: No liquidity in pool");
 
         let newAmountOut = outBalance - amountOut;
         if (newAmountOut <= 0) {
