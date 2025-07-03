@@ -559,7 +559,7 @@ describe("Liquidity deposit", () => {
                 await ExtendedLPJettonWallet.fromInit(0n, depositor.address, ammPool.address),
             )
 
-            // check that after second lp deposit, the liquidity was added
+            // check that after the second lp deposit, the liquidity was added
             const lpBalance = await depositorLpWallet.getJettonBalance()
             expect(lpBalance).toBeGreaterThan(0n)
         },
