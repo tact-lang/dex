@@ -20,9 +20,10 @@ contract LiquidityDepositContract(
     rightVault: Address,
     leftSideAmount: Int as coins,
     rightSideAmount: Int as coins,
-    depositor: Address, // This and the next field are kind of salt, so several similar contracts can exist
+    lpTokensReceiver: Address, // This and the next field are kind of salt, so several similar contracts can exist
     contractId: Int as uint64,
-    status: Int as uint3, // Should be deployed with 0.
+    leftSideFilled: Bool,
+    rightSideFilled: Bool,
     // 0 - not started
     // 1 - left side is filled
     // 2 - right side is filled
@@ -34,45 +35,17 @@ contract LiquidityDepositContract(
     receive(msg: PartHasBeenDeposited) {
         let sender = sender();
         if (sender == self.leftVault) {
-            require(msg.depositor == self.depositor, "LP Deposit: Depositor must be the same");
-            if ((self.status & 1) != 0 || msg.amount != self.leftSideAmount) {
-                message(MessageParameters {
-                    mode: SendRemainingValue,
-                    body: RejectLiquidityPart {
-                        depositor: msg.depositor,
-                        amountToReturn: msg.amount,
-                    }.toCell(),
-                    value: 0,
-                    to: sender(),
-                    bounce: false,
-                });
-                commit();
-                require(false, "LP Deposit: Left side cannot be filled again or with different amount");
-            }
+            require(!self.leftSideFilled || msg.amount == self.leftSideAmount, "LP Deposit: Left side cannot be filled again or with different amount");
             self.leftAdditionalParams = msg.additionalParams;
-            self.status |= 1;
+            self.leftSideFilled = true;
         } else if (sender == self.rightVault) {
-            require(msg.depositor == self.depositor, "LP Deposit: Depositor must be the same");
-            if ((self.status & 2) != 0 || msg.amount != self.rightSideAmount) {
-                message(MessageParameters {
-                    mode: SendRemainingValue,
-                    body: RejectLiquidityPart {
-                        depositor: msg.depositor,
-                        amountToReturn: msg.amount,
-                    }.toCell(),
-                    value: 0,
-                    to: sender(),
-                    bounce: false,
-                });
-                commit();
-                require(false, "LP Deposit: Right side cannot be filled again or with different amount");
-            }
+            require(!self.rightSideFilled || msg.amount == self.rightSideAmount, "LP Deposit: Right side cannot be filled again or with different amount");
             self.rightAdditionalParams = msg.additionalParams;
-            self.status |= 2;
+            self.rightSideFilled = true;
         }
         require(self.leftVault != self.rightVault, "LP Deposit: Vaults must be different");
         // Both sides are filled, we can deposit now.
-        if (self.status == 3) {
+        if (self.leftSideFilled && self.rightSideFilled) {
             // We must check, that this account was deployed with sorted vault, otherwise it could be a security issue
             let sortedAddresses = sortAddresses(self.leftVault, self.rightVault);
             require(sortedAddresses.lower == self.leftVault, "LP Deposit: Vaults MUST be sorted, to not break invariant");
@@ -92,7 +65,7 @@ contract LiquidityDepositContract(
                     }.toCell(),
                 },
                 body: LiquidityDeposit {
-                    depositor: self.depositor,
+                    lpTokensReceiver: self.lpTokensReceiver,
                     contractId: self.contractId,
                     leftAmount: self.leftSideAmount,
                     rightAmount: self.rightSideAmount,
@@ -107,7 +80,15 @@ contract LiquidityDepositContract(
         cashback(sender());
     }
 
-    get fun status(): Int {
-        return self.status;
+    get fun status(): Status {
+        return Status {
+            leftSideFilled: self.leftSideFilled,
+            rightSideFilled: self.rightSideFilled,
+        };
     }
+}
+
+struct Status {
+    leftSideFilled: Bool;
+    rightSideFilled: Bool;
 }

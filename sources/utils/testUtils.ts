@@ -193,6 +193,7 @@ export function createJettonVaultLiquidityDepositPayload(
                 storeLPDepositPart({
                     $$type: "LPDepositPart",
                     liquidityDepositContractData: eitherData,
+                    lpTokensReceiver: null,
                     additionalParams: {
                         $$type: "AdditionalParams",
                         minAmountToDeposit: minAmountToDeposit,
@@ -231,6 +232,7 @@ export function createTonVaultLiquidityDepositPayload(
                 $$type: "AddLiquidityPartTon",
                 amountIn: amount,
                 liquidityDepositContractData: eitherData,
+                lpTokensReceiver: null,
                 additionalParams: {
                     $$type: "AdditionalParams",
                     minAmountToDeposit: minAmountToDeposit,

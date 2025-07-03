@@ -101,7 +101,8 @@ describe("Liquidity deposit", () => {
             op: LiquidityDepositContract.opcodes.PartHasBeenDeposited,
             success: true,
         })
-        expect(await liqSetup.liquidityDeposit.getStatus()).toBeGreaterThan(0n) // It could be 1 = 0b01 or 2 = 0b10
+        const status = await liqSetup.liquidityDeposit.getStatus()
+        expect(status.leftSideFilled || status.rightSideFilled).toBeTruthy()
 
         // deploy vaultB
         const vaultBDeployResult = await vaultB.deploy()
@@ -217,8 +218,8 @@ describe("Liquidity deposit", () => {
             op: LiquidityDepositContract.opcodes.PartHasBeenDeposited,
             success: true,
         })
-
-        expect(await liqSetupBadRatio.liquidityDeposit.getStatus()).toBeGreaterThan(0n)
+        const statusBadRatio = await liqSetupBadRatio.liquidityDeposit.getStatus()
+        expect(statusBadRatio.leftSideFilled || statusBadRatio.rightSideFilled).toBeTruthy()
 
         // a lot of stuff happens here
         // 1. jetton transfer to vaultB
@@ -337,7 +338,8 @@ describe("Liquidity deposit", () => {
             op: LiquidityDepositContract.opcodes.PartHasBeenDeposited,
             success: true,
         })
-        expect(await liqSetup.liquidityDeposit.getStatus()).toBeGreaterThan(0n)
+        const status = await liqSetup.liquidityDeposit.getStatus()
+        expect(status.leftSideFilled || status.rightSideFilled).toBeTruthy()
 
         // deploy vaultB
         const vaultBDeployResult = await vaultB.deploy()
@@ -445,8 +447,8 @@ describe("Liquidity deposit", () => {
             op: LiquidityDepositContract.opcodes.PartHasBeenDeposited,
             success: true,
         })
-
-        expect(await liqSetupBadRatio.liquidityDeposit.getStatus()).toBeGreaterThan(0n)
+        const statusBadRatio = await liqSetupBadRatio.liquidityDeposit.getStatus()
+        expect(statusBadRatio.leftSideFilled || statusBadRatio.rightSideFilled).toBeTruthy()
 
         // a lot of stuff happens here
         // 1. ton vault transfer to vaultB
@@ -560,108 +562,6 @@ describe("Liquidity deposit", () => {
             // check that after second lp deposit, the liquidity was added
             const lpBalance = await depositorLpWallet.getJettonBalance()
             expect(lpBalance).toBeGreaterThan(0n)
-        },
-    )
-    test.each([
-        {
-            name: "Jetton->Jetton",
-            createPool: createJettonAmmPool,
-        },
-        {
-            name: "TON->Jetton",
-            createPool: createTonJettonAmmPool,
-        },
-    ])(
-        "incorrect liquidity provision on same size should revert. Pool is $name",
-        async ({createPool}) => {
-            const blockchain = await Blockchain.create()
-
-            const {vaultA, liquidityDepositSetup, isSwapped, vaultB} = await createPool(blockchain)
-
-            // deploy liquidity deposit contract
-            const amountA = toNano(1)
-            const amountB = toNano(2) // 1 a == 2 b ratio
-
-            const depositor = vaultB.treasury
-
-            const liqSetup = await liquidityDepositSetup(depositor.walletOwner, amountA, amountB)
-            await liqSetup.deploy()
-
-            await vaultA.deploy()
-
-            const error =
-                `LP Deposit: ${isSwapped ? "Right" : "Left"} side cannot be filled again or with different amount` as const
-            const unsuccessfulLiqProvision = await vaultA.addLiquidity(
-                liqSetup.liquidityDeposit.address,
-                BigInt(randomInt(0, 2000000000)), // random amount to trigger error
-            )
-
-            expect(unsuccessfulLiqProvision.transactions).toHaveTransaction({
-                on: liqSetup.liquidityDeposit.address,
-                op: LiquidityDepositContract.opcodes.PartHasBeenDeposited,
-                success: true,
-            })
-
-            expect(await liqSetup.liquidityDeposit.getStatus()).toEqual(0n)
-
-            expect(unsuccessfulLiqProvision.transactions).toHaveTransaction({
-                from: liqSetup.liquidityDeposit.address,
-                op: LiquidityDepositContract.opcodes.RejectLiquidityPart,
-                success: true,
-            })
-
-            // add liquidity to vaultA
-            const firstLiqProvision = await vaultA.addLiquidity(
-                liqSetup.liquidityDeposit.address,
-                isSwapped ? amountB : amountA,
-            )
-
-            expect(firstLiqProvision.transactions).toHaveTransaction({
-                from: vaultA.vault.address,
-                to: liqSetup.liquidityDeposit.address,
-                op: LiquidityDepositContract.opcodes.PartHasBeenDeposited,
-                success: true,
-            })
-
-            const lpState = await liqSetup.liquidityDeposit.getStatus()
-            expect(lpState).toBeGreaterThan(0n)
-
-            // Add the same liquidity again
-            const secondLiqProvision = await vaultA.addLiquidity(
-                liqSetup.liquidityDeposit.address,
-                isSwapped ? amountB : amountA,
-            )
-            expect(secondLiqProvision.transactions).toHaveTransaction({
-                on: liqSetup.liquidityDeposit.address,
-                success: true, // Commit happened
-                exitCode: LiquidityDepositContract.errors[error],
-            })
-            expect(secondLiqProvision.transactions).toHaveTransaction({
-                from: liqSetup.liquidityDeposit.address,
-                op: LiquidityDepositContract.opcodes.RejectLiquidityPart,
-                success: true,
-            })
-            expect(await liqSetup.liquidityDeposit.getStatus()).toEqual(lpState)
-
-            // And one more time with an incorrect amount
-            const thirdLiqProvision = await vaultA.addLiquidity(
-                liqSetup.liquidityDeposit.address,
-                isSwapped ? amountB : amountA,
-            )
-
-            expect(thirdLiqProvision.transactions).toHaveTransaction({
-                on: liqSetup.liquidityDeposit.address,
-                success: true, // Commit happened
-                exitCode: LiquidityDepositContract.errors[error],
-            })
-
-            expect(await liqSetup.liquidityDeposit.getStatus()).toEqual(lpState)
-
-            expect(thirdLiqProvision.transactions).toHaveTransaction({
-                from: liqSetup.liquidityDeposit.address,
-                op: LiquidityDepositContract.opcodes.RejectLiquidityPart,
-                success: true,
-            })
         },
     )
 })

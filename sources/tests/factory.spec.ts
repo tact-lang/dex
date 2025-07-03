@@ -87,7 +87,7 @@ describe("Factory", () => {
             secondVault: vaultB,
             firstAmount: BigInt(randomLeftSideAmount),
             secondAmount: BigInt(randomRightSideAmount),
-            depositor: randomLPDepositor,
+            lpTokensReceiver: randomLPDepositor,
             contractId: BigInt(randomContractId),
         }
 
@@ -99,7 +99,8 @@ describe("Factory", () => {
                 sortedAddresses.rightAmount,
                 randomLPDepositor,
                 BigInt(randomContractId),
-                0n,
+                false,
+                false,
                 null,
                 null,
             )
