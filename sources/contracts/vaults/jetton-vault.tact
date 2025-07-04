@@ -264,7 +264,7 @@ inline fun actionHandler(msg: JettonNotifyWithActionRequest): Bool {
                 sorted.higher,
                 sorted.lowerCoins,
                 sorted.higherCoins,
-                action.lpTokensReceiver != null ? action.lpTokensReceiver!! : sender(),
+                action.lpTokensReceiver != null ? action.lpTokensReceiver!! : msg.sender,
                 initData.contractId,
                 false,
                 false,
