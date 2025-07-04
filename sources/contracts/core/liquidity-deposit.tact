@@ -37,11 +37,11 @@ contract LiquidityDepositContract(
         // If corresponding side is already filled - we don't care.
         // User shouldn't top up the same side again.
         if (sender == self.leftVault) {
-            require(msg.amount == self.leftSideAmount, "LP Deposit: Left side cannot be filled again or with different amount");
+            require(msg.amount == self.leftSideAmount, "LP Deposit: Left side cannot be filled with different amount");
             self.leftAdditionalParams = msg.additionalParams;
             self.leftSideFilled = true;
         } else if (sender == self.rightVault) {
-            require(msg.amount == self.rightSideAmount, "LP Deposit: Right side cannot be filled again or with different amount");
+            require(msg.amount == self.rightSideAmount, "LP Deposit: Right side cannot be filled with different amount");
             self.rightAdditionalParams = msg.additionalParams;
             self.rightSideFilled = true;
         }
