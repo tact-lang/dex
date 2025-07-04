@@ -185,7 +185,8 @@ const main = async () => {
         amountRight,
         deployerWallet.address,
         0n,
-        0n,
+        false,
+        false,
         null,
         null,
     )
