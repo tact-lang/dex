@@ -145,7 +145,6 @@ contract TonVault(
                 body: PartHasBeenDeposited {
                     additionalParams: msg.additionalParams,
                     amount: msg.amountIn,
-                    depositor: sender(),
                     ammPoolCode: codeOf AmmPool,
                 }.toCell(),
             });
@@ -164,9 +163,10 @@ contract TonVault(
                 sorted.higher,
                 sorted.lowerCoins,
                 sorted.higherCoins,
-                sender(),
+                msg.lpTokensReceiver != null ? msg.lpTokensReceiver!! : sender(),
                 initData.contractId,
-                0,
+                false,
+                false,
                 null,
                 null,
             );
@@ -176,23 +176,12 @@ contract TonVault(
                 mode: SendBounceIfActionFail | SendRemainingBalance,
                 value: 0,
                 body: PartHasBeenDeposited {
-                    depositor: sender(),
                     amount: msg.amountIn,
                     additionalParams: msg.additionalParams,
                     ammPoolCode: codeOf AmmPool,
                 }.toCell(),
             });
         }
-    }
-
-    override fun handleRejectLP(msg: RejectLiquidityPart) {
-        message(MessageParameters {
-            mode: SendRemainingValue,
-            body: null,
-            value: msg.amountToReturn,
-            to: msg.depositor,
-            bounce: true,
-        });
     }
 
     receive() {

@@ -21,7 +21,7 @@ struct LPDepositParams {
     secondVault: Address;
     firstAmount: Int as coins;
     secondAmount: Int as coins;
-    depositor: Address; // This and the next field are kind of salt; so several similar contracts can exist
+    lpTokensReceiver: Address; // This and the next field are kind of salt; so several similar contracts can exist
     // This contractId should be unique for each liquidity deposit action, one can use LT of a contact
     contractId: Int as uint64;
 }
@@ -98,7 +98,7 @@ contract Factory() {
         secondVault: Address,
         firstAmount: Int,
         secondAmount: Int,
-        depositor: Address,
+        lpTokensReceiver: Address,
         contractId: Int,
     ): Address {
         return performAddrRequest(LPDepositAddrRequestId, LPDepositParams {
@@ -106,7 +106,7 @@ contract Factory() {
             secondVault,
             firstAmount,
             secondAmount,
-            depositor,
+            lpTokensReceiver,
             contractId,
         }.toCell());
     }
@@ -144,9 +144,10 @@ fun performAddrRequest(requestId: Int, request: Cell): Address {
             sortedAddressesAndCoins.higher,
             sortedAddressesAndCoins.lowerCoins,
             sortedAddressesAndCoins.higherCoins,
-            params.depositor,
+            params.lpTokensReceiver,
             params.contractId,
-            0,
+            false,
+            false,
             null,
             null,
         ));

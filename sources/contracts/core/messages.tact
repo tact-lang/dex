@@ -29,7 +29,7 @@ message(0x74f7a60) PayoutFromPool {
 // We are using USDT-like mint opcode for liquidity deposit
 // So this operation will be nicely displayed in Tonviewer
 message(0x642b7d07) LiquidityDeposit {
-    depositor: Address;
+    lpTokensReceiver: Address;
     contractId: Int as uint64;
     leftAmount: Int as coins;
     rightAmount: Int as coins;
