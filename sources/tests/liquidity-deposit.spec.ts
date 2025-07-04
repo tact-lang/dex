@@ -16,7 +16,6 @@ import {sortAddresses} from "../utils/deployUtils"
 // eslint-disable-next-line
 import {SendDumpToDevWallet} from "@tondevwallet/traces"
 import {ExtendedLPJettonWallet} from "../wrappers/ExtendedLPJettonWallet"
-import {randomInt} from "crypto"
 
 describe("Liquidity deposit", () => {
     test("Jetton vault should deploy correctly", async () => {
