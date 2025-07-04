@@ -121,6 +121,7 @@ const main = async () => {
                     liquidityDepositContract: randomAddress(0), // Mock LP contract address
                     initData: null,
                 },
+                lpTokensReceiver: null,
                 additionalParams: {
                     $$type: "AdditionalParams",
                     minAmountToDeposit: 0n,
