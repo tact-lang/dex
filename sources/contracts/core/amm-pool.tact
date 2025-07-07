@@ -28,9 +28,10 @@ contract AmmPool(
             self.rightVault,
             msg.leftAmount,
             msg.rightAmount,
-            msg.depositor,
+            msg.lpTokensReceiver,
             msg.contractId,
-            0,
+            false,
+            false,
             null,
             null,
         );
@@ -77,7 +78,7 @@ contract AmmPool(
                     body: PayoutFromPool {
                         otherVault: self.leftVault,
                         amount: msg.rightAmount - expectedRightAmount,
-                        receiver: msg.depositor,
+                        receiver: msg.lpTokensReceiver,
                         payloadToForward: msg.rightAdditionalParams.payloadOnSuccess,
                     }.toCell(),
                 });
@@ -100,7 +101,7 @@ contract AmmPool(
                         payloadToForward: msg.leftAdditionalParams.payloadOnSuccess,
                         otherVault: self.rightVault,
                         amount: msg.leftAmount - expectedLeftAmount,
-                        receiver: msg.depositor,
+                        receiver: msg.lpTokensReceiver,
                     }.toCell(),
                 });
             }
@@ -139,12 +140,12 @@ contract AmmPool(
             value: 0,
             bounce: true,
             mode: SendRemainingBalance,
-            init: getJettonWalletInit(msg.depositor),
+            init: getJettonWalletInit(msg.lpTokensReceiver),
             body: MintViaJettonTransferInternal {
                 queryId: 0,
                 amount: liquidityTokensToMint,
                 sender: myAddress(),
-                responseDestination: msg.depositor,
+                responseDestination: msg.lpTokensReceiver,
                 // Thanks to this flag, we can send all TONs in notify
                 sendAllTonsInNotifyFlag: true,
                 // due to the flag above, we can use 0 here
@@ -469,7 +470,7 @@ contract AmmPool(
             body: PayoutFromPool {
                 otherVault: self.rightVault,
                 amount: msg.rightAmount,
-                receiver: msg.depositor,
+                receiver: msg.lpTokensReceiver,
                 payloadToForward: msg.leftAdditionalParams.payloadOnFailure,
             }.toCell(),
         });
@@ -481,7 +482,7 @@ contract AmmPool(
             body: PayoutFromPool {
                 otherVault: self.leftVault,
                 amount: msg.leftAmount,
-                receiver: msg.depositor,
+                receiver: msg.lpTokensReceiver,
                 payloadToForward: msg.rightAdditionalParams.payloadOnFailure,
             }.toCell(),
         });
