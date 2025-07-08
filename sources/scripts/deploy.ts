@@ -72,7 +72,7 @@ const main = async () => {
     // )
     console.log("Minted Token A", jettonMinterA.address.toString())
 
-    const tonVaultContract = await TonVault.fromInit(randomAddress())
+    const tonVaultContract = await TonVault.fromInit()
     const _tonVault = client.open(tonVaultContract)
     // const deployResult = await tonVault.send(
     //     deployerWallet.sender(keyPair.secretKey),

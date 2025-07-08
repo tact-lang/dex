@@ -269,7 +269,7 @@ export const createTonVault: Create<VaultInterface<TonTreasury>> = async (
 ) => {
     const vaultOwner = await blockchain.treasury("vault-owner")
 
-    const vault = blockchain.openContract(await TonVault.fromInit(vaultOwner.address))
+    const vault = blockchain.openContract(await TonVault.fromInit())
 
     const wallet = await blockchain.treasury("wallet-owner")
 

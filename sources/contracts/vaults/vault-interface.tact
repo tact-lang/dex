@@ -51,7 +51,7 @@ extends inline fun numberOfHops(self: SwapParameters): Int {
     }
 }
 
-message(0x2d8b1293a) PayoutFromTonVault {
+message(0x2d8b123a) PayoutFromTonVault {
     body: Cell?;
 }
 
