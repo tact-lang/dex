@@ -51,6 +51,10 @@ extends inline fun numberOfHops(self: SwapParameters): Int {
     }
 }
 
+message(0x2d8b1293a) PayoutFromTonVault {
+    body: Cell?;
+}
+
 struct LiquidityDepositInitData {
     otherVault: Address;
     otherAmount: Int as coins;

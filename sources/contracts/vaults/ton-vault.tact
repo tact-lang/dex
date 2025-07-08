@@ -41,7 +41,9 @@ contract TonVault(
             value: msg.amount,
             mode: SendRemainingValue,
             bounce: false,
-            body: msg.payloadToForward,
+            body: PayoutFromTonVault {
+                body: msg.payloadToForward
+            }.toCell(),
         });
     }
 
