@@ -8,6 +8,13 @@
 
 </div>
 
+Check out T-Dex wip dApp frontend to perform swaps with web UI:
+
+Link: https://tact-lang.github.io/dex-frontend/
+Repo: https://github.com/tact-lang/dex-frontend
+
+You can use this example to see how to integrate with T-Dex contracts from the frontend or execute swap transactions.
+
 ## Project Goals
 
 - Creating a state-of-the-art fully open-source decentralized exchange (DEX)
@@ -29,6 +36,32 @@ Check these docs to learn about how T-Dex works, its semantics and how to integr
 - [How to manage liquidity](./dev-docs/liquidity.md)
 - How to work with Factory, TODO
 - How to create new pool and vaults, TODO
+
+## Examples and usage
+
+### Contracts
+
+T-Dex contracts are deployed in testnet and are ready for usage and testing purposes.
+
+- [Jetton A](https://testnet.tonviewer.com/kQBCzXhQNxS727KxwsHld8aVNoFpSka0Xzr3GUBOxC_l2gQM)
+- [Jetton A Vault](https://testnet.tonviewer.com/kQBBWii_pqdQWcWQ9pWPC7lt1qoNngdZ9TuUMgT81TFgQiM_)
+
+- [Jetton B](https://testnet.tonviewer.com/kQDO8Rt30nYL8RbXOWWMCqY3E4o-mN-tum0MTlABiFTDtz2p)
+- [Jetton B Vault](https://testnet.tonviewer.com/kQBtrwWIuAD_KJIoI14S3jxcANwnL4TrTvsj88cGXVCfG6y2)
+
+- [A-B Jettons pool](https://testnet.tonviewer.com/kQDRJqnVNdRdCH8u9cVclk-iZKpI4bVMBvgyTWfNyI6rTtQH)
+- [Proxy liquidity deposit](https://testnet.tonviewer.com/0QBa3_cmTS4lg_pGBt_k5t1NEfHFnsDm8Y2UkD_t3MCQHAG7) (Non-existent because was destroyed after tx)
+
+- [T-Dex factory](https://testnet.tonviewer.com/kQDR9j1SuiGtbSi7NZNgNwlDPIWZFEN5BLMz6AOd-IpGunLG) (No tx on it, used for get-methods)
+- [Ton Vault](https://testnet.tonviewer.com/kQDTsG5OoAbrtTRpYMHlmqDXwI9mj3Iv-wj-NNrNf0BDG1dJ) (Inited, but no pools with it yet)
+
+### Transactions
+
+- [A-B Jettons liquidity provisioning](https://testnet.tonviewer.com/transaction/21825ccd231a2aae8dbb95307f9a3b46cff61f2f863a4b9a1a35ec6c6e18f4f3) (Lp jettons minting in the end)
+- [A->B Jettons exact-out swap with slippage](https://testnet.tonviewer.com/transaction/91c4004bda0941ee16a611689bacdd4105b6ef230d3b6b9419ec20d40b784cfa) (Notice partial A jetton refund because of slippage)
+- [A->B Jettons exact-in swap](https://testnet.tonviewer.com/transaction/8645178e74ab066e86d5bf1912bf05298c1ecf68887a8d38463a8a9aa2c57fda)
+- [B->A Jettons swap with low decimals](https://testnet.tonviewer.com/transaction/fdabd6abb38adf2a705417a809f86b8421638479439466a99bb977ebca496cd9)
+- [B Vault initialization](https://testnet.tonviewer.com/transaction/c6f4a9758ab80fd2172af8f82e40d55a98cec4e79df32734761a03a90450cb81)
 
 ## DEX Architecture
 
