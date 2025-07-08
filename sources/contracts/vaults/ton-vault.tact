@@ -27,9 +27,7 @@ message(0x7362d09c) UnexpectedJettonNotification {
     forwardPayload: Slice as remaining;
 }
 
-contract TonVault(
-    admin: Address,
-) with VaultInterface {
+contract TonVault() with VaultInterface {
     override fun handlePayout(msg: PayoutFromPool) {
         let sortedAddresses = sortAddresses(myAddress(), msg.otherVault);
         let poolInit = initOf AmmPool(sortedAddresses.lower, sortedAddresses.higher, 0, 0, 0, null);
@@ -41,7 +39,9 @@ contract TonVault(
             value: msg.amount,
             mode: SendRemainingValue,
             bounce: false,
-            body: msg.payloadToForward,
+            body: PayoutFromTonVault {
+                body: msg.payloadToForward,
+            }.toCell(),
         });
     }
 
