@@ -8,6 +8,13 @@
 
 </div>
 
+Check out T-Dex wip dApp frontend to perform swaps with web UI:
+
+Link: https://tact-lang.github.io/dex-frontend/
+Repo: https://github.com/tact-lang/dex-frontend
+
+You can use this example to see how to integrate with T-Dex contracts from the frontend or execute swap transactions.
+
 ## Project Goals
 
 - Creating a state-of-the-art fully open-source decentralized exchange (DEX)
