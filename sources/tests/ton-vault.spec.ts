@@ -75,13 +75,13 @@ describe("TON Vault", () => {
             0n,
             null,
         )
-        const gettedContract = await blockchain.getContract(tonVaultContract.address)
+        const tonVaultObject = await blockchain.getContract(tonVaultContract.address)
 
         const randomReceiver = randomAddress(0)
         const payloadToForward = beginCell()
             .storeStringTail("Random quite big payload. User can encode anything here")
             .endCell()
-        const res = await gettedContract.receiveMessage(
+        const res = await tonVaultObject.receiveMessage(
             internal({
                 from: randomAmmPool.address,
                 to: tonVaultContract.address,
