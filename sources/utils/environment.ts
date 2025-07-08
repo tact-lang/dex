@@ -267,8 +267,6 @@ export const createJettonVault: Create<VaultInterface<JettonTreasury>> = async (
 export const createTonVault: Create<VaultInterface<TonTreasury>> = async (
     blockchain: Blockchain,
 ) => {
-    const vaultOwner = await blockchain.treasury("vault-owner")
-
     const vault = blockchain.openContract(await TonVault.fromInit())
 
     const wallet = await blockchain.treasury("wallet-owner")
