@@ -128,7 +128,7 @@ describe.each([
                     left: await ammPool.getLeftSide(),
                     right: await ammPool.getRightSide(),
                 }
-            } catch (error) {
+            } catch (_error) {
                 return {
                     left: 0n,
                     right: 0n,
