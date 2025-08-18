@@ -80,7 +80,7 @@ asm fun calculateJettonWallet(owner: Address, jettonData: Cell, jettonCode: Cell
     // +16 = load c7 (smart-contract context)
     // +32 = return c5 (actions)
     // +64 = pop hard gas limit (enabled by ACCEPT) from stack as well
-    // +128 = isolated gas consumption (separate set of visited cells, reset CHKSGN counter)
+    // +128 = isolated gas consumption (separate set of visited cells, reset CHKSIGNU counter)
     // +256 = pop number N, return exactly N values from stack (only if res=0 or 1; if not enough then res=stk_und)
     //
     // We use only +1 +4 +16 +256 = 277
