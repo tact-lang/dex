@@ -71,7 +71,20 @@ asm fun calculateJettonWallet(owner: Address, jettonData: Cell, jettonCode: Cell
     2 PUSHINT       // owner_addr c7 md mc args"
     103289 PUSHINT  // owner_addr c7 md mc args get_jwa_method_id"
     5 0 REVERSE     // owner_addr get_jwa_method_id args mc md c7"
-    53 RUNVM        // address exit_code c4' c5'"
-    // TODO check RUNVM exit code
-    3 BLKDROP       // address";
+    ONE 2 -ROLL // Moves the top stack value (ONE) to the third position: [A, B, C] -> [B, C, A]. We expect only 1 return value. Flag +256 for runvm enables this argument
+    // Here is the full list of modes of RUNVM
+    // +1 = same_c3 (set c3 to code)
+    // +2 = push_0 (push an implicit 0 before running the code); only works with +1 enabled
+    // +4 = load c4 (persistent data) from stack and return its final value
+    // +8 = load gas limit from stack and return consumed gas
+    // +16 = load c7 (smart-contract context)
+    // +32 = return c5 (actions)
+    // +64 = pop hard gas limit (enabled by ACCEPT) from stack as well
+    // +128 = isolated gas consumption (separate set of visited cells, reset CHKSIGNU counter)
+    // +256 = pop number N, return exactly N values from stack (only if res=0 or 1; if not enough then res=stk_und)
+    //
+    // We use only +1 +4 +16 +256 = 277
+    // Mode 256 is crucial, because it ignores all stack values except the first one, and protects us from stack poisoning
+    277 RUNVM        // address exit_code c4'"
+    2 BLKDROP       // address";
 }
