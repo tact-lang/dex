@@ -1279,7 +1279,7 @@
   dependencies:
     core-js-pure "^3.38.0"
 
-"@ton/core@0.60.1":
+"@ton/core@0.60.1", "@ton/core@^0.60.1":
   version "0.60.1"
   resolved "https://registry.yarnpkg.com/@ton/core/-/core-0.60.1.tgz#cc9a62fb308d7597b1217dc8e44c7e2dcc0aceaa"
   integrity sha512-8FwybYbfkk57C3l9gvnlRhRBHbLYmeu0LbB1z9N+dhDz0Z+FJW8w0TJlks8CgHrAFxsT3FlR2LsqFnsauMp38w==
@@ -1317,17 +1317,28 @@
     chalk "^4.1.2"
     table "^6.9.0"
 
-"@ton/test-utils@^0.7.0":
-  version "0.7.0"
-  resolved "https://registry.yarnpkg.com/@ton/test-utils/-/test-utils-0.7.0.tgz#c70dd68f5155edfc68482ea1050fda73511f0c92"
-  integrity sha512-c0izUKncMqC+zKOHzILO1/l0gWKwCeEP1PtgtCvdPRiTE0WfDxeLEc1gMAl6DQOGeMoLD4Wv4HnR4R72v5Oagw==
+"@ton/sandbox@^0.36.0":
+  version "0.36.0"
+  resolved "https://registry.yarnpkg.com/@ton/sandbox/-/sandbox-0.36.0.tgz#2bc5e2377ecf9181c943ee35bdea7364711c0880"
+  integrity sha512-YPjOgBRnUOq7kaI9sKg4HbmmPiba4j1bCHY5I3lCPfqVE+thV+G+R7doDvw6/Xkde/3E6jA8iAnRgkYOZCqH9Q==
+  dependencies:
+    "@vscode/debugadapter" "^1.68.0"
+    chalk "^4.1.2"
+    fflate "^0.8.2"
+    table "^6.9.0"
+    ton-assembly "0.1.0"
+
+"@ton/test-utils@^0.10.0":
+  version "0.10.0"
+  resolved "https://registry.yarnpkg.com/@ton/test-utils/-/test-utils-0.10.0.tgz#fc928d12f15bd954da8b790963c46747ce43e018"
+  integrity sha512-iQytFCteB60z8YlmGeqbs8Gbnr+ZogbxzBtOFxxPiBTogwQ+d3Ey7ugGUIEcfO5kR4LFCN0i7Q4ljF9nMMvYKw==
   dependencies:
     node-inspect-extracted "^2.0.0"
 
-"@ton/ton@^13.9.0":
-  version "13.11.2"
-  resolved "https://registry.yarnpkg.com/@ton/ton/-/ton-13.11.2.tgz#e40204df6a663fdf1b862dfe8ba2a91be3c0dddc"
-  integrity sha512-EPqW+ZTe0MmfqguJEIGMuAqTAFRKMEce95HlDx8h6CGn2y3jiMgV1/oO+WpDIOiX+1wnTu+xtajk8JTWr8nKRQ==
+"@ton/ton@^15.3.1":
+  version "15.3.1"
+  resolved "https://registry.yarnpkg.com/@ton/ton/-/ton-15.3.1.tgz#c20688b27eb8ce8474610843804a7599679c38a2"
+  integrity sha512-+UuvbE0o0VIU/0W90STO+emRIDr3Vs39LdbX5ySm/Ra+RQJSiH0KX6TDOFqWDmD2Wzk4/zw21KwSiZ6Xjk8zlw==
   dependencies:
     axios "^1.6.7"
     dataloader "^2.0.0"
@@ -1340,7 +1351,7 @@
   resolved "https://registry.yarnpkg.com/@tondevwallet/traces/-/traces-0.1.8.tgz#cb65f078ad1a0ef213a2c4aed295fedc1297e118"
   integrity sha512-tHGKDmx4AwReYJbqIgIF6p1J2bH4mpherQ3LEgTI8E4CWZrQpSJVfr+kYvq0RMcS0HbE9O7Za3ZowASPblaTNQ==
 
-"@tonstudio/parser-runtime@0.0.1":
+"@tonstudio/parser-runtime@0.0.1", "@tonstudio/parser-runtime@^0.0.1":
   version "0.0.1"
   resolved "https://registry.yarnpkg.com/@tonstudio/parser-runtime/-/parser-runtime-0.0.1.tgz#469955fb7ea354d4fadaa5964359b11fd17f926b"
   integrity sha512-5s4fLkXWxa4SAd7QGGvJXe13GakEo0J3VF5dUI/i3A//bGZxMwCp1FcnbErpNs3y0LcAZoXE5FCUnDowDQptqw==
@@ -1700,6 +1711,18 @@
   dependencies:
     "@typescript-eslint/types" "8.34.0"
     eslint-visitor-keys "^4.2.0"
+
+"@vscode/debugadapter@^1.68.0":
+  version "1.68.0"
+  resolved "https://registry.yarnpkg.com/@vscode/debugadapter/-/debugadapter-1.68.0.tgz#abb23463cb750ca4a6f0834c5d4db659258dc159"
+  integrity sha512-D6gk5Fw2y4FV8oYmltoXpj+VAZexxJFopN/mcZ6YcgzQE9dgq2L45Aj3GLxScJOD6GeLILcxJIaA8l3v11esGg==
+  dependencies:
+    "@vscode/debugprotocol" "1.68.0"
+
+"@vscode/debugprotocol@1.68.0":
+  version "1.68.0"
+  resolved "https://registry.yarnpkg.com/@vscode/debugprotocol/-/debugprotocol-1.68.0.tgz#e558ba6affe1be7aff4ec824599f316b61d9a69d"
+  integrity sha512-2J27dysaXmvnfuhFGhfeuxfHRXunqNPxtBoR3koiTOA9rdxWNDTa1zIFLCFMSHJ9MPTPKFcBeblsyaCJCIlQxg==
 
 "@vue/compiler-core@3.5.16":
   version "3.5.16"
@@ -2082,6 +2105,11 @@ builtin-modules@^3.3.0:
   version "3.3.0"
   resolved "https://registry.yarnpkg.com/builtin-modules/-/builtin-modules-3.3.0.tgz#cae62812b89801e9656336e46223e030386be7b6"
   integrity sha512-zhaCDicdLuWN5UbN5IMnFqNMhNfo919sH85y2/ea+5Yg9TsTkeZxpL+JLbp6cgYFS4sRLp3YV4S6yDuqVWHYOw==
+
+cac@^6.7.14:
+  version "6.7.14"
+  resolved "https://registry.yarnpkg.com/cac/-/cac-6.7.14.tgz#804e1e6f506ee363cb0e3ccbb09cad5dd9870959"
+  integrity sha512-b6Ilus+c3RrdDk+JhLKUAQfzzgLEPy6wcXqS7f/xe1EETvsDP6GORG7SFuOs6cID5YkqchW/LXZbX5bc8j7ZcQ==
 
 call-bind-apply-helpers@^1.0.1, call-bind-apply-helpers@^1.0.2:
   version "1.0.2"
@@ -2931,6 +2959,11 @@ fdir@^6.4.4:
   version "6.4.6"
   resolved "https://registry.yarnpkg.com/fdir/-/fdir-6.4.6.tgz#2b268c0232697063111bbf3f64810a2a741ba281"
   integrity sha512-hiFoqpyZcfNm1yc4u8oWCf9A2c4D3QjCrks3zmoVKVxpQRzmPNar1hUJcBG2RQHvEVGDN+Jm81ZheVLAQMK6+w==
+
+fflate@^0.8.2:
+  version "0.8.2"
+  resolved "https://registry.yarnpkg.com/fflate/-/fflate-0.8.2.tgz#fc8631f5347812ad6028bbe4a2308b2792aa1dea"
+  integrity sha512-cPJU47OaAoCbg0pBvzsgpTPhmhqI5eJjh/JIu8tPj5q+T7iLvW/JAYUqmE7KOB4R1ZyEhzBaIQpQpardBF5z8A==
 
 file-entry-cache@^8.0.0:
   version "8.0.0"
@@ -5153,6 +5186,15 @@ to-regex-range@^5.0.1:
   integrity sha512-65P7iz6X5yEr1cwcgvQxbbIw7Uk3gOy5dIdtZ4rDveLqhrdJP+Li/Hx6tyK0NEb+2GCyneCMJiGqrADCSNk8sQ==
   dependencies:
     is-number "^7.0.0"
+
+ton-assembly@0.1.0:
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/ton-assembly/-/ton-assembly-0.1.0.tgz#a3f1da50c2d2be1cd0f9837a9399ea80f80021eb"
+  integrity sha512-2k0vIKleGMXXu6yXV8L1eICClGZVwqfs4G0FgBCgC6Qgani6pAqoLGNBNjcdw3554Ua3E+1K4oz/oW+GhZfm+w==
+  dependencies:
+    "@ton/core" "^0.60.1"
+    "@tonstudio/parser-runtime" "^0.0.1"
+    cac "^6.7.14"
 
 tr46@~0.0.3:
   version "0.0.3"
