@@ -71,7 +71,7 @@ asm fun calculateJettonWallet(owner: Address, jettonData: Cell, jettonCode: Cell
     2 PUSHINT       // owner_addr c7 md mc args"
     103289 PUSHINT  // owner_addr c7 md mc args get_jwa_method_id"
     5 0 REVERSE     // owner_addr get_jwa_method_id args mc md c7"
-    ONE 2 -ROLL // We expect only 1 return value. Flag +256 for runvm enables this argument
+    ONE 2 -ROLL // Moves the top stack value (ONE) to the third position: [A, B, C] -> [B, C, A]. We expect only 1 return value. Flag +256 for runvm enables this argument
     // Here is the full list of modes of RUNVM
     // +1 = same_c3 (set c3 to code)
     // +2 = push_0 (push an implicit 0 before running the code); only works with +1 enabled
