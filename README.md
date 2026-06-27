@@ -1,3 +1,7 @@
+> [!CAUTION]
+> This project is deprecated. For up-to-date examples of TON smart contracts, see
+> the [reference Tolk contracts repository](https://github.com/ton-blockchain/acton-contracts).
+
 # OpenDeFi Library: Decentralized Exchange in Tact, T-Dex
 
 <div align="center">
